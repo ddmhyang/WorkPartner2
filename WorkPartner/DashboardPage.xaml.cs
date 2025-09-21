@@ -840,6 +840,76 @@ namespace WorkPartner
             _isDragging = false;
             SelectionCanvas.ReleaseMouseCapture();
             _selectionBox.Visibility = Visibility.Collapsed;
+
+            // 드래그 영역에 포함된 모든 TimeLogEntry를 찾습니다.
+            var selectionRect = new Rect(
+                Math.Min(_dragStartPoint.X, e.GetPosition(SelectionCanvas).X),
+                Math.Min(_dragStartPoint.Y, e.GetPosition(SelectionCanvas).Y),
+                Math.Abs(_dragStartPoint.X - e.GetPosition(SelectionCanvas).X),
+                Math.Abs(_dragStartPoint.Y - e.GetPosition(SelectionCanvas).Y)
+            );
+
+            // 드래그 영역이 너무 작으면 무시합니다.
+            if (selectionRect.Width < 10 && selectionRect.Height < 10) return;
+
+            // 시각적 요소(Border)를 기반으로 해당 로그 엔트리를 찾습니다.
+            var selectedLogs = new List<TimeLogEntry>();
+            foreach (var child in TimeTableContainer.Children.OfType<StackPanel>())
+            {
+                foreach (var grandChild in child.Children.OfType<Border>())
+                {
+                    if (grandChild.Child is Grid grid)
+                    {
+                        foreach (var logBar in grid.Children.OfType<Border>())
+                        {
+                            if (logBar.Tag is TimeLogEntry logEntry)
+                            {
+                                // 로그 바의 상대적인 위치를 캔버스 기준 좌표로 변환합니다.
+                                Point logBarPos = logBar.TranslatePoint(new Point(0, 0), SelectionCanvas);
+                                Rect logRect = new Rect(logBarPos.X, logBarPos.Y, logBar.ActualWidth, logBar.ActualHeight);
+
+                                // 드래그 영역과 로그 바가 교차하는지 확인합니다.
+                                if (selectionRect.IntersectsWith(logRect))
+                                {
+                                    selectedLogs.Add(logEntry);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (selectedLogs.Any())
+            {
+                // 중복 항목을 제거하고 정렬합니다.
+                var distinctLogs = selectedLogs.Distinct().OrderBy(l => l.StartTime).ToList();
+                var bulkEditWindow = new BulkEditLogsWindow(distinctLogs, TaskItems)
+                {
+                    Owner = Window.GetWindow(this)
+                };
+
+                if (bulkEditWindow.ShowDialog() == true)
+                {
+                    if (bulkEditWindow.Result == BulkEditResult.ChangeTask)
+                    {
+                        string newText = bulkEditWindow.SelectedTask.Text;
+                        foreach (var log in distinctLogs)
+                        {
+                            log.TaskText = newText;
+                        }
+                    }
+                    else if (bulkEditWindow.Result == BulkEditResult.Delete)
+                    {
+                        foreach (var log in distinctLogs)
+                        {
+                            TimeLogEntries.Remove(log);
+                        }
+                    }
+                    SaveTimeLogs();
+                    RecalculateAllTotals();
+                    RenderTimeTable();
+                }
+            }
         }
 
         private void BulkEditButton_Click(object sender, RoutedEventArgs e)
@@ -880,4 +950,3 @@ namespace WorkPartner
         #endregion
     }
 }
-
