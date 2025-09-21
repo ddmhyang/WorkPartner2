@@ -97,16 +97,28 @@ namespace WorkPartner
 
         private void UpdateAllAnalyses()
         {
-            UpdateTaskAnalysis(DateTime.MinValue, DateTime.MaxValue);
+            UpdateTotalStudyTime();
+            UpdateTaskAnalysis();
             UpdateHourlyAnalysis();
             UpdateTaskFocusAnalysis();
             GenerateWorkRestPatternSuggestion();
         }
 
-        private void UpdateTaskAnalysis(DateTime start, DateTime end)
+        // [NEW] Method to calculate and display total study time
+        private void UpdateTotalStudyTime()
         {
-            var filteredLogs = _allTimeLogs.Where(log => log.StartTime >= start && log.StartTime <= end.AddDays(1).AddTicks(-1));
-            var analysis = filteredLogs
+            TimeSpan totalDuration = TimeSpan.FromSeconds(_allTimeLogs.Sum(log => log.Duration.TotalSeconds));
+            int days = (int)totalDuration.TotalDays;
+            int hours = totalDuration.Hours;
+            int minutes = totalDuration.Minutes;
+            int seconds = totalDuration.Seconds;
+
+            TotalStudyTimeTextBlock.Text = $"총 학습 시간: {days}일 {hours}시간 {minutes}분 {seconds}초";
+        }
+
+        private void UpdateTaskAnalysis()
+        {
+            var analysis = _allTimeLogs
                 .GroupBy(log => log.TaskText)
                 .Select(group => new TaskAnalysisResult
                 {
@@ -264,6 +276,31 @@ namespace WorkPartner
             }
         }
 
+        // [NEW] Event handlers for new buttons
+        private void ShowTaskAnalysisButton_Click(object sender, RoutedEventArgs e)
+        {
+            TaskAnalysisPanel.Visibility = Visibility.Visible;
+            FocusAnalysisPanel.Visibility = Visibility.Collapsed;
+            HourlyAnalysisPanel.Visibility = Visibility.Collapsed;
+            UpdateTaskAnalysis();
+        }
+
+        private void ShowFocusAnalysisButton_Click(object sender, RoutedEventArgs e)
+        {
+            TaskAnalysisPanel.Visibility = Visibility.Collapsed;
+            FocusAnalysisPanel.Visibility = Visibility.Visible;
+            HourlyAnalysisPanel.Visibility = Visibility.Collapsed;
+            UpdateTaskFocusAnalysis();
+        }
+
+        private void ShowHourlyAnalysisButton_Click(object sender, RoutedEventArgs e)
+        {
+            TaskAnalysisPanel.Visibility = Visibility.Collapsed;
+            FocusAnalysisPanel.Visibility = Visibility.Collapsed;
+            HourlyAnalysisPanel.Visibility = Visibility.Visible;
+            UpdateHourlyAnalysis();
+        }
+
         private void PredictButton_Click(object sender, RoutedEventArgs e)
         {
             var input = new ModelInput
@@ -290,16 +327,9 @@ namespace WorkPartner
                 parent.RaiseEvent(eventArg);
             }
         }
-
-        private void TodayButton_Click(object sender, RoutedEventArgs e) { var today = DateTime.Today; UpdateTaskAnalysis(today, today); }
-        private void ThisWeekButton_Click(object sender, RoutedEventArgs e) { var today = DateTime.Today; int dayOfWeek = (int)today.DayOfWeek - (int)DayOfWeek.Monday; var startDate = today.AddDays(-dayOfWeek); var endDate = startDate.AddDays(6); UpdateTaskAnalysis(startDate, endDate); }
-        private void ThisMonthButton_Click(object sender, RoutedEventArgs e) { var today = DateTime.Today; var startDate = new DateTime(today.Year, today.Month, 1); var endDate = startDate.AddMonths(1).AddDays(-1); UpdateTaskAnalysis(startDate, endDate); }
-        private void TotalButton_Click(object sender, RoutedEventArgs e) { UpdateTaskAnalysis(DateTime.MinValue, DateTime.MaxValue); }
-        private void CustomDateButton_Click(object sender, RoutedEventArgs e) { if (StartDatePicker.SelectedDate.HasValue && EndDatePicker.SelectedDate.HasValue) { UpdateTaskAnalysis(StartDatePicker.SelectedDate.Value, EndDatePicker.SelectedDate.Value); } else { MessageBox.Show("시작 날짜와 종료 날짜를 모두 선택해주세요."); } }
     }
 
     public class TaskAnalysisResult { public string TaskName { get; set; } public TimeSpan TotalTime { get; set; } public string TotalTimeFormatted => $"{(int)TotalTime.TotalHours} 시간 {TotalTime.Minutes} 분"; }
     public class WorkRestPattern { public int WorkDurationMinutes { get; set; } public int RestDurationMinutes { get; set; } public int NextSessionFocusScore { get; set; } }
     public class TaskFocusAnalysisResult { public string TaskName { get; set; } public double AverageFocusScore { get; set; } public TimeSpan TotalTime { get; set; } public string TotalTimeFormatted => $"{(int)TotalTime.TotalHours}시간 {TotalTime.Minutes}분"; }
 }
-
