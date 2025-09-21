@@ -17,7 +17,7 @@ namespace WorkPartner
         {
             InitializeComponent();
             _dashboardPage = new DashboardPage();
-            _dashboardPage.SetParentWindow(this); // 대시보드에 메인 윈도우 자신을 알려주는 코드
+            _dashboardPage.SetParentWindow(this);
             MainFrame.Navigate(_dashboardPage);
 
             ToggleMiniTimer();
@@ -37,7 +37,7 @@ namespace WorkPartner
             {
                 case "Dashboard":
                     MainFrame.Navigate(_dashboardPage);
-                    _dashboardPage.LoadAllData(); // 대시보드로 돌아올 때 데이터 새로고침
+                    _dashboardPage.LoadAllData();
                     break;
                 case "Avatar":
                     if (_avatarPage == null) _avatarPage = new AvatarPage();
@@ -46,11 +46,16 @@ namespace WorkPartner
                     break;
                 case "Analysis":
                     if (_analysisPage == null) _analysisPage = new AnalysisPage();
-                    await _analysisPage.LoadAndAnalyzeData();
+                    await _analysisPage.LoadAndAnalyzeData(); // 비동기 로딩
                     MainFrame.Navigate(_analysisPage);
                     break;
                 case "Settings":
-                    if (_settingsPage == null) _settingsPage = new SettingsPage();
+                    if (_settingsPage == null)
+                    {
+                        _settingsPage = new SettingsPage();
+                        _settingsPage.SetParentWindow(this); // 부모 윈도우 참조 설정
+                    }
+                    _settingsPage.LoadData();
                     MainFrame.Navigate(_settingsPage);
                     break;
             }
@@ -75,7 +80,6 @@ namespace WorkPartner
             }
         }
 
-        // Window Controls
         private void Border_MouseDown(object sender, MouseButtonEventArgs e)
         {
             if (e.ChangedButton == MouseButton.Left)

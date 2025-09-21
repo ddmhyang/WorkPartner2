@@ -4,229 +4,206 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:local="clr-namespace:WorkPartner"
-             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
              mc:Ignorable="d" 
-             d:DesignHeight="700" d:DesignWidth="800">
+             d:DesignHeight="700" d:DesignWidth="850"
+             Background="{DynamicResource AppBackgroundBrush}">
     <UserControl.Resources>
-        <Style x:Key="HeaderTextStyle" TargetType="TextBlock">
-            <Setter Property="FontSize" Value="16"/>
-            <Setter Property="FontWeight" Value="Bold"/>
-            <Setter Property="Margin" Value="0,0,0,10"/>
-        </Style>
-        <Style x:Key="PanelBorderStyle" TargetType="Border">
-            <Setter Property="Background" Value="#F9F9F9"/>
-            <Setter Property="BorderBrush" Value="#E0E0E0"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="CornerRadius" Value="5"/>
-            <Setter Property="Padding" Value="15"/>
-            <Setter Property="Margin" Value="0,0,0,15"/>
+        <Style x:Key="ProcessListBoxStyle" TargetType="ListBox">
+            <Setter Property="Background" Value="{DynamicResource SectionBackgroundBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+            <Setter Property="MaxHeight" Value="120"/>
+            <Setter Property="ItemTemplate">
+                <Setter.Value>
+                    <DataTemplate>
+                        <StackPanel Orientation="Horizontal">
+                            <Image Source="{Binding Icon}" Width="16" Height="16" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding DisplayName}" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </DataTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
     </UserControl.Resources>
-    <Grid>
-        <ProgressBar Name="LoadingProgressBar"
-                         IsIndeterminate="True"
-                         Height="10"
-                         VerticalAlignment="Top"
-                         Visibility="Collapsed"
-                         Panel.ZIndex="1"
-                         Margin="0, -10, 0, 0"/>
-        <ScrollViewer VerticalScrollBarVisibility="Auto">
-            <StackPanel Margin="20">
-                <TextBlock Text="설정" Style="{StaticResource HeaderTextStyle}" FontSize="20"/>
 
-                <!-- 일반 설정 -->
-                <TextBlock Text="일반 설정" Style="{StaticResource HeaderTextStyle}"/>
-                <Border Style="{StaticResource PanelBorderStyle}">
-                    <StackPanel>
-                        <CheckBox x:Name="IdleDetectionCheckBox" Content="자리 비움 감지 활성화" Margin="10" Checked="Setting_Changed" Unchecked="Setting_Changed"/>
-                        <StackPanel Orientation="Horizontal" Margin="10">
-                            <TextBlock Text="자리 비움 감지 시간 (초):" VerticalAlignment="Center"/>
-                            <TextBox x:Name="IdleTimeoutTextBox" Width="50" Margin="5,0" TextChanged="Setting_Changed_IdleTimeout"/>
-                        </StackPanel>
-                        <CheckBox x:Name="MiniTimerCheckBox" Content="미니 타이머 (항상 위) 사용" Margin="10" Checked="Setting_Changed" Unchecked="Setting_Changed"/>
+    <Grid Margin="10">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="280"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- Left Panel: Preview -->
+        <Border Grid.Column="0" Style="{StaticResource SectionBorderStyle}" Padding="15" Margin="0,0,10,0">
+            <StackPanel>
+                <TextBlock Text="미리보기" Style="{StaticResource SectionHeaderStyle}" Margin="0,0,0,10"/>
+                <local:CharacterDisplay x:Name="CharacterPreview" Height="150"/>
+                <TextBlock x:Name="UsernameTextBlock" Text="사용자" FontSize="16" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,10,0,5" Foreground="{DynamicResource TextBrush}"/>
+                <TextBlock Text="Lv. 1 Adventurer" HorizontalAlignment="Center" Foreground="{DynamicResource MutedTextBrush}" Margin="0,0,0,10"/>
+
+                <Grid Margin="0,10,0,5">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="보유 코인" VerticalAlignment="Center" Foreground="{DynamicResource TextBrush}"/>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                        <Image Source="/images/coin.png" Width="16" Height="16" Margin="0,0,5,0"/>
+                        <TextBlock x:Name="CoinTextBlock" Text="1,234" FontWeight="Bold" VerticalAlignment="Center" Foreground="{DynamicResource TextBrush}"/>
                     </StackPanel>
-                </Border>
+                </Grid>
 
-                <!-- 프로세스 설정 -->
-                <TextBlock Text="프로세스 설정" Style="{StaticResource HeaderTextStyle}"/>
-                <Border Style="{StaticResource PanelBorderStyle}">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
+                <Button Content="아바타 꾸미기" Margin="0,20,0,0" Click="GoToAvatarButton_Click"/>
+            </StackPanel>
+        </Border>
 
-                        <StackPanel Grid.Column="0" Margin="0,0,10,0">
-                            <TextBlock Text="작업 프로그램/사이트" FontWeight="Bold"/>
-                            <Grid>
-                                <TextBox x:Name="WorkProcessInputTextBox" ToolTip="프로그램/사이트 키워드를 입력하세요." TextChanged="AutoComplete_TextChanged" PreviewKeyDown="AutoComplete_PreviewKeyDown" Tag="Work"/>
-                                <Popup x:Name="WorkAutoCompletePopup" IsOpen="False" StaysOpen="False" PlacementTarget="{Binding ElementName=WorkProcessInputTextBox}" Placement="Bottom">
-                                    <ListBox x:Name="WorkSuggestionListBox" MaxHeight="200" MinWidth="{Binding ElementName=WorkProcessInputTextBox, Path=ActualWidth}" SelectionChanged="SuggestionListBox_SelectionChanged" PreviewKeyDown="AutoComplete_PreviewKeyDown" Tag="Work">
-                                        <ListBox.ItemTemplate>
-                                            <DataTemplate>
-                                                <StackPanel Orientation="Horizontal">
-                                                    <Image Source="{Binding Icon}" Width="16" Height="16" Margin="0,0,5,0" />
-                                                    <TextBlock Text="{Binding DisplayName}" />
-                                                    <TextBlock Text="{Binding ProcessName}" Foreground="Gray" Margin="5,0,0,0" FontStyle="Italic"/>
-                                                </StackPanel>
-                                            </DataTemplate>
-                                        </ListBox.ItemTemplate>
-                                    </ListBox>
-                                </Popup>
-                            </Grid>
-                            <Button Content="실행 중인 앱에서 선택" Click="SelectRunningAppButton_Click" Margin="0,5,0,0" FontSize="11" Padding="8,4" Background="#5bc0de" Tag="Work"/>
-                            <Button Content="현재 활성 사이트 추가" Click="AddActiveTabButton_Click" Margin="0,5,0,0" FontSize="11" Padding="8,4" Background="#f0ad4e" Tag="Work"/>
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                <Button Grid.Column="0" Content="추가" Click="AddWorkProcessButton_Click" Margin="0,5,5,0"/>
-                                <Button Grid.Column="1" Content="삭제" Click="DeleteWorkProcessButton_Click" Margin="0,5,0,0" Background="#d9534f"/>
-                            </Grid>
-                            <ListBox x:Name="WorkProcessListBox" Height="100" ItemsSource="{Binding Settings.WorkProcesses}"
-         PreviewMouseWheel="HandlePreviewMouseWheel"/>
-                        </StackPanel>
-
-                        <StackPanel Grid.Column="1" Margin="5,0">
-                            <TextBlock Text="수동 프로그램/사이트" FontWeight="Bold"/>
-                            <Grid>
-                                <TextBox x:Name="PassiveProcessInputTextBox" ToolTip="프로그램/사이트 키워드를 입력하세요." TextChanged="AutoComplete_TextChanged" PreviewKeyDown="AutoComplete_PreviewKeyDown" Tag="Passive"/>
-                                <Popup x:Name="PassiveAutoCompletePopup" IsOpen="False" StaysOpen="False" PlacementTarget="{Binding ElementName=PassiveProcessInputTextBox}" Placement="Bottom">
-                                    <ListBox x:Name="PassiveSuggestionListBox" MaxHeight="200" MinWidth="{Binding ElementName=PassiveProcessInputTextBox, Path=ActualWidth}" SelectionChanged="SuggestionListBox_SelectionChanged" PreviewKeyDown="AutoComplete_PreviewKeyDown" Tag="Passive">
-                                        <ListBox.ItemTemplate>
-                                            <DataTemplate>
-                                                <StackPanel Orientation="Horizontal">
-                                                    <Image Source="{Binding Icon}" Width="16" Height="16" Margin="0,0,5,0" />
-                                                    <TextBlock Text="{Binding DisplayName}" />
-                                                    <TextBlock Text="{Binding ProcessName}" Foreground="Gray" Margin="5,0,0,0" FontStyle="Italic"/>
-                                                </StackPanel>
-                                            </DataTemplate>
-                                        </ListBox.ItemTemplate>
-                                    </ListBox>
-                                </Popup>
-                            </Grid>
-                            <Button Content="실행 중인 앱에서 선택" Click="SelectRunningAppButton_Click" Margin="0,5,0,0" FontSize="11" Padding="8,4" Background="#5bc0de" Tag="Passive"/>
-                            <Button Content="현재 활성 사이트 추가" Click="AddActiveTabButton_Click" Margin="0,5,0,0" FontSize="11" Padding="8,4" Background="#f0ad4e" Tag="Passive"/>
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                <Button Grid.Column="0" Content="추가" Click="AddPassiveProcessButton_Click" Margin="0,5,5,0"/>
-                                <Button Grid.Column="1" Content="삭제" Click="DeletePassiveProcessButton_Click" Margin="0,5,0,0" Background="#d9534f"/>
-                            </Grid>
-                            <ListBox x:Name="PassiveProcessListBox" Height="100" ItemsSource="{Binding Settings.PassiveProcesses}"
-         PreviewMouseWheel="HandlePreviewMouseWheel"/>
-                        </StackPanel>
-
-                        <StackPanel Grid.Column="2" Margin="10,0,0,0">
-                            <TextBlock Text="방해 프로그램/사이트" FontWeight="Bold"/>
-                            <Grid>
-                                <TextBox x:Name="DistractionProcessInputTextBox" ToolTip="프로그램/사이트 키워드를 입력하세요." TextChanged="AutoComplete_TextChanged" PreviewKeyDown="AutoComplete_PreviewKeyDown" Tag="Distraction"/>
-                                <Popup x:Name="DistractionAutoCompletePopup" IsOpen="False" StaysOpen="False" PlacementTarget="{Binding ElementName=DistractionProcessInputTextBox}" Placement="Bottom">
-                                    <ListBox x:Name="DistractionSuggestionListBox" MaxHeight="200" MinWidth="{Binding ElementName=DistractionProcessInputTextBox, Path=ActualWidth}" SelectionChanged="SuggestionListBox_SelectionChanged" PreviewKeyDown="AutoComplete_PreviewKeyDown" Tag="Distraction">
-                                        <ListBox.ItemTemplate>
-                                            <DataTemplate>
-                                                <StackPanel Orientation="Horizontal">
-                                                    <Image Source="{Binding Icon}" Width="16" Height="16" Margin="0,0,5,0" />
-                                                    <TextBlock Text="{Binding DisplayName}" />
-                                                    <TextBlock Text="{Binding ProcessName}" Foreground="Gray" Margin="5,0,0,0" FontStyle="Italic"/>
-                                                </StackPanel>
-                                            </DataTemplate>
-                                        </ListBox.ItemTemplate>
-                                    </ListBox>
-                                </Popup>
-                            </Grid>
-                            <Button Content="실행 중인 앱에서 선택" Click="SelectRunningAppButton_Click" Margin="0,5,0,0" FontSize="11" Padding="8,4" Background="#5bc0de" Tag="Distraction"/>
-                            <Button Content="현재 활성 사이트 추가" Click="AddActiveTabButton_Click" Margin="0,5,0,0" FontSize="11" Padding="8,4" Background="#f0ad4e" Tag="Distraction"/>
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                <Button Grid.Column="0" Content="추가" Click="AddDistractionProcessButton_Click" Margin="0,5,5,0"/>
-                                <Button Grid.Column="1" Content="삭제" Click="DeleteDistractionProcessButton_Click" Margin="0,5,0,0" Background="#d9534f"/>
-                            </Grid>
-                            <ListBox x:Name="DistractionProcessListBox" Height="100" ItemsSource="{Binding Settings.DistractionProcesses}"
-         PreviewMouseWheel="HandlePreviewMouseWheel"/>
-                        </StackPanel>
-                    </Grid>
-                </Border>
-
-                <TextBlock Text="과목별 색상 설정" Style="{StaticResource HeaderTextStyle}" Margin="0,25,0,10"/>
-                <Border Style="{StaticResource PanelBorderStyle}">
+        <!-- Right Panel: Settings -->
+        <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                <!-- Personal Settings -->
+                <Border Style="{StaticResource SectionBorderStyle}" Padding="15">
                     <StackPanel>
-                        <TextBlock Text="과목을 더블클릭하여 색상을 변경하세요." Margin="0,0,0,10" Foreground="Gray"/>
-                        <ListBox x:Name="TaskColorsListBox" Height="150" Margin="0,0,0,10" MouseDoubleClick="TaskColorsListBox_MouseDoubleClick" PreviewMouseWheel="HandlePreviewMouseWheel">
-                            <ListBox.ItemTemplate>
-                                <DataTemplate>
-                                    <StackPanel Orientation="Horizontal">
-                                        <Border Width="20" Height="20" Margin="0,0,10,0" BorderBrush="Gray" BorderThickness="1"
-                                                Background="{Binding ColorBrush}"/>
-                                        <TextBlock Text="{Binding Name}" VerticalAlignment="Center" FontWeight="SemiBold"/>
-                                    </StackPanel>
-                                </DataTemplate>
-                            </ListBox.ItemTemplate>
-                        </ListBox>
-                    </StackPanel>
-                </Border>
-
-                <!-- 집중 모드 설정 -->
-                <TextBlock Text="집중 모드 설정" Style="{StaticResource HeaderTextStyle}"/>
-                <Border Style="{StaticResource PanelBorderStyle}">
-                    <StackPanel>
-                        <TextBlock Text="경고 메시지"/>
-                        <TextBox x:Name="NagMessageTextBox" Margin="0,5,0,10" TextChanged="NagMessageTextBox_TextChanged"/>
-                        <TextBlock Text="경고 간격 (초)"/>
-                        <TextBox x:Name="NagIntervalTextBox" Margin="0,5,0,0" TextChanged="NagIntervalTextBox_TextChanged"/>
-                    </StackPanel>
-                </Border>
-
-                <!-- AI 태그 규칙 설정 -->
-                <TextBlock Text="AI 태그 규칙 설정" Style="{StaticResource HeaderTextStyle}"/>
-                <Border Style="{StaticResource PanelBorderStyle}">
-                    <StackPanel>
+                        <TextBlock Text="개인 설정" Style="{StaticResource SectionHeaderStyle}" Margin="0,0,0,10"/>
                         <Grid>
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
-                            <TextBox x:Name="KeywordInput" Grid.Column="0" Margin="0,0,5,0" materialDesign:HintAssist.Hint="키워드"/>
-                            <TextBox x:Name="TagInput" Grid.Column="1" Margin="5,0" materialDesign:HintAssist.Hint="태그 (#생략 가능)"/>
-                            <Button Grid.Column="2" Content="규칙 추가" Click="AddTagRuleButton_Click"/>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="별명" VerticalAlignment="Center" Margin="0,0,10,0" Foreground="{DynamicResource TextBrush}"/>
+                            <TextBox Grid.Row="0" Grid.Column="1" x:Name="UsernameTextBox" LostFocus="UsernameTextBox_LostFocus"/>
+
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="디스플레이 색상" VerticalAlignment="Center" Margin="0,10,10,0" Foreground="{DynamicResource TextBrush}"/>
+                            <ComboBox Grid.Row="1" Grid.Column="1" Margin="0,10,0,0" IsEnabled="False" SelectedIndex="0">
+                                <ComboBoxItem Content="기본 (파랑)"/>
+                            </ComboBox>
+
+                            <TextBlock Grid.Row="2" Grid.Column="0" Text="배경 테마" VerticalAlignment="Center" Margin="0,10,10,0" Foreground="{DynamicResource TextBrush}"/>
+                            <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" Margin="0,10,0,0">
+                                <RadioButton x:Name="LightModeRadioButton" Content="라이트 모드" IsChecked="True" Checked="Theme_Changed"/>
+                                <RadioButton x:Name="DarkModeRadioButton" Content="다크 모드" Margin="10,0,0,0" Checked="Theme_Changed"/>
+                            </StackPanel>
                         </Grid>
-                        <ListView x:Name="TagRulesListView" Margin="0,10,0,0" Height="120"
-                          PreviewMouseWheel="HandlePreviewMouseWheel">
-                            <ListView.View>
-                                <GridView>
-                                    <GridViewColumn Header="키워드" DisplayMemberBinding="{Binding Key}" Width="200"/>
-                                    <GridViewColumn Header="자동 태그" DisplayMemberBinding="{Binding Value}" Width="200"/>
-                                </GridView>
-                            </ListView.View>
-                            <ListView.ContextMenu>
-                                <ContextMenu>
-                                    <MenuItem Header="삭제" Click="DeleteTagRuleButton_Click"/>
-                                </ContextMenu>
-                            </ListView.ContextMenu>
-                        </ListView>
                     </StackPanel>
                 </Border>
-                <TextBlock Text="데이터 관리" Style="{StaticResource HeaderTextStyle}" Margin="0,25,0,10"/>
-                <Border Style="{StaticResource PanelBorderStyle}" Background="#FFF0F0">
-                    <StackPanel>
-                        <TextBlock Text="경고: 이 작업은 되돌릴 수 없습니다!" FontWeight="Bold" Foreground="Red" Margin="0,0,0,10"/>
-                        <TextBlock Text="모든 시간 기록, 설정, 과목, 할 일, 코인, 아이템 등 모든 데이터가 영구적으로 삭제됩니다." TextWrapping="Wrap" Margin="0,0,0,15"/>
-                        <Button Content="모든 데이터 초기화" HorizontalAlignment="Right" Margin="0,10,0,0" Padding="10,5" 
-        Background="IndianRed" Foreground="White" Click="ResetDataButton_Click"/>
 
-                        <Button Content="데이터 내보내기 (백업)" HorizontalAlignment="Right" Margin="0,10,0,0" Padding="10,5" Click="ExportDataButton_Click"/>
-                        <Button Content="데이터 가져오기 (복원)" HorizontalAlignment="Right" Margin="0,5,0,0" Padding="10,5" Click="ImportDataButton_Click"/>
+                <!-- General Settings -->
+                <Border Style="{StaticResource SectionBorderStyle}" Padding="15" Margin="0,10,0,0">
+                    <StackPanel>
+                        <TextBlock Text="일반" Style="{StaticResource SectionHeaderStyle}" Margin="0,0,0,10"/>
+                        <CheckBox x:Name="IdleDetectionCheckBox" Content="자리 비움 감지 활성화" IsChecked="{Binding Settings.IsIdleDetectionEnabled, Mode=TwoWay}" Checked="Setting_Changed" Unchecked="Setting_Changed" Foreground="{DynamicResource TextBrush}"/>
+                        <StackPanel Orientation="Horizontal" Margin="20,5,0,10">
+                            <TextBlock Text="자리 비움 감지 시간(초): " VerticalAlignment="Center" Foreground="{DynamicResource MutedTextBrush}"/>
+                            <TextBox x:Name="IdleTimeoutTextBox" Width="50" Text="{Binding Settings.IdleTimeoutSeconds, Mode=TwoWay}" TextChanged="Setting_Changed"/>
+                        </StackPanel>
+
+                        <CheckBox x:Name="MiniTimerCheckBox" Content="미니 타이머 사용" IsChecked="{Binding Settings.IsMiniTimerEnabled, Mode=TwoWay}" Checked="Setting_Changed" Unchecked="Setting_Changed" Foreground="{DynamicResource TextBrush}"/>
+                        <StackPanel Margin="20,5,0,0">
+                            <CheckBox Content="추가 정보 표시" IsChecked="{Binding Settings.MiniTimerShowInfo, Mode=TwoWay}" Checked="Setting_Changed" Unchecked="Setting_Changed" Foreground="{DynamicResource MutedTextBrush}"/>
+                            <CheckBox Content="캐릭터 표시" IsChecked="{Binding Settings.MiniTimerShowCharacter, Mode=TwoWay}" Checked="Setting_Changed" Unchecked="Setting_Changed" Foreground="{DynamicResource MutedTextBrush}"/>
+                            <CheckBox Content="배경 화면 표시" IsChecked="{Binding Settings.MiniTimerShowBackground, Mode=TwoWay}" Checked="Setting_Changed" Unchecked="Setting_Changed" Foreground="{DynamicResource MutedTextBrush}"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- Process Settings -->
+                <Border Style="{StaticResource SectionBorderStyle}" Padding="15" Margin="0,10,0,0">
+                    <StackPanel>
+                        <TextBlock Text="프로세스 설정" Style="{StaticResource SectionHeaderStyle}" Margin="0,0,0,10"/>
+
+                        <TextBlock Text="작업 프로그램 / 사이트" Foreground="{DynamicResource TextBrush}" FontWeight="Bold"/>
+                        <ListBox x:Name="WorkProcessListBox" ItemsSource="{Binding WorkProcessViewModels}" Style="{StaticResource ProcessListBoxStyle}" KeyDown="DeleteProcess_KeyDown" Tag="Work"/>
+                        <Grid Margin="0,5,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBox Grid.Column="0" x:Name="WorkProcessInput"/>
+                            <Button Grid.Column="1" Content="실행 중인 앱" Margin="5,0,0,0" Tag="Work" Click="SelectAppButton_Click"/>
+                            <Button Grid.Column="2" Content="활성 탭" Margin="5,0,0,0" Tag="Work" Click="AddActiveTabButton_Click"/>
+                            <Button Grid.Column="3" Content="추가" Margin="5,0,0,0" Tag="Work" Click="AddProcess_Click"/>
+                        </Grid>
+
+                        <TextBlock Text="수동 프로그램 / 사이트" Foreground="{DynamicResource TextBrush}" FontWeight="Bold"/>
+                        <ListBox x:Name="PassiveProcessListBox" ItemsSource="{Binding PassiveProcessViewModels}" Style="{StaticResource ProcessListBoxStyle}" KeyDown="DeleteProcess_KeyDown" Tag="Passive"/>
+                        <Grid Margin="0,5,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBox Grid.Column="0" x:Name="PassiveProcessInput"/>
+                            <Button Grid.Column="1" Content="실행 중인 앱" Margin="5,0,0,0" Tag="Passive" Click="SelectAppButton_Click"/>
+                            <Button Grid.Column="2" Content="활성 탭" Margin="5,0,0,0" Tag="Passive" Click="AddActiveTabButton_Click"/>
+                            <Button Grid.Column="3" Content="추가" Margin="5,0,0,0" Tag="Passive" Click="AddProcess_Click"/>
+                        </Grid>
+
+                        <TextBlock Text="방해 프로그램 / 사이트" Foreground="{DynamicResource TextBrush}" FontWeight="Bold"/>
+                        <ListBox x:Name="DistractionProcessListBox" ItemsSource="{Binding DistractionProcessViewModels}" Style="{StaticResource ProcessListBoxStyle}" KeyDown="DeleteProcess_KeyDown" Tag="Distraction"/>
+                        <Grid Margin="0,5,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBox Grid.Column="0" x:Name="DistractionProcessInput"/>
+                            <Button Grid.Column="1" Content="실행 중인 앱" Margin="5,0,0,0" Tag="Distraction" Click="SelectAppButton_Click"/>
+                            <Button Grid.Column="2" Content="활성 탭" Margin="5,0,0,0" Tag="Distraction" Click="AddActiveTabButton_Click"/>
+                            <Button Grid.Column="3" Content="추가" Margin="5,0,0,0" Tag="Distraction" Click="AddProcess_Click"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- AI Tag Rules (Placeholder) -->
+                <Border Style="{StaticResource SectionBorderStyle}" Padding="15" Margin="0,10,0,0">
+                    <StackPanel>
+                        <TextBlock Text="AI 태그 규칙" Style="{StaticResource SectionHeaderStyle}" Margin="0,0,0,10"/>
+                        <TextBlock Text="TODO: AI 태그 규칙 UI" Foreground="{DynamicResource MutedTextBrush}"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Focus Mode Settings -->
+                <Border Style="{StaticResource SectionBorderStyle}" Padding="15" Margin="0,10,0,0">
+                    <StackPanel>
+                        <TextBlock Text="집중 모드 설정" Style="{StaticResource SectionHeaderStyle}" Margin="0,0,0,10"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="경고 메시지" VerticalAlignment="Center" Margin="0,0,10,0" Foreground="{DynamicResource TextBrush}"/>
+                            <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding Settings.FocusModeNagMessage, Mode=TwoWay}" TextChanged="Setting_Changed"/>
+
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="경고 시간 간격(초)" VerticalAlignment="Center" Margin="0,10,10,0" Foreground="{DynamicResource TextBrush}"/>
+                            <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding Settings.FocusModeNagIntervalSeconds, Mode=TwoWay}" TextChanged="Setting_Changed" Margin="0,10,0,0"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- Data Management -->
+                <Border Style="{StaticResource SectionBorderStyle}" Padding="15" Margin="0,10,0,0">
+                    <StackPanel>
+                        <TextBlock Text="데이터 관리" Style="{StaticResource SectionHeaderStyle}" Margin="0,0,0,10"/>
+                        <Button Content="데이터 내보내기 (백업)" Click="ExportDataButton_Click" Margin="0,0,0,5"/>
+                        <Button Content="데이터 가져오기 (복원)" Click="ImportDataButton_Click"/>
+                        <Separator Margin="0,15,0,10"/>
+                        <Button Content="모든 데이터 초기화" Background="IndianRed" Foreground="White" HorizontalAlignment="Right" Click="ResetDataButton_Click"/>
                     </StackPanel>
                 </Border>
             </StackPanel>
         </ScrollViewer>
     </Grid>
 </UserControl>
+

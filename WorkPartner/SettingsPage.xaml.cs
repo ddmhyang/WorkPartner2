@@ -1,5 +1,4 @@
-﻿// 파일: SettingsPage.xaml.cs
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -8,417 +7,355 @@ using System.Drawing;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
-using System.Text.Json;
+using System.Net.Http;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using System.Windows.Threading;
 using Microsoft.Win32;
-using Color = System.Windows.Media.Color;
-using ColorConverter = System.Windows.Media.ColorConverter;
 
 namespace WorkPartner
 {
-    public class TaskColorViewModel
-    {
-        public string Name { get; set; }
-        public string ColorHex { get; set; }
-        public SolidColorBrush ColorBrush => (SolidColorBrush)new BrushConverter().ConvertFromString(ColorHex);
-    }
-
     public partial class SettingsPage : UserControl
     {
-        public AppSettings Settings { get; set; }
-        private List<InstalledProgram> _allPrograms;
-        private string _targetProcessList;
+        private MainWindow _mainWindow;
+        public AppSettings Settings { get; private set; }
+        private bool _isLoaded;
+
+        public ObservableCollection<ProcessViewModel> WorkProcessViewModels { get; set; }
+        public ObservableCollection<ProcessViewModel> PassiveProcessViewModels { get; set; }
+        public ObservableCollection<ProcessViewModel> DistractionProcessViewModels { get; set; }
+
 
         public SettingsPage()
         {
             InitializeComponent();
-            this.Loaded += SettingsPage_Loaded;
-
-            BackgroundWorker worker = new BackgroundWorker();
-            worker.DoWork += (s, e) => { _allPrograms = GetAllPrograms(); };
-            worker.RunWorkerCompleted += (s, e) => { };
-            worker.RunWorkerAsync();
+            WorkProcessViewModels = new ObservableCollection<ProcessViewModel>();
+            PassiveProcessViewModels = new ObservableCollection<ProcessViewModel>();
+            DistractionProcessViewModels = new ObservableCollection<ProcessViewModel>();
         }
 
-        private void SettingsPage_Loaded(object sender, RoutedEventArgs e)
+        public void SetParentWindow(MainWindow window)
         {
+            _mainWindow = window;
+        }
+
+        public void LoadData()
+        {
+            _isLoaded = false;
             LoadSettings();
             UpdateUIFromSettings();
+            _isLoaded = true;
         }
 
-        #region 과목별 색상 설정
-
-        private void LoadTaskColors()
-        {
-            if (Settings == null) LoadSettings();
-
-            List<TaskItem> tasks = new List<TaskItem>();
-            if (File.Exists(DataManager.TasksFilePath))
-            {
-                var json = File.ReadAllText(DataManager.TasksFilePath);
-                tasks = JsonSerializer.Deserialize<List<TaskItem>>(json) ?? new List<TaskItem>();
-            }
-
-            var taskColorVMs = new List<TaskColorViewModel>();
-            foreach (var task in tasks)
-            {
-                string colorHex = "#FFFFFFFF"; // Default to white
-                if (Settings.TaskColors.ContainsKey(task.Text))
-                {
-                    colorHex = Settings.TaskColors[task.Text];
-                }
-                taskColorVMs.Add(new TaskColorViewModel { Name = task.Text, ColorHex = colorHex });
-            }
-
-            TaskColorsListBox.ItemsSource = taskColorVMs.OrderBy(t => t.Name).ToList();
-        }
-
-        private void TaskColorsListBox_MouseDoubleClick(object sender, MouseButtonEventArgs e)
-        {
-            if (TaskColorsListBox.SelectedItem is TaskColorViewModel selectedTask)
-            {
-                Color initialColor = (Color)ColorConverter.ConvertFromString(selectedTask.ColorHex);
-                var colorPickerWindow = new ColorPickerWindow(initialColor) { Owner = Window.GetWindow(this) };
-
-                if (colorPickerWindow.ShowDialog() == true)
-                {
-                    string newColorHex = colorPickerWindow.SelectedColor.ToString();
-                    Settings.TaskColors[selectedTask.Name] = newColorHex;
-                    DataManager.SaveSettingsAndNotify(Settings);
-                    LoadTaskColors();
-                }
-            }
-        }
-
-        #endregion
-
-        #region 데이터 로드 및 저장
         private void LoadSettings()
         {
             Settings = DataManager.LoadSettings();
+            this.DataContext = this;
+            _ = PopulateProcessViewModelsAsync();
         }
 
         private void SaveSettings()
         {
+            if (!_isLoaded) return;
             DataManager.SaveSettingsAndNotify(Settings);
+            if (Application.Current is App app)
+            {
+                app.ApplyTheme(Settings);
+            }
         }
 
+        #region UI Update
         private void UpdateUIFromSettings()
         {
-            IdleDetectionCheckBox.IsChecked = Settings.IsIdleDetectionEnabled;
-            IdleTimeoutTextBox.Text = Settings.IdleTimeoutSeconds.ToString();
-            MiniTimerCheckBox.IsChecked = Settings.IsMiniTimerEnabled;
-            WorkProcessListBox.ItemsSource = Settings.WorkProcesses;
-            PassiveProcessListBox.ItemsSource = Settings.PassiveProcesses;
-            DistractionProcessListBox.ItemsSource = Settings.DistractionProcesses;
-            NagMessageTextBox.Text = Settings.FocusModeNagMessage;
-            NagIntervalTextBox.Text = Settings.FocusModeNagIntervalSeconds.ToString();
-            TagRulesListView.ItemsSource = Settings.TagRules.ToList();
-            LoadTaskColors();
+            CharacterPreview.UpdateCharacter();
+            UsernameTextBlock.Text = Settings.Username;
+            CoinTextBlock.Text = Settings.Coins.ToString("N0");
+            UsernameTextBox.Text = Settings.Username;
+
+            if (Settings.Theme == "Dark")
+                DarkModeRadioButton.IsChecked = true;
+            else
+                LightModeRadioButton.IsChecked = true;
         }
         #endregion
 
-        #region 프로그램/아이콘 관련 로직
-        private List<InstalledProgram> GetAllPrograms()
+        #region Event Handlers
+        private void GoToAvatarButton_Click(object sender, RoutedEventArgs e)
         {
-            var programs = new Dictionary<string, InstalledProgram>();
-            string registryPath = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall";
-            var registryViews = new[] { RegistryView.Registry32, RegistryView.Registry64 };
+            _mainWindow?.NavigateToPage("Avatar");
+        }
 
-            foreach (var view in registryViews)
+        private void UsernameTextBox_LostFocus(object sender, RoutedEventArgs e)
+        {
+            Settings.Username = UsernameTextBox.Text;
+            SaveSettings();
+            UpdateUIFromSettings();
+        }
+
+        private void Theme_Changed(object sender, RoutedEventArgs e)
+        {
+            if (!_isLoaded) return;
+
+            if (sender is RadioButton rb && rb.IsChecked == true)
             {
-                try
-                {
-                    using (var baseKey = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, view))
-                    using (var key = baseKey.OpenSubKey(registryPath))
-                    {
-                        if (key == null) continue;
-                        foreach (string subkeyName in key.GetSubKeyNames())
-                        {
-                            using (RegistryKey subkey = key.OpenSubKey(subkeyName))
-                            {
-                                if (subkey == null) continue;
-                                var displayName = subkey.GetValue("DisplayName") as string;
-                                var iconPath = subkey.GetValue("DisplayIcon") as string;
-                                var systemComponent = subkey.GetValue("SystemComponent") as int?;
+                Settings.Theme = rb.Name == "DarkModeRadioButton" ? "Dark" : "Light";
+                SaveSettings();
+            }
+        }
 
-                                if (!string.IsNullOrWhiteSpace(displayName) && systemComponent != 1)
-                                {
-                                    string executablePath = GetExecutablePathFromIconPath(iconPath);
-                                    if (string.IsNullOrEmpty(executablePath)) continue;
-                                    string processName = System.IO.Path.GetFileNameWithoutExtension(executablePath).ToLower();
-                                    if (!programs.ContainsKey(processName))
-                                    {
-                                        programs[processName] = new InstalledProgram { DisplayName = displayName, ProcessName = processName, IconPath = executablePath };
-                                    }
-                                }
-                            }
-                        }
+        private void Setting_Changed(object sender, TextChangedEventArgs e)
+        {
+            if (_isLoaded) SaveSettings();
+        }
+
+        private void Setting_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_isLoaded) SaveSettings();
+            if (sender == MiniTimerCheckBox)
+            {
+                _mainWindow?.ToggleMiniTimer();
+            }
+        }
+        #endregion
+
+        #region Process Settings
+
+        private async Task PopulateProcessViewModelsAsync()
+        {
+            WorkProcessViewModels.Clear();
+            foreach (var p in Settings.WorkProcesses) { WorkProcessViewModels.Add(await ProcessViewModel.Create(p)); }
+
+            PassiveProcessViewModels.Clear();
+            foreach (var p in Settings.PassiveProcesses) { PassiveProcessViewModels.Add(await ProcessViewModel.Create(p)); }
+
+            DistractionProcessViewModels.Clear();
+            foreach (var p in Settings.DistractionProcesses) { DistractionProcessViewModels.Add(await ProcessViewModel.Create(p)); }
+        }
+
+        private async void AddProcess_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button button && button.Tag is string type)
+            {
+                TextBox inputTextBox = null;
+                ObservableCollection<string> targetList = null;
+                ObservableCollection<ProcessViewModel> targetViewModelList = null;
+
+                if (type == "Work") { inputTextBox = WorkProcessInput; targetList = Settings.WorkProcesses; targetViewModelList = WorkProcessViewModels; }
+                else if (type == "Passive") { inputTextBox = PassiveProcessInput; targetList = Settings.PassiveProcesses; targetViewModelList = PassiveProcessViewModels; }
+                else if (type == "Distraction") { inputTextBox = DistractionProcessInput; targetList = Settings.DistractionProcesses; targetViewModelList = DistractionProcessViewModels; }
+
+                if (inputTextBox != null && targetList != null)
+                {
+                    string process = inputTextBox.Text.Trim().ToLower();
+                    if (!string.IsNullOrEmpty(process) && !targetList.Contains(process))
+                    {
+                        targetList.Add(process);
+                        targetViewModelList.Add(await ProcessViewModel.Create(process));
+                        inputTextBox.Clear();
+                        SaveSettings();
                     }
                 }
-                catch { }
             }
-
-            // Add major browsers manually
-            string[] browserProcesses = { "chrome", "msedge", "whale", "firefox" };
-            foreach (var browser in browserProcesses)
-            {
-                if (!programs.ContainsKey(browser))
-                {
-                    programs[browser] = new InstalledProgram { DisplayName = $"{browser.ToUpper()} Browser", ProcessName = browser };
-                }
-            }
-
-
-            Application.Current.Dispatcher.Invoke(() =>
-            {
-                foreach (var program in programs.Values)
-                {
-                    if (!string.IsNullOrEmpty(program.IconPath))
-                        program.Icon = GetIcon(program.IconPath);
-                }
-            });
-
-            return programs.Values.OrderBy(p => p.DisplayName).ToList();
         }
 
-        private string GetExecutablePathFromIconPath(string iconPath)
+        // [추가] 키보드 Delete 키로 프로세스를 삭제하는 이벤트 핸들러
+        private void DeleteProcess_KeyDown(object sender, KeyEventArgs e)
         {
-            if (string.IsNullOrWhiteSpace(iconPath)) return null;
-            string executablePath = iconPath.Split(',')[0].Replace("\"", "");
-            if (File.Exists(executablePath)) return executablePath;
-            return null;
-        }
-
-        private BitmapSource GetIcon(string filePath)
-        {
-            if (string.IsNullOrEmpty(filePath) || !File.Exists(filePath)) return null;
-            try
+            if (e.Key == Key.Delete && sender is ListBox listBox && listBox.SelectedItem is ProcessViewModel selectedVm)
             {
-                using (Icon icon = Icon.ExtractAssociatedIcon(filePath))
+                string type = listBox.Tag as string;
+                ObservableCollection<string> targetList = null;
+                ObservableCollection<ProcessViewModel> targetViewModelList = null;
+
+                if (type == "Work") { targetList = Settings.WorkProcesses; targetViewModelList = WorkProcessViewModels; }
+                else if (type == "Passive") { targetList = Settings.PassiveProcesses; targetViewModelList = PassiveProcessViewModels; }
+                else if (type == "Distraction") { targetList = Settings.DistractionProcesses; targetViewModelList = DistractionProcessViewModels; }
+
+                if (targetList != null && targetViewModelList != null)
                 {
-                    return Imaging.CreateBitmapSourceFromHIcon(icon.Handle, Int32Rect.Empty, BitmapSizeOptions.FromEmptyOptions());
+                    targetList.Remove(selectedVm.DisplayName);
+                    targetViewModelList.Remove(selectedVm);
+                    SaveSettings();
                 }
             }
-            catch { return null; }
         }
-        #endregion
 
-        #region UI 이벤트 핸들러
-        private void SelectRunningAppButton_Click(object sender, RoutedEventArgs e)
+        private void SelectAppButton_Click(object sender, RoutedEventArgs e)
         {
-            var allRunningApps = new List<InstalledProgram>();
-            var addedProcesses = new HashSet<string>();
-
-            var runningProcesses = Process.GetProcesses().Where(p => !string.IsNullOrEmpty(p.MainWindowTitle) && p.MainWindowHandle != IntPtr.Zero);
-            foreach (var process in runningProcesses)
+            if (sender is Button button && button.Tag is string type)
             {
-                try
-                {
-                    string processName = process.ProcessName.ToLower();
-                    if (addedProcesses.Contains(processName)) continue;
+                var runningProcesses = Process.GetProcesses()
+                                              .Where(p => !string.IsNullOrEmpty(p.MainWindowTitle) && p.MainWindowHandle != IntPtr.Zero)
+                                              .ToList();
+                var appList = new List<InstalledProgram>();
+                var addedProcesses = new HashSet<string>();
 
-                    allRunningApps.Add(new InstalledProgram
+                foreach (var proc in runningProcesses)
+                {
+                    try
                     {
-                        DisplayName = process.MainWindowTitle,
-                        ProcessName = processName,
-                        Icon = GetIcon(process.MainModule.FileName)
-                    });
-                    addedProcesses.Add(processName);
+                        string processName = proc.ProcessName.ToLower();
+                        if (addedProcesses.Contains(processName)) continue;
+
+                        Icon icon = null;
+                        string path = proc.MainModule.FileName;
+                        if (!string.IsNullOrEmpty(path))
+                        {
+                            icon = System.Drawing.Icon.ExtractAssociatedIcon(path);
+                        }
+
+                        appList.Add(new InstalledProgram
+                        {
+                            DisplayName = proc.MainWindowTitle,
+                            ProcessName = processName,
+                            Icon = icon?.ToBitmapSource()
+                        });
+                        addedProcesses.Add(processName);
+                    }
+                    catch { /* Access denied to process will be ignored */ }
                 }
-                catch { }
-            }
 
-            var sortedApps = allRunningApps.OrderBy(p => p.DisplayName).ToList();
-            if (!sortedApps.Any())
-            {
-                MessageBox.Show("목록에 표시할 실행 중인 프로그램이 없습니다.");
-                return;
-            }
-
-            var selectionWindow = new AppSelectionWindow(sortedApps) { Owner = Window.GetWindow(this) };
-            if (selectionWindow.ShowDialog() == true)
-            {
-                string selectedKeyword = selectionWindow.SelectedAppKeyword;
-                if (string.IsNullOrEmpty(selectedKeyword)) return;
-
-                string targetList = (sender as Button)?.Tag as string;
-                TextBox targetTextBox = FindAssociatedTextBox(targetList);
-                if (targetTextBox != null)
+                var selectionWindow = new AppSelectionWindow(appList.OrderBy(a => a.DisplayName).ToList()) { Owner = Window.GetWindow(this) };
+                if (selectionWindow.ShowDialog() == true && !string.IsNullOrEmpty(selectionWindow.SelectedAppKeyword))
                 {
-                    targetTextBox.Text = selectedKeyword;
+                    TextBox inputTextBox = null;
+                    if (type == "Work") inputTextBox = WorkProcessInput;
+                    else if (type == "Passive") inputTextBox = PassiveProcessInput;
+                    else if (type == "Distraction") inputTextBox = DistractionProcessInput;
+
+                    if (inputTextBox != null)
+                        inputTextBox.Text = selectionWindow.SelectedAppKeyword;
                 }
             }
         }
 
         private void AddActiveTabButton_Click(object sender, RoutedEventArgs e)
         {
-            _targetProcessList = (sender as Button)?.Tag as string;
-
-            var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
-            timer.Tick += (s, args) =>
+            if (sender is Button button && button.Tag is string type)
             {
-                timer.Stop();
                 string activeUrl = ActiveWindowHelper.GetActiveBrowserTabUrl();
-
                 if (string.IsNullOrEmpty(activeUrl))
                 {
-                    MessageBox.Show("웹 브라우저의 주소를 가져오지 못했습니다. 브라우저가 활성화되어 있는지 확인해주세요.", "오류", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    MessageBox.Show("웹 브라우저의 주소를 가져오지 못했습니다. (지원 브라우저: Chrome, Edge, Firefox, Whale 등)", "오류");
                     return;
                 }
-
-                string urlKeyword;
                 try
                 {
-                    urlKeyword = new Uri(activeUrl).Host.ToLower();
+                    string urlKeyword;
+                    if (Uri.IsWellFormedUriString(activeUrl, UriKind.Absolute))
+                    {
+                        urlKeyword = new Uri(activeUrl).Host.ToLower();
+                    }
+                    else
+                    {
+                        urlKeyword = activeUrl.ToLower();
+                    }
+
+                    TextBox inputTextBox = null;
+                    if (type == "Work") inputTextBox = WorkProcessInput;
+                    else if (type == "Passive") inputTextBox = PassiveProcessInput;
+                    else if (type == "Distraction") inputTextBox = DistractionProcessInput;
+
+                    if (inputTextBox != null)
+                        inputTextBox.Text = urlKeyword;
                 }
                 catch
                 {
-                    MessageBox.Show("유효한 URL이 아닙니다.", "오류", MessageBoxButton.OK, MessageBoxImage.Warning);
-                    return;
+                    MessageBox.Show($"유효한 URL 또는 제목이 아닙니다: {activeUrl}", "오류");
                 }
+            }
+        }
 
-                TextBox targetTextBox = FindAssociatedTextBox(_targetProcessList);
-                if (targetTextBox != null)
-                {
-                    targetTextBox.Text = urlKeyword;
-                }
+        #endregion
+
+        #region Data Management
+        private void ExportDataButton_Click(object sender, RoutedEventArgs e)
+        {
+            var saveFileDialog = new SaveFileDialog
+            {
+                Filter = "WorkPartner Backup (*.zip)|*.zip",
+                FileName = $"WorkPartner_Backup_{DateTime.Now:yyyyMMdd_HHmm}.zip"
             };
-            timer.Start();
-        }
 
-        private void AddProcessToList(string process, ObservableCollection<string> list, ListBox listBox)
-        {
-            if (!string.IsNullOrEmpty(process) && !list.Contains(process))
+            if (saveFileDialog.ShowDialog() == true)
             {
-                list.Add(process);
-                DataManager.SaveSettingsAndNotify(Settings);
-                listBox.ItemsSource = null;
-                listBox.ItemsSource = list;
+                try
+                {
+                    var filesToZip = new[]
+                    {
+                        DataManager.SettingsFilePath, DataManager.TimeLogFilePath,
+                        DataManager.TasksFilePath, DataManager.TodosFilePath, DataManager.MemosFilePath
+                    };
+
+                    if (File.Exists(saveFileDialog.FileName)) File.Delete(saveFileDialog.FileName);
+
+                    using (var zipArchive = ZipFile.Open(saveFileDialog.FileName, ZipArchiveMode.Create))
+                    {
+                        foreach (var filePath in filesToZip)
+                        {
+                            if (File.Exists(filePath))
+                            {
+                                zipArchive.CreateEntryFromFile(filePath, Path.GetFileName(filePath));
+                            }
+                        }
+                    }
+                    MessageBox.Show("데이터를 성공적으로 내보냈습니다.", "내보내기 완료");
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"데이터 내보내기 중 오류: {ex.Message}");
+                }
             }
         }
 
-        private void DeleteProcessFromList(ListBox listBox, ObservableCollection<string> list)
+        private void ImportDataButton_Click(object sender, RoutedEventArgs e)
         {
-            if (listBox.SelectedItem is string selected)
+            if (MessageBox.Show("데이터를 가져오면 현재 모든 데이터가 덮어씌워집니다. 계속하시겠습니까?", "가져오기 확인", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
             {
-                list.Remove(selected);
-                DataManager.SaveSettingsAndNotify(Settings);
-                listBox.ItemsSource = null;
-                listBox.ItemsSource = list;
-            }
-        }
-
-        private void AddWorkProcessButton_Click(object sender, RoutedEventArgs e)
-        {
-            AddProcessToList(WorkProcessInputTextBox.Text.Trim().ToLower(), Settings.WorkProcesses, WorkProcessListBox);
-            WorkProcessInputTextBox.Clear();
-        }
-        private void AddPassiveProcessButton_Click(object sender, RoutedEventArgs e)
-        {
-            AddProcessToList(PassiveProcessInputTextBox.Text.Trim().ToLower(), Settings.PassiveProcesses, PassiveProcessListBox);
-            PassiveProcessInputTextBox.Clear();
-        }
-        private void AddDistractionProcessButton_Click(object sender, RoutedEventArgs e)
-        {
-            AddProcessToList(DistractionProcessInputTextBox.Text.Trim().ToLower(), Settings.DistractionProcesses, DistractionProcessListBox);
-            DistractionProcessInputTextBox.Clear();
-        }
-
-        private void DeleteWorkProcessButton_Click(object sender, RoutedEventArgs e) => DeleteProcessFromList(WorkProcessListBox, Settings.WorkProcesses);
-        private void DeletePassiveProcessButton_Click(object sender, RoutedEventArgs e) => DeleteProcessFromList(PassiveProcessListBox, Settings.PassiveProcesses);
-        private void DeleteDistractionProcessButton_Click(object sender, RoutedEventArgs e) => DeleteProcessFromList(DistractionProcessListBox, Settings.DistractionProcesses);
-
-        private void Setting_Changed(object sender, RoutedEventArgs e)
-        {
-            if (Settings == null) return;
-            if (sender == IdleDetectionCheckBox)
-            {
-                Settings.IsIdleDetectionEnabled = IdleDetectionCheckBox.IsChecked ?? true;
-            }
-            else if (sender == MiniTimerCheckBox)
-            {
-                Settings.IsMiniTimerEnabled = MiniTimerCheckBox.IsChecked ?? false;
-                (Application.Current.MainWindow as MainWindow)?.ToggleMiniTimer();
-            }
-            SaveSettings();
-        }
-
-        private void Setting_Changed_IdleTimeout(object sender, TextChangedEventArgs e)
-        {
-            if (Settings != null && int.TryParse(IdleTimeoutTextBox.Text, out int timeout))
-            {
-                Settings.IdleTimeoutSeconds = timeout;
-                SaveSettings();
-            }
-        }
-
-        private void NagMessageTextBox_TextChanged(object sender, TextChangedEventArgs e)
-        {
-            if (Settings != null)
-            {
-                Settings.FocusModeNagMessage = NagMessageTextBox.Text;
-                SaveSettings();
-            }
-        }
-
-        private void NagIntervalTextBox_TextChanged(object sender, TextChangedEventArgs e)
-        {
-            if (Settings != null && int.TryParse(NagIntervalTextBox.Text, out int interval) && interval > 0)
-            {
-                Settings.FocusModeNagIntervalSeconds = interval;
-                SaveSettings();
-            }
-        }
-
-        private void AddTagRuleButton_Click(object sender, RoutedEventArgs e)
-        {
-            string keyword = KeywordInput.Text.Trim();
-            string tag = TagInput.Text.Trim();
-            if (string.IsNullOrEmpty(keyword) || string.IsNullOrEmpty(tag))
-            {
-                MessageBox.Show("키워드와 태그를 모두 입력해주세요.");
                 return;
             }
 
-            if (!tag.StartsWith("#")) tag = "#" + tag;
-            if (!Settings.TagRules.ContainsKey(keyword))
+            var openFileDialog = new OpenFileDialog
             {
-                Settings.TagRules[keyword] = tag;
-                TagRulesListView.ItemsSource = null;
-                TagRulesListView.ItemsSource = Settings.TagRules.ToList();
-                SaveSettings();
-                KeywordInput.Clear();
-                TagInput.Clear();
-            }
-            else
-            {
-                MessageBox.Show("이미 존재하는 키워드입니다.");
-            }
-        }
+                Filter = "WorkPartner Backup (*.zip)|*.zip",
+                Title = "백업 파일 선택"
+            };
 
-        private void DeleteTagRuleButton_Click(object sender, RoutedEventArgs e)
-        {
-            if (TagRulesListView.SelectedItem is KeyValuePair<string, string> selectedRule)
+            if (openFileDialog.ShowDialog() == true)
             {
-                if (MessageBox.Show($"'{selectedRule.Key}' -> '{selectedRule.Value}' 규칙을 삭제하시겠습니까?", "삭제 확인", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
+                try
                 {
-                    Settings.TagRules.Remove(selectedRule.Key);
-                    TagRulesListView.ItemsSource = null;
-                    TagRulesListView.ItemsSource = Settings.TagRules.ToList();
-                    SaveSettings();
+                    string dataDirectory = Path.GetDirectoryName(DataManager.SettingsFilePath);
+                    if (!Directory.Exists(dataDirectory))
+                    {
+                        Directory.CreateDirectory(dataDirectory);
+                    }
+
+                    using (var archive = ZipFile.OpenRead(openFileDialog.FileName))
+                    {
+                        foreach (var entry in archive.Entries)
+                        {
+                            var destinationPath = Path.Combine(dataDirectory, entry.FullName);
+                            var directoryName = Path.GetDirectoryName(destinationPath);
+                            if (!string.IsNullOrEmpty(directoryName))
+                            {
+                                Directory.CreateDirectory(directoryName);
+                            }
+                            entry.ExtractToFile(destinationPath, true);
+                        }
+                    }
+
+                    MessageBox.Show("데이터를 성공적으로 가져왔습니다.\n프로그램을 다시 시작해야 변경 사항이 적용됩니다.", "가져오기 완료");
+                    Application.Current.Shutdown();
                 }
-            }
-            else
-            {
-                MessageBox.Show("삭제할 규칙을 목록에서 선택해주세요.");
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"데이터 가져오기 중 오류가 발생했습니다: {ex.Message}", "오류");
+                }
             }
         }
 
@@ -455,250 +392,91 @@ namespace WorkPartner
             }
         }
         #endregion
+    }
 
-        #region 데이터 내보내기 / 가져오기
-        private void ExportDataButton_Click(object sender, RoutedEventArgs e)
+    public class ProcessViewModel : INotifyPropertyChanged
+    {
+        public string DisplayName { get; set; }
+        private ImageSource _icon;
+        public ImageSource Icon
         {
-            var saveFileDialog = new SaveFileDialog
+            get => _icon;
+            set { _icon = value; OnPropertyChanged(nameof(Icon)); }
+        }
+
+        public static async Task<ProcessViewModel> Create(string identifier)
+        {
+            var vm = new ProcessViewModel { DisplayName = identifier };
+            vm.Icon = await GetIconForIdentifier(identifier);
+            return vm;
+        }
+
+        private static async Task<BitmapSource> GetIconForIdentifier(string identifier)
+        {
+            try
             {
-                Filter = "WorkPartner Backup (*.zip)|*.zip",
-                FileName = $"WorkPartner_Backup_{DateTime.Now:yyyyMMdd_HHmm}.zip"
-            };
-            if (saveFileDialog.ShowDialog() == true)
+                var processes = Process.GetProcessesByName(Path.GetFileNameWithoutExtension(identifier));
+                if (processes.Any() && processes[0].MainModule != null)
+                {
+                    string path = processes[0].MainModule.FileName;
+                    using (var icon = System.Drawing.Icon.ExtractAssociatedIcon(path))
+                    {
+                        return icon?.ToBitmapSource();
+                    }
+                }
+            }
+            catch { }
+
+            if (identifier.Contains("."))
             {
                 try
                 {
-                    if (File.Exists(saveFileDialog.FileName))
+                    using (var client = new HttpClient())
                     {
-                        File.Delete(saveFileDialog.FileName);
-                    }
-                    var filesToZip = new[]
-                    {
-                        DataManager.SettingsFilePath,
-                        DataManager.TimeLogFilePath,
-                        DataManager.TasksFilePath,
-                        DataManager.TodosFilePath,
-                        DataManager.MemosFilePath
-                    };
-                    using (var zipArchive = ZipFile.Open(saveFileDialog.FileName, ZipArchiveMode.Create))
-                    {
-                        foreach (var filePath in filesToZip)
+                        var response = await client.GetAsync($"https://www.google.com/s2/favicons?sz=32&domain_url={identifier}");
+                        if (response.IsSuccessStatusCode)
                         {
-                            if (File.Exists(filePath))
+                            var bytes = await response.Content.ReadAsByteArrayAsync();
+                            if (bytes.Length > 0)
                             {
-                                zipArchive.CreateEntryFromFile(filePath, Path.GetFileName(filePath));
+                                var image = new BitmapImage();
+                                using (var mem = new MemoryStream(bytes))
+                                {
+                                    mem.Position = 0;
+                                    image.BeginInit();
+                                    image.CreateOptions = BitmapCreateOptions.PreservePixelFormat;
+                                    image.CacheOption = BitmapCacheOption.OnLoad;
+                                    image.UriSource = null;
+                                    image.StreamSource = mem;
+                                    image.EndInit();
+                                }
+                                image.Freeze();
+                                return image;
                             }
                         }
                     }
-                    MessageBox.Show("데이터를 성공적으로 내보냈습니다.", "내보내기 완료", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
-                catch (Exception ex)
-                {
-                    MessageBox.Show($"데이터 내보내기 중 오류가 발생했습니다: {ex.Message}", "오류", MessageBoxButton.OK, MessageBoxImage.Error);
-                }
+                catch { }
             }
-        }
-        private void ImportDataButton_Click(object sender, RoutedEventArgs e)
-        {
-            if (MessageBox.Show("데이터를 가져오면 현재 모든 데이터가 덮어씌워집니다.\n계속하시겠습니까?", "가져오기 확인", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
-            {
-                return;
-            }
-            var openFileDialog = new OpenFileDialog
-            {
-                Filter = "WorkPartner Backup (*.zip)|*.zip",
-                Title = "백업 파일 선택"
-            };
-            if (openFileDialog.ShowDialog() == true)
-            {
-                try
-                {
-                    string dataDirectory = Path.GetDirectoryName(DataManager.SettingsFilePath);
-                    if (!Directory.Exists(dataDirectory))
-                    {
-                        Directory.CreateDirectory(dataDirectory);
-                    }
-                    using (ZipArchive archive = ZipFile.OpenRead(openFileDialog.FileName))
-                    {
-                        foreach (ZipArchiveEntry entry in archive.Entries)
-                        {
-                            string destinationPath = Path.Combine(dataDirectory, entry.FullName);
-                            entry.ExtractToFile(destinationPath, true);
-                        }
-                    }
-                    MessageBox.Show("데이터를 성공적으로 가져왔습니다.\n프로그램을 다시 시작해야 변경 사항이 적용됩니다.", "가져오기 완료", MessageBoxButton.OK, MessageBoxImage.Information);
-                    Application.Current.Shutdown();
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show($"데이터 가져오기 중 오류가 발생했습니다: {ex.Message}", "오류", MessageBoxButton.OK, MessageBoxImage.Error);
-                }
-            }
-        }
-        #endregion
-
-        #region 자동완성 로직
-        private void AutoComplete_TextChanged(object sender, TextChangedEventArgs e)
-        {
-            if (!(sender is TextBox textBox) || _allPrograms == null) return;
-
-            string tag = textBox.Tag.ToString();
-            string searchText = textBox.Text.ToLower();
-
-            Popup popup = FindAssociatedPopup(tag);
-            ListBox suggestionBox = FindAssociatedSuggestionBox(tag);
-
-            if (popup == null || suggestionBox == null) return;
-
-            if (string.IsNullOrWhiteSpace(searchText))
-            {
-                popup.IsOpen = false;
-                return;
-            }
-
-            var suggestions = _allPrograms
-                .Where(p => p.DisplayName.ToLower().Contains(searchText) || p.ProcessName.ToLower().Contains(searchText))
-                .OrderBy(p => p.DisplayName)
-                .ToList();
-
-            if (suggestions.Any())
-            {
-                suggestionBox.ItemsSource = suggestions;
-                popup.IsOpen = true;
-            }
-            else
-            {
-                popup.IsOpen = false;
-            }
-        }
-
-        private void SuggestionListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            if (!(sender is ListBox listBox) || listBox.SelectedItem == null) return;
-
-            var textBox = FindAssociatedTextBox(listBox.Tag.ToString());
-            var popup = FindAssociatedPopup(listBox.Tag.ToString());
-
-            if (textBox != null && popup != null && listBox.SelectedItem is InstalledProgram selectedProgram)
-            {
-                textBox.TextChanged -= AutoComplete_TextChanged;
-                textBox.Text = selectedProgram.ProcessName;
-                textBox.TextChanged += AutoComplete_TextChanged;
-                popup.IsOpen = false;
-            }
-        }
-
-        private void AutoComplete_PreviewKeyDown(object sender, KeyEventArgs e)
-        {
-            if (!(sender is FrameworkElement fe)) return;
-
-            string tag = fe.Tag.ToString();
-            var popup = FindAssociatedPopup(tag);
-            var suggestionBox = FindAssociatedSuggestionBox(tag);
-
-            if (popup.IsOpen)
-            {
-                if (e.Key == Key.Down)
-                {
-                    suggestionBox.Focus();
-                    if (suggestionBox.Items.Count > 0 && suggestionBox.SelectedIndex < suggestionBox.Items.Count - 1)
-                    {
-                        suggestionBox.SelectedIndex++;
-                    }
-                    else if (suggestionBox.Items.Count > 0)
-                    {
-                        suggestionBox.SelectedIndex = 0;
-                    }
-                }
-                else if (e.Key == Key.Up)
-                {
-                    suggestionBox.Focus();
-                    if (suggestionBox.Items.Count > 0 && suggestionBox.SelectedIndex > 0)
-                    {
-                        suggestionBox.SelectedIndex--;
-                    }
-                }
-                else if (e.Key == Key.Escape)
-                {
-                    popup.IsOpen = false;
-                }
-                else if (e.Key == Key.Enter && suggestionBox.IsFocused && suggestionBox.SelectedItem != null)
-                {
-                    SuggestionListBox_SelectionChanged(suggestionBox, null);
-                }
-            }
-        }
-
-        private TextBox FindAssociatedTextBox(string tag)
-        {
-            if (tag == "Work") return WorkProcessInputTextBox;
-            if (tag == "Passive") return PassiveProcessInputTextBox;
-            if (tag == "Distraction") return DistractionProcessInputTextBox;
             return null;
         }
 
-        private Popup FindAssociatedPopup(string tag)
+        public event PropertyChangedEventHandler PropertyChanged;
+        protected virtual void OnPropertyChanged(string propertyName)
         {
-            if (tag == "Work") return WorkAutoCompletePopup;
-            if (tag == "Passive") return PassiveAutoCompletePopup;
-            if (tag == "Distraction") return DistractionAutoCompletePopup;
-            return null;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
+    }
 
-        private ListBox FindAssociatedSuggestionBox(string tag)
+    public static class IconExtensions
+    {
+        public static BitmapSource ToBitmapSource(this Icon icon)
         {
-            if (tag == "Work") return WorkSuggestionListBox;
-            if (tag == "Passive") return PassiveSuggestionListBox;
-            if (tag == "Distraction") return DistractionSuggestionListBox;
-            return null;
+            return Imaging.CreateBitmapSourceFromHIcon(
+               icon.Handle,
+               Int32Rect.Empty,
+               BitmapSizeOptions.FromEmptyOptions());
         }
-        #endregion
-
-        #region 스크롤 개선 로직
-        private void HandlePreviewMouseWheel(object sender, MouseWheelEventArgs e)
-        {
-            if (e.Handled) return;
-
-            var element = sender as UIElement;
-            var scrollViewer = FindVisualParent<ScrollViewer>(element);
-            if (scrollViewer == null) return;
-
-            if (e.Delta < 0)
-            {
-                if (scrollViewer.VerticalOffset < scrollViewer.ScrollableHeight)
-                {
-                    scrollViewer.ScrollToVerticalOffset(scrollViewer.VerticalOffset + 48);
-                    e.Handled = true;
-                }
-            }
-            else
-            {
-                if (scrollViewer.VerticalOffset > 0)
-                {
-                    scrollViewer.ScrollToVerticalOffset(scrollViewer.VerticalOffset - 48);
-                    e.Handled = true;
-                }
-            }
-
-            if (!e.Handled)
-            {
-                var parent = FindVisualParent<ScrollViewer>(scrollViewer);
-                if (parent != null)
-                {
-                    parent.ScrollToVerticalOffset(parent.VerticalOffset - e.Delta);
-                    e.Handled = true;
-                }
-            }
-        }
-
-        private static T FindVisualParent<T>(DependencyObject child) where T : DependencyObject
-        {
-            DependencyObject parentObject = VisualTreeHelper.GetParent(child);
-            if (parentObject == null) return null;
-            T parent = parentObject as T;
-            return parent ?? FindVisualParent<T>(parentObject);
-        }
-        #endregion
     }
 }
 
