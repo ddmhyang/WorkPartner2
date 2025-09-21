@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows.Automation;
+using System.Text.RegularExpressions;
 
 namespace WorkPartner
 {
@@ -81,12 +82,14 @@ namespace WorkPartner
                 AutomationElement element = AutomationElement.FromHandle(handle);
                 if (element == null) return null;
 
-                // Address bar conditions for various browsers
+                // 주요 브라우저의 주소창 조건을 정의합니다.
+                // 한국어 및 영어 버전을 모두 포함하여 호환성을 높입니다.
                 var conditions = new OrCondition(
                     new PropertyCondition(AutomationElement.NameProperty, "주소창 및 검색창"), // Chrome, Edge (Korean)
                     new PropertyCondition(AutomationElement.NameProperty, "Address and search bar"), // Chrome, Edge (English)
                     new PropertyCondition(AutomationElement.NameProperty, "주소 표시줄"), // Whale (Korean)
-                    new PropertyCondition(AutomationElement.AutomationIdProperty, "urlbar-input") // Firefox
+                    new PropertyCondition(AutomationElement.AutomationIdProperty, "urlbar-input"), // Firefox
+                    new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Edit) // General fallback
                 );
 
                 var addressBar = element.FindFirst(TreeScope.Descendants, conditions);
@@ -96,17 +99,8 @@ namespace WorkPartner
                     return ((ValuePattern)pattern).Current.Value as string;
                 }
             }
-            catch { /* Accessibility errors can be ignored */ }
-
-            // Fallback: If URL fetch fails, return the window title for browsers
-            string processName = GetActiveProcessName();
-            if (processName == "firefox" || processName == "chrome" || processName == "msedge" || processName == "whale")
-            {
-                return GetActiveWindowTitle();
-            }
-
+            catch { /* 접근성 오류는 무시합니다. */ }
             return null;
         }
     }
 }
-
