@@ -16,6 +16,8 @@ using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Microsoft.Win32;
+using System.Windows.Media.Media3D;
+using System.Windows.Media;
 
 namespace WorkPartner
 {
@@ -162,26 +164,116 @@ namespace WorkPartner
             }
         }
 
-        // [추가] 키보드 Delete 키로 프로세스를 삭제하는 이벤트 핸들러
+        // 키보드 Delete 키로 프로세스를 삭제하는 이벤트 핸들러
         private void DeleteProcess_KeyDown(object sender, KeyEventArgs e)
         {
             if (e.Key == Key.Delete && sender is ListBox listBox && listBox.SelectedItem is ProcessViewModel selectedVm)
             {
-                string type = listBox.Tag as string;
-                ObservableCollection<string> targetList = null;
-                ObservableCollection<ProcessViewModel> targetViewModelList = null;
+                DeleteProcess(listBox.Tag as string, selectedVm);
+            }
+        }
 
-                if (type == "Work") { targetList = Settings.WorkProcesses; targetViewModelList = WorkProcessViewModels; }
-                else if (type == "Passive") { targetList = Settings.PassiveProcesses; targetViewModelList = PassiveProcessViewModels; }
-                else if (type == "Distraction") { targetList = Settings.DistractionProcesses; targetViewModelList = DistractionProcessViewModels; }
-
-                if (targetList != null && targetViewModelList != null)
+        // [수정] ListBox 아이템의 삭제 버튼 클릭 이벤트 핸들러
+        private void DeleteProcess_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button button && button.Tag is ProcessViewModel selectedVm)
+            {
+                var parentListBox = FindAncestor<ListBox>(button);
+                if (parentListBox != null)
                 {
-                    targetList.Remove(selectedVm.DisplayName);
-                    targetViewModelList.Remove(selectedVm);
-                    SaveSettings();
+                    DeleteProcess(parentListBox.Tag as string, selectedVm);
                 }
             }
+        }
+
+        // [수정] 입력 텍스트 박스의 값으로 프로세스를 삭제하는 이벤트 핸들러
+        private void DeleteProcessButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button button && button.Tag is string type)
+            {
+                ObservableCollection<string> targetList = null;
+                ObservableCollection<ProcessViewModel> targetViewModelList = null;
+                TextBox inputTextBox = null;
+
+                if (type == "Work")
+                {
+                    targetList = Settings.WorkProcesses;
+                    targetViewModelList = WorkProcessViewModels;
+                    inputTextBox = WorkProcessInput;
+                }
+                else if (type == "Passive")
+                {
+                    targetList = Settings.PassiveProcesses;
+                    targetViewModelList = PassiveProcessViewModels;
+                    inputTextBox = PassiveProcessInput;
+                }
+                else if (type == "Distraction")
+                {
+                    targetList = Settings.DistractionProcesses;
+                    targetViewModelList = DistractionProcessViewModels;
+                    inputTextBox = DistractionProcessInput;
+                }
+
+                if (inputTextBox != null)
+                {
+                    string process = inputTextBox.Text.Trim().ToLower();
+                    if (!string.IsNullOrEmpty(process))
+                    {
+                        var itemToRemove = targetViewModelList?.FirstOrDefault(vm => vm.DisplayName.ToLower() == process);
+                        if (itemToRemove != null)
+                        {
+                            targetList.Remove(itemToRemove.DisplayName);
+                            targetViewModelList.Remove(itemToRemove);
+                            inputTextBox.Clear();
+                            SaveSettings();
+                        }
+                        else
+                        {
+                            MessageBox.Show($"'{process}'는 목록에 존재하지 않습니다.", "알림");
+                        }
+                    }
+                    else if (targetViewModelList != null && targetViewModelList.Any())
+                    {
+                        // 텍스트 박스가 비어있을 경우, 리스트 박스에서 마지막 항목을 삭제
+                        var lastItem = targetViewModelList.LastOrDefault();
+                        if (lastItem != null)
+                        {
+                            targetList.Remove(lastItem.DisplayName);
+                            targetViewModelList.Remove(lastItem);
+                            SaveSettings();
+                        }
+                    }
+                }
+            }
+        }
+
+        // 공통 삭제 로직을 담은 private 메서드
+        private void DeleteProcess(string type, ProcessViewModel selectedVm)
+        {
+            ObservableCollection<string> targetList = null;
+            ObservableCollection<ProcessViewModel> targetViewModelList = null;
+
+            if (type == "Work") { targetList = Settings.WorkProcesses; targetViewModelList = WorkProcessViewModels; }
+            else if (type == "Passive") { targetList = Settings.PassiveProcesses; targetViewModelList = PassiveProcessViewModels; }
+            else if (type == "Distraction") { targetList = Settings.DistractionProcesses; targetViewModelList = DistractionProcessViewModels; }
+
+            if (targetList != null && targetViewModelList != null)
+            {
+                targetList.Remove(selectedVm.DisplayName);
+                targetViewModelList.Remove(selectedVm);
+                SaveSettings();
+            }
+        }
+
+        // UI 트리를 탐색하여 부모 컨트롤을 찾는 Helper 메서드
+        private T FindAncestor<T>(DependencyObject dependencyObject) where T : DependencyObject
+        {
+            var parent = VisualTreeHelper.GetParent(dependencyObject);
+            if (parent == null) return null;
+
+            if (parent is T ancestor) return ancestor;
+
+            return FindAncestor<T>(parent);
         }
 
         private void SelectAppButton_Click(object sender, RoutedEventArgs e)
@@ -479,4 +571,3 @@ namespace WorkPartner
         }
     }
 }
-

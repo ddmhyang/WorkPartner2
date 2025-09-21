@@ -8,6 +8,39 @@
              d:DesignHeight="700" d:DesignWidth="850"
              Background="{DynamicResource AppBackgroundBrush}">
     <UserControl.Resources>
+        <!-- FlatButtonStyle 추가 -->
+        <Style x:Key="FlatButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Padding" Value="5,2"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="3"
+                                SnapsToDevicePixels="True">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource HoverBackgroundBrush}"/>
+                    <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource PressedBackgroundBrush}"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- ProcessListBoxStyle 수정: 삭제 버튼을 포함한 Grid를 ItemTemplate에 추가 -->
         <Style x:Key="ProcessListBoxStyle" TargetType="ListBox">
             <Setter Property="Background" Value="{DynamicResource SectionBackgroundBrush}"/>
             <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
@@ -16,10 +49,16 @@
             <Setter Property="ItemTemplate">
                 <Setter.Value>
                     <DataTemplate>
-                        <StackPanel Orientation="Horizontal">
-                            <Image Source="{Binding Icon}" Width="16" Height="16" Margin="0,0,5,0" VerticalAlignment="Center"/>
-                            <TextBlock Text="{Binding DisplayName}" VerticalAlignment="Center"/>
-                        </StackPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" Orientation="Horizontal">
+                                <Image Source="{Binding Icon}" Width="16" Height="16" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding DisplayName}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Grid>
                     </DataTemplate>
                 </Setter.Value>
             </Setter>
@@ -123,11 +162,15 @@
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="Auto"/>
+                                <!-- 삭제 버튼을 위한 열 추가 -->
+                                <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
                             <TextBox Grid.Column="0" x:Name="WorkProcessInput"/>
                             <Button Grid.Column="1" Content="실행 중인 앱" Margin="5,0,0,0" Tag="Work" Click="SelectAppButton_Click"/>
                             <Button Grid.Column="2" Content="활성 탭" Margin="5,0,0,0" Tag="Work" Click="AddActiveTabButton_Click"/>
                             <Button Grid.Column="3" Content="추가" Margin="5,0,0,0" Tag="Work" Click="AddProcess_Click"/>
+                            <!-- Grid.Column을 4로 설정하여 "추가" 버튼 옆에 배치 -->
+                            <Button Grid.Column="4" Content="삭제" Margin="5,0,0,0" Tag="Work" Click="DeleteProcessButton_Click"/>
                         </Grid>
 
                         <TextBlock Text="수동 프로그램 / 사이트" Foreground="{DynamicResource TextBrush}" FontWeight="Bold"/>
@@ -138,11 +181,13 @@
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
                             <TextBox Grid.Column="0" x:Name="PassiveProcessInput"/>
                             <Button Grid.Column="1" Content="실행 중인 앱" Margin="5,0,0,0" Tag="Passive" Click="SelectAppButton_Click"/>
                             <Button Grid.Column="2" Content="활성 탭" Margin="5,0,0,0" Tag="Passive" Click="AddActiveTabButton_Click"/>
                             <Button Grid.Column="3" Content="추가" Margin="5,0,0,0" Tag="Passive" Click="AddProcess_Click"/>
+                            <Button Grid.Column="4" Content="삭제" Margin="5,0,0,0" Tag="Passive" Click="DeleteProcessButton_Click"/>
                         </Grid>
 
                         <TextBlock Text="방해 프로그램 / 사이트" Foreground="{DynamicResource TextBrush}" FontWeight="Bold"/>
@@ -153,11 +198,13 @@
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
                             <TextBox Grid.Column="0" x:Name="DistractionProcessInput"/>
                             <Button Grid.Column="1" Content="실행 중인 앱" Margin="5,0,0,0" Tag="Distraction" Click="SelectAppButton_Click"/>
                             <Button Grid.Column="2" Content="활성 탭" Margin="5,0,0,0" Tag="Distraction" Click="AddActiveTabButton_Click"/>
                             <Button Grid.Column="3" Content="추가" Margin="5,0,0,0" Tag="Distraction" Click="AddProcess_Click"/>
+                            <Button Grid.Column="4" Content="삭제" Margin="5,0,0,0" Tag="Distraction" Click="DeleteProcessButton_Click"/>
                         </Grid>
                     </StackPanel>
                 </Border>
@@ -206,4 +253,3 @@
         </ScrollViewer>
     </Grid>
 </UserControl>
-
