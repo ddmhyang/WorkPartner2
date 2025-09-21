@@ -1,4 +1,6 @@
-﻿using System;
+﻿// SettingsPage.xaml.cs
+
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -18,6 +20,8 @@ using System.Windows.Media.Imaging;
 using Microsoft.Win32;
 using System.Windows.Media.Media3D;
 using System.Windows.Media;
+using System.Globalization;
+using System.Text.RegularExpressions; // Add this using statement for Regex
 
 namespace WorkPartner
 {
@@ -153,12 +157,9 @@ namespace WorkPartner
                 if (inputTextBox != null && targetList != null)
                 {
                     string process = inputTextBox.Text.Trim().ToLower();
-                    if (!string.IsNullOrEmpty(process) && !targetList.Contains(process))
+                    if (!string.IsNullOrEmpty(process))
                     {
-                        targetList.Add(process);
-                        targetViewModelList.Add(await ProcessViewModel.Create(process));
-                        inputTextBox.Clear();
-                        SaveSettings();
+                        await AddProcessInternalAsync(type, process);
                     }
                 }
             }
@@ -325,10 +326,38 @@ namespace WorkPartner
             }
         }
 
-        private void AddActiveTabButton_Click(object sender, RoutedEventArgs e)
+        // Internal method to add a process
+        private async Task AddProcessInternalAsync(string type, string processName)
+        {
+            ObservableCollection<string> targetList = null;
+            ObservableCollection<ProcessViewModel> targetViewModelList = null;
+            TextBox inputTextBox = null;
+
+            if (type == "Work") { targetList = Settings.WorkProcesses; targetViewModelList = WorkProcessViewModels; inputTextBox = WorkProcessInput; }
+            else if (type == "Passive") { targetList = Settings.PassiveProcesses; targetViewModelList = PassiveProcessViewModels; inputTextBox = PassiveProcessInput; }
+            else if (type == "Distraction") { targetList = Settings.DistractionProcesses; targetViewModelList = DistractionProcessViewModels; inputTextBox = DistractionProcessInput; }
+
+            if (targetList != null && targetViewModelList != null && !string.IsNullOrEmpty(processName))
+            {
+                if (!targetList.Contains(processName.ToLower()))
+                {
+                    targetList.Add(processName.ToLower());
+                    targetViewModelList.Add(await ProcessViewModel.Create(processName.ToLower()));
+                    if (inputTextBox != null)
+                    {
+                        inputTextBox.Clear();
+                    }
+                    SaveSettings();
+                }
+            }
+        }
+
+        private async void AddActiveTabButton_Click(object sender, RoutedEventArgs e)
         {
             if (sender is Button button && button.Tag is string type)
             {
+                await Task.Delay(3000);
+
                 string activeUrl = ActiveWindowHelper.GetActiveBrowserTabUrl();
                 if (string.IsNullOrEmpty(activeUrl))
                 {
@@ -337,27 +366,35 @@ namespace WorkPartner
                 }
                 try
                 {
-                    string urlKeyword;
-                    if (Uri.IsWellFormedUriString(activeUrl, UriKind.Absolute))
+                    string urlKeyword = null;
+
+                    Uri uriResult;
+                    // Uri.TryCreate를 사용하여 문자열이 유효한 URL인지 확인합니다.
+                    if (Uri.TryCreate(activeUrl, UriKind.Absolute, out uriResult))
                     {
-                        urlKeyword = new Uri(activeUrl).Host.ToLower();
+                        var idn = new IdnMapping();
+                        // GetAscii를 사용하여 URL의 호스트를 Punycode로 변환합니다.
+                        string punycodeHost = idn.GetAscii(uriResult.Host);
+                        urlKeyword = punycodeHost.ToLower();
                     }
                     else
                     {
+                        // URL이 아닌 경우 원본 문자열을 그대로 사용합니다.
                         urlKeyword = activeUrl.ToLower();
                     }
 
-                    TextBox inputTextBox = null;
-                    if (type == "Work") inputTextBox = WorkProcessInput;
-                    else if (type == "Passive") inputTextBox = PassiveProcessInput;
-                    else if (type == "Distraction") inputTextBox = DistractionProcessInput;
-
-                    if (inputTextBox != null)
-                        inputTextBox.Text = urlKeyword;
+                    if (!string.IsNullOrEmpty(urlKeyword))
+                    {
+                        await AddProcessInternalAsync(type, urlKeyword);
+                    }
+                    else
+                    {
+                        MessageBox.Show($"유효한 URL 또는 제목이 아닙니다: {activeUrl}", "오류");
+                    }
                 }
-                catch
+                catch (Exception ex)
                 {
-                    MessageBox.Show($"유효한 URL 또는 제목이 아닙니다: {activeUrl}", "오류");
+                    MessageBox.Show($"데이터 처리 중 오류가 발생했습니다: {ex.Message}", "오류");
                 }
             }
         }
