@@ -1,0 +1,17 @@
+﻿<Window x:Class="WorkPartner.MiniTimerWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="WorkPartner Timer" Height="60" Width="200"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        Topmost="True" ShowInTaskbar="False"
+        MouseLeftButtonDown="Window_MouseLeftButtonDown">
+    <Border x:Name="TimerBorder" Background="#88000000" CornerRadius="10">
+        <TextBlock x:Name="TimeTextBlock"
+               Text="00:00:00"
+               Foreground="White"
+               FontSize="24"
+               FontWeight="Bold"
+               HorizontalAlignment="Center"
+               VerticalAlignment="Center"/>
+    </Border>
+</Window>
