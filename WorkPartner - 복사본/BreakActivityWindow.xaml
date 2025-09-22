@@ -1,0 +1,25 @@
+﻿<Window x:Class="WorkPartner.BreakActivityWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="휴식 시간 활동 기록" Height="300" Width="250" WindowStartupLocation="CenterOwner">
+    <Grid Margin="15">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" Text="휴식 시간에 무엇을 하셨나요?" FontWeight="Bold" Margin="0,0,0,10"/>
+
+        <StackPanel Grid.Row="1" x:Name="ActivityStackPanel">
+            <CheckBox Content="식사" Margin="5"/>
+            <CheckBox Content="스트레칭 / 운동" Margin="5"/>
+            <CheckBox Content="화장실" Margin="5"/>
+            <CheckBox Content="샤워" Margin="5"/>
+            <CheckBox Content="SNS / 웹서핑" Margin="5"/>
+            <CheckBox Content="기타" Margin="5"/>
+        </StackPanel>
+
+        <Button Grid.Row="2" Content="확인" Width="80" HorizontalAlignment="Right" IsDefault="True" Click="ConfirmButton_Click"/>
+    </Grid>
+</Window>

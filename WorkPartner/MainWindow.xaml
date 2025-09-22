@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:WorkPartner"
         mc:Ignorable="d"
-        Title="WorkPartner" Height="720" Width="1280"
+        d:DesignHeight="526" d:DesignWidth="682"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent" WindowStartupLocation="CenterScreen">
     <Border Background="{StaticResource AppBackgroundBrush}" CornerRadius="10" BorderBrush="#D0D0D0" BorderThickness="1">
         <Grid>
@@ -13,19 +13,6 @@
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
-
-            <!-- Left Navigation Bar -->
-            <Border Grid.Column="0" Background="#F0F0F0" CornerRadius="10,0,0,10" MouseDown="Border_MouseDown">
-                <StackPanel Width="180">
-                    <TextBlock Text="WorkPartner" FontSize="20" FontWeight="Bold" Margin="20,20,20,30" HorizontalAlignment="Center"/>
-
-                    <Button Tag="Dashboard" Content="📊 대시보드" Click="NavButton_Click"/>
-                    <Button Tag="Analysis" Content="📈 분석" Click="NavButton_Click"/>
-                    <Button Tag="Avatar" Content="🎨 아바타 꾸미기" Click="NavButton_Click"/>
-                    <Button Tag="Settings" Content="⚙️ 설정" Click="NavButton_Click"/>
-
-                </StackPanel>
-            </Border>
 
             <!-- Main Content -->
             <Grid Grid.Column="1">

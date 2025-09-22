@@ -398,6 +398,10 @@
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
+    <Resource Include="Fonts\Freesentation-1Thin.ttf" />
+    <Resource Include="Fonts\Freesentation-3Light.ttf" />
+    <Resource Include="Fonts\Freesentation-5Medium.ttf" />
+    <Resource Include="Fonts\Freesentation-9Black.ttf" />
     <None Include="items_db.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
@@ -414,6 +418,8 @@
     <Resource Include="WorkPartner.ico" />
     <Resource Include="app_icon.ico" />
     <Resource Include="images\coin.png" />
+    <Resource Include="images\bar_chart.png" />
+    <Resource Include="images\settings.png" />
     <Content Include="Sounds\campfire.mp3">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
