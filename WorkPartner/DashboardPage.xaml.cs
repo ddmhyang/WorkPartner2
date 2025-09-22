@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
@@ -12,6 +12,8 @@ using System.Windows.Media;
 using System.Windows.Shapes;
 using System.Windows.Threading;
 using WorkPartner.AI;
+using System.Threading.Tasks;
+
 
 namespace WorkPartner
 {
@@ -54,6 +56,9 @@ namespace WorkPartner
         private Point _dragStartPoint;
         private Rectangle _selectionBox;
         private bool _isDragging = false;
+        // 1. MainWindow를 저장할 변수 선언
+        private MainWindow _parentWindow;
+
         #endregion
 
         public DashboardPage()
@@ -85,11 +90,7 @@ namespace WorkPartner
             }
         }
 
-        // 부모 윈도우 참조를 설정하는 메서드
-        public void SetParentWindow(MainWindow window)
-        {
-            _mainWindow = window;
-        }
+
 
         private void InitializeData()
         {
@@ -793,21 +794,21 @@ namespace WorkPartner
             return false;
         }
 
-        private void FocusModeButton_Click(object sender, RoutedEventArgs e)
-        {
-            _isFocusModeActive = !_isFocusModeActive;
-            if (_isFocusModeActive)
-            {
-                FocusModeButton.Background = new SolidColorBrush(Color.FromRgb(0, 122, 255));
-                FocusModeButton.Foreground = Brushes.White;
-                MessageBox.Show("집중 모드가 활성화되었습니다. 방해 앱으로 등록된 프로그램을 실행하면 경고가 표시됩니다.", "집중 모드 ON");
-            }
-            else
-            {
-                FocusModeButton.Background = new SolidColorBrush(Color.FromRgb(0xEF, 0xEF, 0xEF));
-                FocusModeButton.Foreground = new SolidColorBrush(Color.FromRgb(0x33, 0x33, 0x33));
-            }
-        }
+        //private void FocusModeButton_Click(object sender, RoutedEventArgs e)
+        //{
+        //    _isFocusModeActive = !_isFocusModeActive;
+        //    if (_isFocusModeActive)
+        //    {
+        //        FocusModeButton.Background = new SolidColorBrush(Color.FromRgb(0, 122, 255));
+        //        FocusModeButton.Foreground = Brushes.White;
+        //        MessageBox.Show("집중 모드가 활성화되었습니다. 방해 앱으로 등록된 프로그램을 실행하면 경고가 표시됩니다.", "집중 모드 ON");
+        //    }
+        //    else
+        //    {
+        //        FocusModeButton.Background = new SolidColorBrush(Color.FromRgb(0xEF, 0xEF, 0xEF));
+        //        FocusModeButton.Foreground = new SolidColorBrush(Color.FromRgb(0x33, 0x33, 0x33));
+        //    }
+        //}
         #endregion
 
         #region 타임라인 드래그 및 일괄 수정
@@ -951,6 +952,23 @@ namespace WorkPartner
                 }
             }
         }
+
+        public void SetParentWindow(MainWindow window)
+        {
+            _parentWindow = window;
+        }
+
+        // 3. 요청하신 NavButton_Click 메서드 추가
+        private async void NavButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_parentWindow != null && sender is Button button && button.Tag is string pageName)
+            {
+                // 4. 저장된 _parentWindow의 페이지 이동 함수 호출
+                await _parentWindow.NavigateToPage(pageName);
+            }
+        }
+
+
         #endregion
     }
 }
