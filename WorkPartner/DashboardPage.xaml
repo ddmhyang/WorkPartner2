@@ -8,6 +8,7 @@
              d:DesignHeight="650" d:DesignWidth="1000"
              Loaded="Window_Loaded" IsVisibleChanged="DashboardPage_IsVisibleChanged">
     
+    
     <UserControl.Resources>
     </UserControl.Resources>
     <Grid Margin="10">
