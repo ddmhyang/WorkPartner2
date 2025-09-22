@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:lvc="clr-namespace:LiveCharts.Wpf;assembly=LiveCharts.Wpf"
              xmlns:local="clr-namespace:WorkPartner"
              mc:Ignorable="d" 
              d:DesignHeight="650" d:DesignWidth="1000"
@@ -18,7 +19,7 @@
         </Grid.ColumnDefinitions>
 
         <!-- Left Column: Character & Tasks -->
-        <DockPanel Grid.Column="0" Margin="10">
+        <DockPanel Grid.Column="0" Margin="10,10,5,10">
             <!-- Character Info Panel -->
             <Border DockPanel.Dock="Top" Style="{StaticResource SectionBorderStyle}" Padding="15" Margin="0,0,0,10">
                 <StackPanel>
@@ -44,12 +45,22 @@
             <Border Style="{StaticResource SectionBorderStyle}">
                 <DockPanel>
                     <TextBlock DockPanel.Dock="Top" Text="과목 관리" Style="{StaticResource SectionHeaderStyle}" Margin="15,15,15,5"/>
-                    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="10">
-                        <TextBox x:Name="TaskInput" KeyDown="TaskInput_KeyDown" Style="{StaticResource InputTextBoxStyle}" HorizontalAlignment="Stretch" Width="150"/>
-                        <Button Content="추가" Click="AddTaskButton_Click" Margin="5,0,0,0"/>
+                    <StackPanel DockPanel.Dock="Bottom" Margin="15,5,15,15">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBox Grid.Column="0" x:Name="TaskInput" KeyDown="TaskInput_KeyDown" Style="{StaticResource InputTextBoxStyle}"/>
+                            <Button Grid.Column="1" Content="추가" Click="AddTaskButton_Click" Margin="5,0,0,0"/>
+                        </Grid>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,5,0,0">
+                            <Button Content="수정" Click="EditTaskButton_Click" Margin="0,0,5,0"/>
+                            <Button Content="삭제" Click="DeleteTaskButton_Click"/>
+                        </StackPanel>
                     </StackPanel>
                     <ListBox x:Name="TaskListBox" ItemsSource="{Binding TaskItems}" SelectionChanged="TaskListBox_SelectionChanged"
-                             ScrollViewer.VerticalScrollBarVisibility="Auto" Margin="10,0,10,10">
+                             ScrollViewer.VerticalScrollBarVisibility="Auto" Margin="15,0">
                         <ListBox.ItemTemplate>
                             <DataTemplate>
                                 <TextBlock Text="{Binding Text}"/>
@@ -61,12 +72,12 @@
         </DockPanel>
 
         <!-- Center Column: Main Timer & Timeline -->
-        <Grid Grid.Column="1" Margin="0,10,0,10">
+        <Grid Grid.Column="1" Margin="5,10,5,10">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
-            <Border Grid.Row="0" Style="{StaticResource SectionBorderStyle}" Margin="0,0,10,10">
+            <Border Grid.Row="0" Style="{StaticResource SectionBorderStyle}" Margin="0,0,0,10">
                 <StackPanel Margin="20">
                     <TextBlock Text="오늘의 학습 시간" TextAlignment="Center" FontSize="18" Foreground="Gray"/>
                     <TextBlock x:Name="MainTimeDisplay" Text="00:00:00" TextAlignment="Center" FontSize="64" FontWeight="Bold" Margin="0,5,0,10"/>
@@ -74,7 +85,7 @@
                 </StackPanel>
             </Border>
 
-            <Border Grid.Row="1" Style="{StaticResource SectionBorderStyle}" Margin="0,0,10,0">
+            <Border Grid.Row="1" Style="{StaticResource SectionBorderStyle}" Margin="0,0,0,0">
                 <DockPanel>
                     <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="10">
                         <Button Content="&lt;" Click="PrevDayButton_Click" Margin="0,0,5,0"/>
@@ -95,29 +106,51 @@
         </Grid>
 
         <!-- Right Column: To-Do & Helper Tools -->
-        <DockPanel Grid.Column="2" Margin="0,10,10,10">
+        <DockPanel Grid.Column="2" Margin="5,10,10,10">
             <!-- To-Do List -->
-            <Border DockPanel.Dock="Top" Style="{StaticResource SectionBorderStyle}" Padding="15" Margin="0,0,0,10" Height="350">
+            <Border DockPanel.Dock="Top" Style="{StaticResource SectionBorderStyle}" Padding="15" Margin="0,0,0,10" MaxHeight="350" Height="300">
                 <DockPanel>
                     <TextBlock DockPanel.Dock="Top" Text="오늘의 할 일" Style="{StaticResource SectionHeaderStyle}" Margin="0,0,0,10"/>
                     <StackPanel DockPanel.Dock="Bottom" Margin="0,10,0,0">
-                        <TextBox x:Name="TodoInput" KeyDown="TodoInput_KeyDown" Style="{StaticResource InputTextBoxStyle}"/>
-                        <Button Content="할 일 추가" Click="AddTodoButton_Click" Margin="0,5,0,0"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBox Grid.Column="0" x:Name="TodoInput" KeyDown="TodoInput_KeyDown" Style="{StaticResource InputTextBoxStyle}"/>
+                            <Button Grid.Column="1" Content="추가" Click="AddTodoButton_Click" Margin="5,0,0,0"/>
+                        </Grid>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,5,0,0">
+                            <Button Content="수정" Click="EditTodoButton_Click" Margin="0,0,5,0"/>
+                            <Button Content="삭제" Click="DeleteTodoButton_Click" />
+                        </StackPanel>
                     </StackPanel>
                     <TreeView x:Name="TodoTreeView" ItemsSource="{Binding FilteredTodoItems}" PreviewMouseLeftButtonDown="TodoTreeView_PreviewMouseLeftButtonDown"
-                              ScrollViewer.VerticalScrollBarVisibility="Auto">
-                        <!-- ItemTemplate is set in code-behind or a more complex XAML structure -->
+                              ScrollViewer.VerticalScrollBarVisibility="Auto" BorderThickness="0">
+                        <TreeView.ItemContainerStyle>
+                            <Style TargetType="{x:Type TreeViewItem}">
+                                <Setter Property="IsExpanded" Value="True"/>
+                            </Style>
+                        </TreeView.ItemContainerStyle>
+                        <TreeView.ItemTemplate>
+                            <HierarchicalDataTemplate DataType="{x:Type local:TodoItem}" ItemsSource="{Binding SubTasks}">
+                                <StackPanel Orientation="Horizontal">
+                                    <CheckBox IsChecked="{Binding IsCompleted, Mode=TwoWay}" VerticalAlignment="Center" Click="SaveTodos_Event"/>
+                                    <TextBox Text="{Binding Text, UpdateSourceTrigger=PropertyChanged}" BorderThickness="0" Background="Transparent" VerticalAlignment="Center" KeyDown="TodoTextBox_KeyDown"/>
+                                </StackPanel>
+                            </HierarchicalDataTemplate>
+                        </TreeView.ItemTemplate>
                     </TreeView>
                 </DockPanel>
             </Border>
 
             <!-- Helper Tools -->
             <Border Style="{StaticResource SectionBorderStyle}" Padding="15">
-                <StackPanel>
+                 <StackPanel>
                     <TextBlock Text="학습 보조 기능" Style="{StaticResource SectionHeaderStyle}" Margin="0,0,0,10"/>
-                    <Button x:Name="FocusModeButton" Content="집중 모드" Click="FocusModeButton_Click" Style="{StaticResource ActionButtonStyle}" Margin="0,0,0,5"/>
-                    <Button Content="수동 기록 추가" Click="AddManualLogButton_Click" Style="{StaticResource ActionButtonStyle}" Margin="0,0,0,5"/>
-                    <Button Content="메모장" Click="MemoButton_Click" Style="{StaticResource ActionButtonStyle}"/>
+                    <Button x:Name="FocusModeButton" Content="집중 모드" Click="FocusModeButton_Click" Margin="0,0,0,5"/>
+                    <Button Content="수동 기록 추가" Click="AddManualLogButton_Click" Margin="0,0,0,5"/>
+                    <Button Content="메모장" Click="MemoButton_Click"/>
                     <Separator Margin="0,10,0,10"/>
                     <!-- Sound Mixer -->
                     <TextBlock Text="사운드 믹서" Margin="0,0,0,5" Foreground="Gray"/>
@@ -165,4 +198,3 @@
 
     </Grid>
 </UserControl>
-

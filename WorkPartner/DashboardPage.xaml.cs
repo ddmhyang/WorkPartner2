@@ -44,8 +44,8 @@ namespace WorkPartner
 
         private readonly PredictionService _predictionService;
         private readonly Dictionary<string, MediaPlayer> _soundPlayers = new Dictionary<string, MediaPlayer>();
-        private DateTime _lastSuggestionTime;
         private DateTime _currentDateForTimeline = DateTime.Today;
+        private DateTime _lastSuggestionTime;
 
         private bool _isPausedForIdle = false;
         private DateTime _idleStartTime;
@@ -107,7 +107,7 @@ namespace WorkPartner
 
         private SolidColorBrush GetColorForTask(string taskName)
         {
-            if (_settings.TaskColors.TryGetValue(taskName, out string colorHex))
+            if (_settings != null && _settings.TaskColors.TryGetValue(taskName, out string colorHex))
             {
                 try
                 {
@@ -192,10 +192,9 @@ namespace WorkPartner
         #region UI 이벤트 핸들러
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
+            TimelineDatePicker.SelectedDate = _currentDateForTimeline;
             RecalculateAllTotals();
             RenderTimeTable();
-            // TodoDatePicker is not in the new XAML
-            // TodoDatePicker.SelectedDate = DateTime.Today;
         }
 
         private void DashboardPage_IsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
@@ -263,6 +262,7 @@ namespace WorkPartner
 
                 TaskInput.Clear();
                 SaveTasks();
+                RenderTimeTable();
             }
         }
 
@@ -280,24 +280,34 @@ namespace WorkPartner
                     string newName = inputWindow.ResponseText.Trim();
                     string oldName = selectedTask.Text;
                     if (string.IsNullOrWhiteSpace(newName) || newName == oldName) return;
-                    if (TaskItems.Any(t => t.Text.Equals(newName, StringComparison.OrdinalIgnoreCase)))
+                    if (TaskItems.Any(t => t.Text.Equals(newName, StringComparison.OrdinalIgnoreCase) && t != selectedTask))
                     {
                         MessageBox.Show("이미 존재하는 과목 이름입니다.", "오류", MessageBoxButton.OK, MessageBoxImage.Error);
                         return;
                     }
-                    selectedTask.Text = newName;
-                    foreach (var log in TimeLogEntries.Where(l => l.TaskText == oldName)) log.TaskText = newName;
+
+                    // Update task name everywhere
+                    foreach (var log in TimeLogEntries.Where(l => l.TaskText == oldName))
+                    {
+                        log.TaskText = newName;
+                    }
                     if (_settings.TaskColors.ContainsKey(oldName))
                     {
                         var color = _settings.TaskColors[oldName];
                         _settings.TaskColors.Remove(oldName);
                         _settings.TaskColors[newName] = color;
                     }
+
+                    selectedTask.Text = newName; // This should update the UI via binding
+
                     SaveTasks();
                     SaveTimeLogs();
                     SaveSettings();
+
+                    // Explicitly refresh the ListBox to ensure the UI updates
                     TaskListBox.Items.Refresh();
                     RenderTimeTable();
+                    UpdateSelectedTaskTotalTimeDisplay(); // Update total time display as well
                 }
             }
             else
@@ -305,6 +315,43 @@ namespace WorkPartner
                 MessageBox.Show("수정할 과목을 목록에서 선택해주세요.", "알림", MessageBoxButton.OK, MessageBoxImage.Information);
             }
         }
+
+        private void DeleteTaskButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (TaskListBox.SelectedItem is TaskItem selectedTask)
+            {
+                if (MessageBox.Show($"'{selectedTask.Text}' 과목을 삭제하시겠습니까?\n관련된 모든 학습 기록도 삭제됩니다.", "삭제 확인", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
+                {
+                    string taskNameToDelete = selectedTask.Text;
+
+                    TaskItems.Remove(selectedTask);
+
+                    if (_settings.TaskColors.ContainsKey(taskNameToDelete))
+                    {
+                        _settings.TaskColors.Remove(taskNameToDelete);
+                        SaveSettings();
+                    }
+
+                    // Remove related TimeLogEntries
+                    var logsToRemove = TimeLogEntries.Where(l => l.TaskText == taskNameToDelete).ToList();
+                    foreach (var log in logsToRemove)
+                    {
+                        TimeLogEntries.Remove(log);
+                    }
+
+                    SaveTasks();
+                    SaveTimeLogs();
+
+                    RenderTimeTable();
+                    RecalculateAllTotals();
+                }
+            }
+            else
+            {
+                MessageBox.Show("삭제할 과목을 목록에서 선택해주세요.", "알림", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+        }
+
 
         private void RateSessionButton_Click(object sender, RoutedEventArgs e)
         {
@@ -344,97 +391,51 @@ namespace WorkPartner
 
         private void TaskInput_KeyDown(object sender, KeyEventArgs e) { if (e.Key == Key.Enter) { AddTaskButton_Click(sender, e); } }
 
-        private void DeleteTaskButton_Click(object sender, RoutedEventArgs e)
-        {
-            if (TaskListBox.SelectedItem is TaskItem selectedTask)
-            {
-                if (_settings.TaskColors.ContainsKey(selectedTask.Text))
-                {
-                    _settings.TaskColors.Remove(selectedTask.Text);
-                    SaveSettings();
-                }
-                TaskItems.Remove(selectedTask);
-                SaveTasks();
-            }
-        }
-
         private void AddTodoButton_Click(object sender, RoutedEventArgs e)
         {
             if (string.IsNullOrWhiteSpace(TodoInput.Text)) return;
             var newTodo = new TodoItem
             {
                 Text = TodoInput.Text,
-                //Date = TodoDatePicker.SelectedDate?.Date ?? DateTime.Today
+                // 현재 타임라인에 선택된 날짜를 할 일의 날짜로 지정합니다.
+                Date = _currentDateForTimeline.Date
             };
-            TodoItems.Add(newTodo);
-            _lastAddedTodo = newTodo;
-            UpdateTagSuggestions(_lastAddedTodo);
+
+            // Check if an item is selected in the TreeView to add a subtask
+            if (TodoTreeView.SelectedItem is TodoItem parentTodo)
+            {
+                parentTodo.SubTasks.Add(newTodo);
+            }
+            else
+            {
+                TodoItems.Add(newTodo);
+            }
+
             TodoInput.Clear();
             SaveTodos();
+            // 할 일 목록을 다시 필터링하여 UI를 새로고침합니다.
             FilterTodos();
         }
 
-        private void TodoInput_KeyDown(object sender, KeyEventArgs e) { if (e.Key == Key.Enter) AddTodoButton_Click(sender, e); }
-        private void TodoTextBox_KeyDown(object sender, KeyEventArgs e) { if (e.Key == Key.Enter) SaveTodos(); }
-
-        private void AddSubTaskButton_Click(object sender, RoutedEventArgs e)
-        {
-            if (TodoTreeView.SelectedItem is TodoItem parentTodo)
-            {
-                var subTask = new TodoItem
-                {
-                    Text = "새 하위 작업",
-                    Date = parentTodo.Date
-                };
-                parentTodo.SubTasks.Add(subTask);
-                SaveTodos();
-            }
-            else
-            {
-                MessageBox.Show("하위 항목을 추가할 할 일을 목록에서 선택해주세요.", "알림", MessageBoxButton.OK, MessageBoxImage.Information);
-            }
-        }
-
-        private void AddTagButton_Click(object sender, RoutedEventArgs e)
+        private void EditTodoButton_Click(object sender, RoutedEventArgs e)
         {
             if (TodoTreeView.SelectedItem is TodoItem selectedTodo)
             {
-                var inputWindow = new InputWindow("추가할 태그를 입력하세요:", "#태그") { Owner = Window.GetWindow(this) };
-                if (inputWindow.ShowDialog() == true)
-                {
-                    string newTag = inputWindow.ResponseText;
-                    if (!string.IsNullOrWhiteSpace(newTag) && !selectedTodo.Tags.Contains(newTag))
-                    {
-                        selectedTodo.Tags.Add(newTag);
-                        SaveTodos();
-                    }
-                }
-            }
-            else
-            {
-                MessageBox.Show("태그를 추가할 할 일을 목록에서 선택해주세요.", "알림", MessageBoxButton.OK, MessageBoxImage.Information);
-            }
-        }
-
-        private void EditTodoDateButton_Click(object sender, RoutedEventArgs e)
-        {
-            if (TodoTreeView.SelectedItem is TodoItem selectedTodo)
-            {
-                var dateEditWindow = new DateEditWindow(selectedTodo.Date)
+                var inputWindow = new InputWindow("할 일 수정", selectedTodo.Text)
                 {
                     Owner = Window.GetWindow(this)
                 };
 
-                if (dateEditWindow.ShowDialog() == true)
+                if (inputWindow.ShowDialog() == true)
                 {
-                    selectedTodo.Date = dateEditWindow.SelectedDate;
+                    selectedTodo.Text = inputWindow.ResponseText;
                     SaveTodos();
-                    FilterTodos();
+                    // The TreeView should update automatically thanks to INotifyPropertyChanged on TodoItem.
                 }
             }
             else
             {
-                MessageBox.Show("날짜를 수정할 할 일을 목록에서 선택해주세요.", "알림", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show("수정할 할 일을 목록에서 선택해주세요.", "알림", MessageBoxButton.OK, MessageBoxImage.Information);
             }
         }
 
@@ -442,23 +443,21 @@ namespace WorkPartner
         {
             if (TodoTreeView.SelectedItem is TodoItem selectedTodo)
             {
-                var parent = FindParent(null, TodoItems, selectedTodo);
-                if (parent != null)
+                if (MessageBox.Show($"'{selectedTodo.Text}' 할 일을 삭제하시겠습니까?", "삭제 확인", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
                 {
-                    parent.SubTasks.Remove(selectedTodo);
+                    RemoveTodoItem(TodoItems, selectedTodo);
+                    SaveTodos();
+                    FilterTodos(); // Re-filter to update the view
                 }
-                else
-                {
-                    TodoItems.Remove(selectedTodo);
-                }
-                SaveTodos();
-                FilterTodos();
             }
             else
             {
                 MessageBox.Show("삭제할 할 일을 목록에서 선택해주세요.", "알림", MessageBoxButton.OK, MessageBoxImage.Information);
             }
         }
+
+        private void TodoInput_KeyDown(object sender, KeyEventArgs e) { if (e.Key == Key.Enter) AddTodoButton_Click(sender, e); }
+        private void TodoTextBox_KeyDown(object sender, KeyEventArgs e) { if (e.Key == Key.Enter) SaveTodos(); }
 
         // '아바타 꾸미기' 버튼 클릭 이벤트 핸들러
         private void GoToClosetButton_Click(object sender, RoutedEventArgs e)
@@ -467,14 +466,9 @@ namespace WorkPartner
             _mainWindow?.NavigateToPage("Avatar");
         }
 
-        private void SuggestedTag_Click(object sender, RoutedEventArgs e) { /*if (_lastAddedTodo != null && sender is Button button) { string tagToAdd = button.Content.ToString(); if (!_lastAddedTodo.Tags.Contains(tagToAdd)) { _lastAddedTodo.Tags.Add(tagToAdd); SuggestedTags.Remove(tagToAdd); SaveTodos(); } } */}
         private void AddManualLogButton_Click(object sender, RoutedEventArgs e) { var win = new AddLogWindow(TaskItems) { Owner = Window.GetWindow(this) }; if (win.ShowDialog() == true) { if (win.NewLogEntry != null) TimeLogEntries.Add(win.NewLogEntry); SaveTimeLogs(); RecalculateAllTotals(); RenderTimeTable(); } }
         private void MemoButton_Click(object sender, RoutedEventArgs e) { if (_memoWindow == null || !_memoWindow.IsVisible) { _memoWindow = new MemoWindow { Owner = Window.GetWindow(this) }; _memoWindow.Show(); } else { _memoWindow.Activate(); } }
         private void TimeLogRect_MouseLeftButtonDown(object sender, MouseButtonEventArgs e) { if ((sender as FrameworkElement)?.Tag is TimeLogEntry log) { var win = new AddLogWindow(TaskItems, log) { Owner = Window.GetWindow(this) }; if (win.ShowDialog() == true) { if (win.IsDeleted) TimeLogEntries.Remove(log); else { log.StartTime = win.NewLogEntry.StartTime; log.EndTime = win.NewLogEntry.EndTime; log.TaskText = win.NewLogEntry.TaskText; log.FocusScore = win.NewLogEntry.FocusScore; } SaveTimeLogs(); RecalculateAllTotals(); RenderTimeTable(); } } }
-
-        private void TodoDatePicker_SelectedDateChanged(object sender, SelectionChangedEventArgs e) { FilterTodos(); }
-        private void TodoPrevDayButton_Click(object sender, RoutedEventArgs e) { /*if (TodoDatePicker.SelectedDate.HasValue) { TodoDatePicker.SelectedDate = TodoDatePicker.SelectedDate.Value.AddDays(-1); }*/ }
-        private void TodoNextDayButton_Click(object sender, RoutedEventArgs e) { /*if (TodoDatePicker.SelectedDate.HasValue) { TodoDatePicker.SelectedDate = TodoDatePicker.SelectedDate.Value.AddDays(1); }*/ }
         #endregion
 
         #region 핵심 로직
@@ -635,29 +629,34 @@ namespace WorkPartner
 
         private void UpdateLiveTimeDisplays()
         {
-            TimeSpan timeToDisplay;
-            if (_stopwatch.IsRunning)
+            TimeSpan timeToDisplay = _totalTimeTodayFromLogs;
+
+            // 스톱워치가 실행 중이고 '오늘' 날짜를 보고 있을 때만 현재 측정 시간을 더합니다.
+            bool isViewingToday = _currentDateForTimeline.Date == DateTime.Today;
+
+            if (_stopwatch.IsRunning && isViewingToday)
             {
-                timeToDisplay = _totalTimeTodayFromLogs + _stopwatch.Elapsed;
+                timeToDisplay += _stopwatch.Elapsed;
                 _miniTimer?.SetRunningStyle();
             }
             else
             {
-                timeToDisplay = _totalTimeTodayFromLogs;
                 _miniTimer?.SetStoppedStyle();
             }
-            string timeString = timeToDisplay.ToString(@"hh\:mm\:ss");
-            MainTimeDisplay.Text = timeString;
-            _miniTimer?.UpdateTime(timeString);
+            MainTimeDisplay.Text = timeToDisplay.ToString(@"hh\:mm\:ss");
+            _miniTimer?.UpdateTime(MainTimeDisplay.Text);
 
             if (_currentWorkingTask != null)
             {
                 TimeSpan selectedTaskTime = _selectedTaskTotalTimeFromLogs;
-                if (_stopwatch.IsRunning) selectedTaskTime += _stopwatch.Elapsed;
+                // 선택된 과목 시간 표시에도 동일한 로직을 적용합니다.
+                if (_stopwatch.IsRunning && isViewingToday)
+                {
+                    selectedTaskTime += _stopwatch.Elapsed;
+                }
                 SelectedTaskTotalTimeDisplay.Text = $"선택 과목 총계: {selectedTaskTime:hh\\:mm\\:ss}";
             }
         }
-        private void UpdateTagSuggestions(TodoItem todo) { /* SuggestedTags.Clear(); if (todo == null) return; var suggestions = new List<string>(); if (_currentWorkingTask != null && !string.IsNullOrWhiteSpace(_currentWorkingTask.Text)) { suggestions.Add($"#{_currentWorkingTask.Text}"); } if (_settings != null && _settings.TagRules != null) { foreach (var rule in _settings.TagRules) { if (todo.Text.ToLower().Contains(rule.Key.ToLower())) { suggestions.Add(rule.Value); } } } foreach (var suggestion in suggestions.Distinct().Except(todo.Tags)) { SuggestedTags.Add(suggestion); } */}
 
         private void UpdateSelectedTaskTotalTimeDisplay()
         {
@@ -732,7 +731,6 @@ namespace WorkPartner
             }
         }
 
-        // 캐릭터 정보 패널 업데이트
         private void UpdateCharacterInfoPanel(string status = null)
         {
             if (_settings == null) return;
@@ -751,28 +749,48 @@ namespace WorkPartner
             CharacterPreview.UpdateCharacter();
         }
 
-        private void PrevDayButton_Click(object sender, RoutedEventArgs e) { _currentDateForTimeline = _currentDateForTimeline.AddDays(-1); TimelineDatePicker.SelectedDate = _currentDateForTimeline; }
-        private void TodayButton_Click(object sender, RoutedEventArgs e) { _currentDateForTimeline = DateTime.Today; TimelineDatePicker.SelectedDate = _currentDateForTimeline; }
-        private void NextDayButton_Click(object sender, RoutedEventArgs e) { _currentDateForTimeline = _currentDateForTimeline.AddDays(1); TimelineDatePicker.SelectedDate = _currentDateForTimeline; }
+        private void PrevDayButton_Click(object sender, RoutedEventArgs e) { TimelineDatePicker.SelectedDate = _currentDateForTimeline.AddDays(-1); }
+        private void TodayButton_Click(object sender, RoutedEventArgs e) { TimelineDatePicker.SelectedDate = DateTime.Today; }
+        private void NextDayButton_Click(object sender, RoutedEventArgs e) { TimelineDatePicker.SelectedDate = _currentDateForTimeline.AddDays(1); }
+
         private void TimelineDatePicker_SelectedDateChanged(object sender, SelectionChangedEventArgs e)
         {
-            if (TimelineDatePicker.SelectedDate.HasValue && _currentDateForTimeline != TimelineDatePicker.SelectedDate.Value)
+            if (TimelineDatePicker.SelectedDate.HasValue && _currentDateForTimeline.Date != TimelineDatePicker.SelectedDate.Value.Date)
             {
                 _currentDateForTimeline = TimelineDatePicker.SelectedDate.Value;
                 RenderTimeTable();
                 RecalculateAllTotals();
+                // 날짜가 변경되었으므로, 해당 날짜에 맞는 할 일 목록을 불러옵니다.
+                FilterTodos();
             }
         }
 
-        private TodoItem FindParent(TodoItem currentParent, IEnumerable<TodoItem> items, TodoItem target)
+        private void FilterTodos()
         {
-            if (items.Contains(target)) return currentParent;
-            foreach (var item in items)
+            FilteredTodoItems.Clear();
+            // 전체 할 일 목록(TodoItems)에서 현재 선택된 날짜와 일치하는 항목만 필터링합니다.
+            var filtered = TodoItems.Where(t => t.Date.Date == _currentDateForTimeline.Date);
+            foreach (var item in filtered)
             {
-                var found = FindParent(item, item.SubTasks, target);
-                if (found != null) return found;
+                FilteredTodoItems.Add(item);
             }
-            return null;
+        }
+
+        private bool RemoveTodoItem(ObservableCollection<TodoItem> collection, TodoItem itemToRemove)
+        {
+            if (collection.Remove(itemToRemove))
+            {
+                return true;
+            }
+
+            foreach (var item in collection)
+            {
+                if (item.SubTasks != null && RemoveTodoItem(item.SubTasks, itemToRemove))
+                {
+                    return true;
+                }
+            }
+            return false;
         }
 
         private void FocusModeButton_Click(object sender, RoutedEventArgs e)
@@ -789,20 +807,6 @@ namespace WorkPartner
                 FocusModeButton.Background = new SolidColorBrush(Color.FromRgb(0xEF, 0xEF, 0xEF));
                 FocusModeButton.Foreground = new SolidColorBrush(Color.FromRgb(0x33, 0x33, 0x33));
             }
-        }
-
-        private void FilterTodos()
-        {
-            FilteredTodoItems.Clear();
-            //DateTime? selectedDate = TodoDatePicker.SelectedDate;
-            //if (selectedDate.HasValue)
-            //{
-            //    var filtered = TodoItems.Where(t => t.Date.Date == selectedDate.Value.Date);
-            //    foreach (var item in filtered)
-            //    {
-            //        FilteredTodoItems.Add(item);
-            //    }
-            //}
         }
         #endregion
 
@@ -950,3 +954,4 @@ namespace WorkPartner
         #endregion
     }
 }
+
