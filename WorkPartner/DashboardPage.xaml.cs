@@ -492,7 +492,6 @@ namespace WorkPartner
             string activeUrl = ActiveWindowHelper.GetActiveBrowserTabUrl();
             string activeTitle = string.IsNullOrEmpty(activeUrl) ? ActiveWindowHelper.GetActiveWindowTitle().ToLower() : activeUrl;
 
-            ActiveProcessDisplay.Text = $"활성: {activeTitle}";
             string keywordToCheck = !string.IsNullOrEmpty(activeUrl) ? activeUrl : activeProcess;
 
             if (_settings.DistractionProcesses.Any(p => keywordToCheck.Contains(p)))
