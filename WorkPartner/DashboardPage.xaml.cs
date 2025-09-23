@@ -127,7 +127,7 @@ namespace WorkPartner
             LoadTodos();
             LoadTimeLogs();
             UpdateCharacterInfoPanel();
-            if (!_timer.IsEnabled) _timer.Start();
+            //if (!_timer.IsEnabled) _timer.Start();
 
         }
 
@@ -207,6 +207,10 @@ namespace WorkPartner
             if (e.NewValue is true)
             {
                 LoadAllData();
+            }
+            if (!_timer.IsEnabled)
+            {
+                _timer.Start();
             }
         }
 

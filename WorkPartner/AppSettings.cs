@@ -16,6 +16,7 @@ namespace WorkPartner
         public List<Guid> OwnedItemIds { get; set; }
         public Dictionary<ItemType, string> CustomColors { get; set; }
 
+
         // --- 새로 추가된 개인 설정 ---
         public string Theme { get; set; } = "Light"; // "Light" or "Dark"
         public string AccentColor { get; set; } = "#007ACC"; // 기본 파란색
@@ -43,6 +44,16 @@ namespace WorkPartner
             OwnedItemIds = new List<Guid>();
             CustomColors = new Dictionary<ItemType, string>();
             Coins = 100;
+            Username = "User";
+            WorkProcesses = new System.Collections.ObjectModel.ObservableCollection<string>();
+            DistractionProcesses = new System.Collections.ObjectModel.ObservableCollection<string>();
+            PassiveProcesses = new System.Collections.ObjectModel.ObservableCollection<string>();
+            TaskColors = new Dictionary<string, string>();
+            EquippedItems = new Dictionary<ItemType, Guid>();
+            IsIdleDetectionEnabled = true;
+            IdleTimeoutSeconds = 300;
+            FocusModeNagMessage = "작업에 집중할 시간입니다!";
+            FocusModeNagIntervalSeconds = 60;
 
             // 사용자가 장착한 아이템이 없을 때만 기본 아이템 장착
             if (EquippedItems == null || EquippedItems.Count == 0)

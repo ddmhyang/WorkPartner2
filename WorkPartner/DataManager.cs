@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.IO;
 using System.Text.Json;
 using System.Windows; // MessageBox를 위해 추가
@@ -35,14 +36,25 @@ namespace WorkPartner
             ItemsDbFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "items_db.json");
         }
 
+        // DataManager.cs 파일의 LoadSettings 메서드를 아래 코드로 교체하세요.
+
         public static AppSettings LoadSettings()
         {
-            if (File.Exists(SettingsFilePath))
+            if (!File.Exists(SettingsFilePath))
+            {
+                return new AppSettings(); // 파일이 없으면, 1단계에서 만든 안전한 새 설정을 반환
+            }
+            try
             {
                 var json = File.ReadAllText(SettingsFilePath);
+                // 파일이 비어있거나 손상된 경우를 대비해, 문제가 생기면 안전한 새 설정을 반환
                 return JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
             }
-            return new AppSettings();
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error loading settings, creating new ones: {ex.Message}");
+                return new AppSettings(); // 어떤 오류가 발생해도 안전한 새 설정을 반환
+            }
         }
 
         public static void SaveSettings(AppSettings settings)
