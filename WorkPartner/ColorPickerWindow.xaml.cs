@@ -7,6 +7,7 @@ namespace WorkPartner
     public partial class ColorPickerWindow : Window
     {
         public Color SelectedColor { get; set; }
+        private ItemType colorType;
 
         public ColorPickerWindow()
         {
