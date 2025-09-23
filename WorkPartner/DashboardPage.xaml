@@ -54,7 +54,7 @@
 
         <TextBlock x:Name="CurrentTaskDisplay" Canvas.Left="186" Canvas.Top="74" 
                    Text="현재 과목" TextAlignment="Center" Foreground="#FF005B8B"
-                   FontFamily="Pretendard" FontSize="14" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Top"/>
+                   FontFamily="Pretendard" FontSize="14" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
 
         <TextBlock x:Name="MainTimeDisplay" Canvas.Left="123" Canvas.Top="92" Width="180"
                    Text="00:00:00" TextAlignment="Center" 
@@ -94,15 +94,14 @@
                     </Border>
                 </StackPanel>
 
-                <Border Canvas.Left="23" Canvas.Top="38" Width="239" Height="264" 
-                        BorderBrush="Black" BorderThickness="1" CornerRadius="10">
-                    <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
-                        <Canvas x:Name="SelectionCanvas" Background="Transparent" 
-                                MouseLeftButtonDown="SelectionCanvas_MouseLeftButtonDown"
-                                MouseMove="SelectionCanvas_MouseMove" 
-                                MouseLeftButtonUp="SelectionCanvas_MouseLeftButtonUp">
+                <Border Canvas.Left="0" Canvas.Top="38" Width="262" Height="264">
+                    <ScrollViewer VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled">
+                        <Grid x:Name="SelectionCanvas" Background="Transparent"
+              MouseLeftButtonDown="SelectionCanvas_MouseLeftButtonDown"
+              MouseMove="SelectionCanvas_MouseMove" 
+              MouseLeftButtonUp="SelectionCanvas_MouseLeftButtonUp">
                             <StackPanel x:Name="TimeTableContainer" Orientation="Vertical"/>
-                        </Canvas>
+                        </Grid>
                     </ScrollViewer>
                 </Border>
 
@@ -153,7 +152,7 @@
                         <Border CornerRadius="2" Background="#FFF27821" Margin="0,1,0,0">
                             <StackPanel Orientation="Horizontal" Height="21">
                                 <Image Source="/path/fire.png" Width="15" Height="15" Margin="0,0,5,0" />
-                                <Slider x:Name="campfireSlider" Width="56" Height="6" Value="0" Minimum="0" Maximum="1" Style="{StaticResource RoundSliderStyle}" Background="White" ValueChanged="campfireSlider_ValueChanged_1" />
+                                <Slider x:Name="campfireSlider" Width="56" Height="6" Value="1" Minimum="0" Maximum="1" Style="{StaticResource RoundSliderStyle}" Background="White" ValueChanged="campfireSlider_ValueChanged_1" />
                             </StackPanel>
                         </Border>
                     </StackPanel>
@@ -174,14 +173,36 @@
         </Border>
 
         <Border Canvas.Left="417" Canvas.Top="173" Width="247" Height="145" 
-                BorderBrush="Black" BorderThickness="1" CornerRadius="10">
+                BorderBrush="#E8E8E8" BorderThickness="1" CornerRadius="10" Background="#E8E8E8">
             <DockPanel>
-                <TextBlock DockPanel.Dock="Top" Text="과목 관리"/>
+                <TextBlock DockPanel.Dock="Top" Text="과목" VerticalAlignment="Center" Margin="16,8,0,0"/>
                 <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal">
                     <TextBox x:Name="TaskInput" KeyDown="TaskInput_KeyDown" Width="180"/>
-                    <Button Content="추가" Click="AddTaskButton_Click"/>
+                    <Button Width="11" 
+        Height="11"
+        Background="White"
+        BorderThickness="0"
+        HorizontalAlignment="Center"
+        VerticalAlignment="Center"
+        Foreground="#FFE8E8E8"
+        FontSize="8"
+        Click="Button_Click"
+        Content="+">
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Border CornerRadius="11"
+                    Background="{TemplateBinding Background}"
+                    BorderBrush="Transparent"
+                    BorderThickness="0">
+                                    <ContentPresenter HorizontalAlignment="Center"
+                                  VerticalAlignment="Center"/>
+                                </Border>
+                            </ControlTemplate>
+                        </Button.Template>
+                    </Button>
+
                 </StackPanel>
-                <ListBox x:Name="TaskListBox" ItemsSource="{Binding TaskItems}" />
+                <ListBox x:Name="TaskListBox" ItemsSource="{Binding TaskItems}" Background="Transparent" />
             </DockPanel>
         </Border>
 

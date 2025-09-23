@@ -215,7 +215,7 @@ namespace WorkPartner
         #region UI 이벤트 핸들러
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
-            CurrentDateDisplay.Text = _currentDateForTimeline.ToString("yyyy-MM-dd ddd");
+            CurrentDateDisplay.Text = _currentDateForTimeline.ToString("yyyy-MM-dd");
 
             RecalculateAllTotals();
             RenderTimeTable();
@@ -766,17 +766,37 @@ namespace WorkPartner
 
             var logsForSelectedDate = TimeLogEntries.Where(log => log.StartTime.Date == _currentDateForTimeline.Date).ToList();
 
+            // 각 시간 블록의 고정된 너비와 높이를 정의합니다.
+            double blockWidth = 35;
+            double blockHeight = 17;
+            double hourLabelWidth = 30;
+
             for (int hour = 0; hour < 24; hour++)
             {
                 var hourRowPanel = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 1, 0, 1) };
-                var hourLabel = new TextBlock { Text = $"{hour:00}", Width = 30, VerticalAlignment = VerticalAlignment.Center, TextAlignment = TextAlignment.Center, Foreground = Brushes.Gray };
+                var hourLabel = new TextBlock
+                {
+                    Text = $"{hour:00}",
+                    Width = hourLabelWidth,
+                    Height = blockHeight,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    TextAlignment = TextAlignment.Center,
+                    Foreground = Brushes.Gray,
+                    FontSize = 8
+                };
                 hourRowPanel.Children.Add(hourLabel);
 
                 for (int minuteBlock = 0; minuteBlock < 6; minuteBlock++)
                 {
                     var blockStartTime = new TimeSpan(hour, minuteBlock * 10, 0);
                     var blockEndTime = blockStartTime.Add(TimeSpan.FromMinutes(10));
-                    var blockContainer = new Grid { Width = 80, Height = 20, Background = new SolidColorBrush(Color.FromRgb(0xF5, 0xF5, 0xF5)), Margin = new Thickness(1, 0, 1, 0) };
+                    var blockContainer = new Grid
+                    {
+                        Width = blockWidth,
+                        Height = blockHeight,
+                        Background = new SolidColorBrush(Color.FromRgb(0xF5, 0xF5, 0xF5)),
+                        Margin = new Thickness(1, 0, 1, 0)
+                    };
                     var overlappingLogs = logsForSelectedDate.Where(log => log.StartTime.TimeOfDay < blockEndTime && log.EndTime.TimeOfDay > blockStartTime).ToList();
                     foreach (var logEntry in overlappingLogs)
                     {
@@ -831,7 +851,7 @@ namespace WorkPartner
         // [수정] 날짜 변수를 직접 변경하고 UI를 업데이트하는 새 메서드
         private void UpdateDateAndUI()
         {
-            CurrentDateDisplay.Text = _currentDateForTimeline.ToString("yyyy-MM-dd ddd");
+            CurrentDateDisplay.Text = _currentDateForTimeline.ToString("yyyy-MM-dd");
             RenderTimeTable();
             RecalculateAllTotals();
             FilterTodos();
@@ -1152,6 +1172,11 @@ namespace WorkPartner
         #endregion
 
         private void campfireSlider_ValueChanged_1(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+
+        }
+
+        private void Button_Click(object sender, RoutedEventArgs e)
         {
 
         }
