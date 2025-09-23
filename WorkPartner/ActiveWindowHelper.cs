@@ -102,5 +102,26 @@ namespace WorkPartner
             catch { /* 접근성 오류는 무시합니다. */ }
             return null;
         }
+
+        private void ListenForBrowserMessages()
+        {
+            while (true)
+            {
+                // 표준 입력(stdin)에서 메시지를 읽습니다.
+                // 브라우저는 메시지를 4바이트 길이 정보와 함께 보냅니다.
+                var stdin = Console.OpenStandardInput();
+                var lengthBytes = new byte[4];
+                stdin.Read(lengthBytes, 0, 4);
+                var length = BitConverter.ToInt32(lengthBytes, 0);
+
+                var buffer = new byte[length];
+                stdin.Read(buffer, 0, length);
+
+                string message = Encoding.UTF8.GetString(buffer);
+                // JSON 메시지 파싱 및 처리
+                // 예: JObject.Parse(message)["url"].ToString();
+                // UI 스레드에서 ActiveWindowHelper.GetActiveBrowserTabUrl() 대신 이 값을 사용하도록 업데이트합니다.
+            }
+        }
     }
 }

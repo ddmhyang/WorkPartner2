@@ -8,6 +8,9 @@ namespace WorkPartner
     {
         private void Application_Startup(object sender, StartupEventArgs e)
         {
+            // 데이터베이스가 존재하지 않으면 생성합니다.
+            DataManager.EnsureDatabaseCreated();
+
             // 프로그램 시작 시 저장된 설정을 불러와 테마를 적용합니다.
             var settings = DataManager.LoadSettings();
             ApplyTheme(settings);

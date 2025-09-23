@@ -142,21 +142,30 @@ namespace WorkPartner
             foreach (var p in Settings.DistractionProcesses) { DistractionProcessViewModels.Add(await ProcessViewModel.Create(p)); }
         }
 
+        private (ObservableCollection<string> list, ObservableCollection<ProcessViewModel> vmList, TextBox textBox) GetProcessCollections(string type)
+        {
+            switch (type)
+            {
+                case "Work":
+                    return (Settings.WorkProcesses, WorkProcessViewModels, WorkProcessInput);
+                case "Passive":
+                    return (Settings.PassiveProcesses, PassiveProcessViewModels, PassiveProcessInput);
+                case "Distraction":
+                    return (Settings.DistractionProcesses, DistractionProcessViewModels, DistractionProcessInput);
+                default:
+                    return (null, null, null);
+            }
+        }
+
+        // Refactored event handlers
         private async void AddProcess_Click(object sender, RoutedEventArgs e)
         {
             if (sender is Button button && button.Tag is string type)
             {
-                TextBox inputTextBox = null;
-                ObservableCollection<string> targetList = null;
-                ObservableCollection<ProcessViewModel> targetViewModelList = null;
-
-                if (type == "Work") { inputTextBox = WorkProcessInput; targetList = Settings.WorkProcesses; targetViewModelList = WorkProcessViewModels; }
-                else if (type == "Passive") { inputTextBox = PassiveProcessInput; targetList = Settings.PassiveProcesses; targetViewModelList = PassiveProcessViewModels; }
-                else if (type == "Distraction") { inputTextBox = DistractionProcessInput; targetList = Settings.DistractionProcesses; targetViewModelList = DistractionProcessViewModels; }
-
-                if (inputTextBox != null && targetList != null)
+                var (list, _, inputBox) = GetProcessCollections(type);
+                if (list != null && inputBox != null)
                 {
-                    string process = inputTextBox.Text.Trim().ToLower();
+                    string process = inputBox.Text.Trim().ToLower();
                     if (!string.IsNullOrEmpty(process))
                     {
                         await AddProcessInternalAsync(type, process);
@@ -192,58 +201,43 @@ namespace WorkPartner
         {
             if (sender is Button button && button.Tag is string type)
             {
-                ObservableCollection<string> targetList = null;
-                ObservableCollection<ProcessViewModel> targetViewModelList = null;
-                TextBox inputTextBox = null;
+                var (list, vmList, inputBox) = GetProcessCollections(type);
+                if (list == null || vmList == null) return;
 
-                if (type == "Work")
+                string processToDelete = inputBox.Text.Trim().ToLower();
+                ProcessViewModel itemToRemove = null;
+
+                if (!string.IsNullOrEmpty(processToDelete))
                 {
-                    targetList = Settings.WorkProcesses;
-                    targetViewModelList = WorkProcessViewModels;
-                    inputTextBox = WorkProcessInput;
+                    // 입력된 텍스트와 일치하는 항목 찾기
+                    itemToRemove = vmList.FirstOrDefault(vm => vm.DisplayName.ToLower() == processToDelete);
+                    if (itemToRemove == null)
+                    {
+                        MessageBox.Show($"'{processToDelete}'는 목록에 존재하지 않습니다.", "알림");
+                        return;
+                    }
                 }
-                else if (type == "Passive")
+                else
                 {
-                    targetList = Settings.PassiveProcesses;
-                    targetViewModelList = PassiveProcessViewModels;
-                    inputTextBox = PassiveProcessInput;
-                }
-                else if (type == "Distraction")
-                {
-                    targetList = Settings.DistractionProcesses;
-                    targetViewModelList = DistractionProcessViewModels;
-                    inputTextBox = DistractionProcessInput;
+                    // 입력이 없으면 선택된 항목을 대상으로 함
+                    var listBox = FindName(type + "ProcessListBox") as ListBox;
+                    if (listBox?.SelectedItem is ProcessViewModel selectedVm)
+                    {
+                        itemToRemove = selectedVm;
+                    }
+                    else if (vmList.Any())
+                    {
+                        // 선택된 항목도 없으면 마지막 항목 삭제 (기존 로직 유지)
+                        itemToRemove = vmList.LastOrDefault();
+                    }
                 }
 
-                if (inputTextBox != null)
+                if (itemToRemove != null)
                 {
-                    string process = inputTextBox.Text.Trim().ToLower();
-                    if (!string.IsNullOrEmpty(process))
-                    {
-                        var itemToRemove = targetViewModelList?.FirstOrDefault(vm => vm.DisplayName.ToLower() == process);
-                        if (itemToRemove != null)
-                        {
-                            targetList.Remove(itemToRemove.DisplayName);
-                            targetViewModelList.Remove(itemToRemove);
-                            inputTextBox.Clear();
-                            SaveSettings();
-                        }
-                        else
-                        {
-                            MessageBox.Show($"'{process}'는 목록에 존재하지 않습니다.", "알림");
-                        }
-                    }
-                    else if (targetViewModelList != null && targetViewModelList.Any())
-                    {
-                        // 텍스트 박스가 비어있을 경우, 리스트 박스에서 마지막 항목을 삭제
-                        var lastItem = targetViewModelList.LastOrDefault();
-                        if (lastItem != null)
-                        {
-                            targetList.Remove(lastItem.DisplayName);
-                            targetViewModelList.Remove(lastItem);
-                            SaveSettings();
-                        }
-                    }
+                    list.Remove(itemToRemove.DisplayName);
+                    vmList.Remove(itemToRemove);
+                    if (inputBox != null) inputBox.Clear();
+                    SaveSettings();
                 }
             }
         }
