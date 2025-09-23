@@ -63,6 +63,11 @@ namespace WorkPartner
 
         private readonly string _memosFilePath = DataManager.MemosFilePath;
         public ObservableCollection<MemoItem> AllMemos { get; set; }
+
+        private BackgroundSoundPlayer _waveSoundPlayer;
+        private BackgroundSoundPlayer _forestSoundPlayer;
+        private BackgroundSoundPlayer _rainSoundPlayer;
+        private BackgroundSoundPlayer _campfireSoundPlayer;
         #endregion
 
         public DashboardPage()
@@ -80,6 +85,24 @@ namespace WorkPartner
             DataManager.SettingsUpdated += OnSettingsUpdated;
 
             InitializeSoundPlayers();
+
+            // 백색소음 플레이어 초기화 및 재생
+            _waveSoundPlayer = new BackgroundSoundPlayer("Sounds/wave.mp3");
+            _forestSoundPlayer = new BackgroundSoundPlayer("Sounds/forest.mp3");
+            _rainSoundPlayer = new BackgroundSoundPlayer("Sounds/rain.mp3");
+            _campfireSoundPlayer = new BackgroundSoundPlayer("Sounds/campfire.mp3");
+
+            _waveSoundPlayer.Volume = 0;
+            _forestSoundPlayer.Volume = 0;
+            _rainSoundPlayer.Volume = 0;
+            _campfireSoundPlayer.Volume = 0;
+
+            // 슬라이더 변경 이벤트 핸들러 연결
+            waveSlider.ValueChanged += WaveSlider_ValueChanged;
+            forestSlider.ValueChanged += ForestSlider_ValueChanged;
+            rainSlider.ValueChanged += RainSlider_ValueChanged;
+            campfireSlider.ValueChanged += CampfireSlider_ValueChanged;
+
 
             _selectionBox = new Rectangle
             {
@@ -1094,7 +1117,44 @@ namespace WorkPartner
             memoWindow.ShowDialog();
         }
 
+        private void WaveSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (_waveSoundPlayer != null)
+            {
+                _waveSoundPlayer.Volume = e.NewValue;
+            }
+        }
+
+        private void ForestSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (_forestSoundPlayer != null)
+            {
+                _forestSoundPlayer.Volume = e.NewValue;
+            }
+        }
+
+        private void RainSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (_rainSoundPlayer != null)
+            {
+                _rainSoundPlayer.Volume = e.NewValue;
+            }
+        }
+
+        private void CampfireSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (_campfireSoundPlayer != null)
+            {
+                _campfireSoundPlayer.Volume = e.NewValue;
+            }
+        }
+
         #endregion
+
+        private void campfireSlider_ValueChanged_1(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+
+        }
     }
 }
 

@@ -8,6 +8,37 @@
              d:DesignHeight="526" d:DesignWidth="682"
              Loaded="Window_Loaded" IsVisibleChanged="DashboardPage_IsVisibleChanged"
              FontFamily="Pretendard">
+    <UserControl.Resources>
+        <Style x:Key="RoundSliderStyle" TargetType="Slider">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Slider">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                            <Border Grid.Row="1" CornerRadius="1" Background="#C4C4C4" Height="2" />
+
+                            <Track Name="PART_Track" Grid.Row="1">
+                                <Track.Thumb>
+                                    <Thumb Width="6" Height="6">
+                                        <Thumb.Template>
+                                            <ControlTemplate TargetType="Thumb">
+                                                <Ellipse Width="6" Height="6" Fill="White" />
+                                            </ControlTemplate>
+                                        </Thumb.Template>
+                                    </Thumb>
+                                </Track.Thumb>
+                            </Track>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
 
     <Canvas x:Name="dashboard" Width="682" Height="526" Background="#FFFFFF">
 
@@ -96,8 +127,36 @@
                     </Grid>
                 </Border>
 
-                <Border Canvas.Left="272" Canvas.Top="215" Width="95" Height="87" 
-                        BorderBrush="Black" BorderThickness="1" CornerRadius="10">
+                <Border Canvas.Left="272" Canvas.Top="215" Width="95" Height="90">
+                    <StackPanel>
+                        <Border CornerRadius="2" Background="#FF345080">
+                            <StackPanel Orientation="Horizontal" Height="21">
+                                <Image Source="/path/wave.png" Width="15" Height="15" Margin="0,0,5,0" />
+                                <Slider x:Name="waveSlider" Width="56" Height="6" Value="0" Minimum="0" Maximum="1" Style="{StaticResource RoundSliderStyle}" Background="White" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border CornerRadius="2" Background="#FF5DB15D" Margin="0,1,0,0">
+                            <StackPanel Orientation="Horizontal" Height="21">
+                                <Image Source="/path/forest.png" Width="15" Height="15" Margin="0,0,5,0" />
+                                <Slider x:Name="forestSlider" Width="56" Height="6" Value="0" Minimum="0" Maximum="1" Style="{StaticResource RoundSliderStyle}" Background="White" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border CornerRadius="2" Background="#FFD9D9D9" Margin="0,1,0,0">
+                            <StackPanel Orientation="Horizontal" Height="21">
+                                <Image Source="/path/rain.png" Width="15" Height="15" Margin="0,0,5,0" />
+                                <Slider x:Name="rainSlider" Width="56" Height="6" Value="0" Minimum="0" Maximum="1" Style="{StaticResource RoundSliderStyle}" Background="White" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border CornerRadius="2" Background="#FFF27821" Margin="0,1,0,0">
+                            <StackPanel Orientation="Horizontal" Height="21">
+                                <Image Source="/path/fire.png" Width="15" Height="15" Margin="0,0,5,0" />
+                                <Slider x:Name="campfireSlider" Width="56" Height="6" Value="0" Minimum="0" Maximum="1" Style="{StaticResource RoundSliderStyle}" Background="White" ValueChanged="campfireSlider_ValueChanged_1" />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
                 </Border>
             </Canvas>
         </Border>
@@ -155,4 +214,5 @@
         <TextBlock x:Name="AiSuggestionTextBlock" Text="" Canvas.Left="10" Canvas.Top="500" Visibility="Collapsed"/>
 
     </Canvas>
+    
 </UserControl>
