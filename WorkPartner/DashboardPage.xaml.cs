@@ -477,6 +477,12 @@ namespace WorkPartner
 
         private void Timer_Tick(object sender, EventArgs e)
         {
+            // 페이지가 현재 보이지 않으면 아무것도 하지 않고 돌아갑니다.
+            if (!this.IsVisible)
+            {
+                return;
+            }
+
             if (_stopwatch.IsRunning && _lastUnratedSession != null)
             {
                 SessionReviewPanel.Visibility = Visibility.Collapsed;
@@ -492,7 +498,6 @@ namespace WorkPartner
             string activeUrl = ActiveWindowHelper.GetActiveBrowserTabUrl();
             string activeTitle = string.IsNullOrEmpty(activeUrl) ? ActiveWindowHelper.GetActiveWindowTitle().ToLower() : activeUrl;
 
-            ActiveProcessDisplay.Text = $"활성: {activeTitle}";
             string keywordToCheck = !string.IsNullOrEmpty(activeUrl) ? activeUrl : activeProcess;
 
             if (_settings.DistractionProcesses.Any(p => keywordToCheck.Contains(p)))
@@ -963,6 +968,9 @@ namespace WorkPartner
         {
             if (_parentWindow != null && sender is Button button && button.Tag is string pageName)
             {
+                // 페이지 이동 전에 타이머를 정지시킵니다.
+                _timer.Stop();
+
                 // 4. 저장된 _parentWindow의 페이지 이동 함수 호출
                 await _parentWindow.NavigateToPage(pageName);
             }
