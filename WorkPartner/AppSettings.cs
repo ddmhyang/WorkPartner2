@@ -30,13 +30,15 @@ namespace WorkPartner
         public bool IsIdleDetectionEnabled { get; set; } = true;
         public int IdleTimeoutSeconds { get; set; } = 300;
         public bool IsMiniTimerEnabled { get; set; } = false;
-        public ObservableCollection<string> WorkProcesses { get; set; } = new ObservableCollection<string>();
-        public ObservableCollection<string> PassiveProcesses { get; set; } = new ObservableCollection<string>();
-        public ObservableCollection<string> DistractionProcesses { get; set; } = new ObservableCollection<string>();
         public string FocusModeNagMessage { get; set; } = "집중 모드 중입니다!";
         public int FocusModeNagIntervalSeconds { get; set; } = 60;
         public Dictionary<string, string> TagRules { get; set; } = new Dictionary<string, string>();
+        public ObservableCollection<string> WorkProcesses { get; set; } = new ObservableCollection<string>();
+        public ObservableCollection<string> DistractionProcesses { get; set; } = new ObservableCollection<string>();
+        public ObservableCollection<string> PassiveProcesses { get; set; } = new ObservableCollection<string>();
+
         public Dictionary<string, string> TaskColors { get; set; } = new Dictionary<string, string>();
+
 
         public AppSettings()
         {
@@ -45,10 +47,6 @@ namespace WorkPartner
             CustomColors = new Dictionary<ItemType, string>();
             Coins = 100;
             Username = "User";
-            WorkProcesses = new System.Collections.ObjectModel.ObservableCollection<string>();
-            DistractionProcesses = new System.Collections.ObjectModel.ObservableCollection<string>();
-            PassiveProcesses = new System.Collections.ObjectModel.ObservableCollection<string>();
-            TaskColors = new Dictionary<string, string>();
             EquippedItems = new Dictionary<ItemType, Guid>();
             IsIdleDetectionEnabled = true;
             IdleTimeoutSeconds = 300;

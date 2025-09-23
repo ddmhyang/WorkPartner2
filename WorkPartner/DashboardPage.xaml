@@ -21,9 +21,9 @@
             <Image Source="/images/bar_chart.png" />
         </Button>
 
-        <TextBlock x:Name="CurrentTaskDisplay" Canvas.Left="175" Canvas.Top="76" 
+        <TextBlock x:Name="CurrentTaskDisplay" Canvas.Left="186" Canvas.Top="74" 
                    Text="현재 과목" TextAlignment="Center" Foreground="#FF005B8B"
-                   FontFamily="Pretendard" FontSize="14" FontWeight="SemiBold"/>
+                   FontFamily="Pretendard" FontSize="14" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Top"/>
 
         <TextBlock x:Name="MainTimeDisplay" Canvas.Left="123" Canvas.Top="92" Width="180"
                    Text="00:00:00" TextAlignment="Center" 
@@ -42,13 +42,25 @@
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
-                    <Button Grid.Column="0" Content="&lt;" Click="PrevDayButton_Click" VerticalAlignment="Center" Background="Transparent" BorderBrush="Transparent"/>
-                    <TextBlock x:Name="CurrentDateDisplay" Grid.Column="1" Text="2025-08-12" VerticalAlignment="Center" FontSize="8" FontFamily= "Pretendard" HorizontalAlignment="Center" Padding= "21, 3, 21, 3" Background="#F0F0F0" FontWeight="SemiBold"/>
+                    <Button Grid.Column="0" Content="&lt;" Click="PrevDayButton_Click" VerticalAlignment="Center" Background="Transparent" BorderBrush="Transparent" Margin="-9,0,10,0"/>
+                    <TextBlock x:Name="CurrentDateDisplay" Text="2025-08-12" VerticalAlignment="Center" FontSize="8" FontFamily= "Pretendard" HorizontalAlignment="Left" Padding= "21, 3, 21, 3" Background="#F0F0F0" FontWeight="SemiBold" Grid.ColumnSpan="2" Margin="5,0,0,0"/>
+                    <TextBlock x:Name="CurrentDayDisplay" Text="수" Canvas.Left="220" Canvas.Top="276" FontSize="8" FontWeight="Bold" Grid.Column="1" Margin="85,6,2,4" Width="8" Height="10"/>
                     <Button Grid.Column="2" Content="&gt;" Click="NextDayButton_Click" VerticalAlignment="Center" Background="Transparent" BorderBrush="Transparent"/>
                 </Grid>
 
-                <StackPanel Orientation="Horizontal" Canvas.Left="270" Canvas.Top="12">
-                    <Button Content="+ 기록 직접 추가" Click="AddManualLogButton_Click" Height="20"/>
+                <StackPanel Orientation="Horizontal" Canvas.Left="296" Canvas.Top="12">
+                    <Border CornerRadius="7.5" BorderBrush="#FF2195F2" BorderThickness="0" Background="#FF2195F2">
+                        <Button Content="+ 기록 직접 추가" Click="AddManualLogButton_Click" Height="17" Background="#00000000" Width="69" FontSize="8" BorderBrush="#00000000" Foreground="White" BorderThickness="1" RenderTransformOrigin="0.5,0.5">
+                            <Button.RenderTransform>
+                                <TransformGroup>
+                                    <ScaleTransform/>
+                                    <SkewTransform/>
+                                    <RotateTransform/>
+                                    <TranslateTransform X="0"/>
+                                </TransformGroup>
+                            </Button.RenderTransform>
+                        </Button>
+                    </Border>
                 </StackPanel>
 
                 <Border Canvas.Left="23" Canvas.Top="38" Width="239" Height="264" 
@@ -64,8 +76,24 @@
                 </Border>
 
                 <Border Canvas.Left="272" Canvas.Top="38" Width="95" Height="171" 
-                        BorderBrush="Black" BorderThickness="1" CornerRadius="10">
-                    <Button Content="메모장" Click="MemoButton_Click" Style="{StaticResource ActionButtonStyle}"/>
+        BorderBrush="#E0E0E0" BorderThickness="1" Background="#f0f0f0" CornerRadius="5"
+        Cursor="Hand" MouseLeftButtonDown="PinnedMemo_MouseLeftButtonDown"
+        ToolTip="클릭해서 메모장 열기">
+                    <Grid Margin="10">
+                        <StackPanel x:Name="PinnedMemoView">
+                            <TextBlock x:Name="PinnedMemoContent" 
+                       TextTrimming="CharacterEllipsis" 
+                       TextWrapping="Wrap"
+                       MaxHeight="150"
+                       Foreground="#000000" FontSize="10"/>
+                        </StackPanel>
+                        <TextBlock x:Name="NoPinnedMemoText" 
+                   Text="작성된 &#x0a;메모가 &#x0a;없습니다."
+                   TextAlignment="Center"
+                   VerticalAlignment="Center"
+                   Foreground="#939393"
+                   Visibility="Collapsed" FontSize="10"/>
+                    </Grid>
                 </Border>
 
                 <Border Canvas.Left="272" Canvas.Top="215" Width="95" Height="87" 

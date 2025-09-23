@@ -56,9 +56,13 @@ namespace WorkPartner
         private Point _dragStartPoint;
         private Rectangle _selectionBox;
         private bool _isDragging = false;
+
         // 1. MainWindow를 저장할 변수 선언
         private MainWindow _parentWindow;
+        // DashboardPage.xaml.cs -> #region 변수 선언
 
+        private readonly string _memosFilePath = DataManager.MemosFilePath;
+        public ObservableCollection<MemoItem> AllMemos { get; set; }
         #endregion
 
         public DashboardPage()
@@ -104,6 +108,7 @@ namespace WorkPartner
             TimeLogEntries = new ObservableCollection<TimeLogEntry>();
             // SuggestedTagsItemsControl is not in the new XAML
             // SuggestedTagsItemsControl.ItemsSource = SuggestedTags;
+            AllMemos = new ObservableCollection<MemoItem>();
         }
 
         private SolidColorBrush GetColorForTask(string taskName)
@@ -120,16 +125,7 @@ namespace WorkPartner
         }
 
         #region 데이터 저장 / 불러오기
-        public void LoadAllData()
-        {
-            LoadSettings();
-            LoadTasks();
-            LoadTodos();
-            LoadTimeLogs();
-            UpdateCharacterInfoPanel();
-            //if (!_timer.IsEnabled) _timer.Start();
 
-        }
 
         public void LoadSettings() { _settings = DataManager.LoadSettings(); }
         private void OnSettingsUpdated() { _settings = DataManager.LoadSettings(); }
@@ -518,16 +514,34 @@ namespace WorkPartner
         {
             if (_settings == null)
             {
-                return; // 설정이 아직 로드되지 않았으면, 아무것도 하지 않고 즉시 종료!
+                return;
             }
 
             string activeProcess = ActiveWindowHelper.GetActiveProcessName();
             string activeUrl = ActiveWindowHelper.GetActiveBrowserTabUrl();
-            string activeTitle = string.IsNullOrEmpty(activeUrl) ? ActiveWindowHelper.GetActiveWindowTitle().ToLower() : activeUrl;
+
+            string windowTitle = ActiveWindowHelper.GetActiveWindowTitle();
+            string activeTitle = string.IsNullOrEmpty(activeUrl) ? (windowTitle ?? "").ToLower() : activeUrl;
 
             string keywordToCheck = !string.IsNullOrEmpty(activeUrl) ? activeUrl : activeProcess;
 
-            if (_settings.DistractionProcesses.Any(p => keywordToCheck.Contains(p)))
+            if (keywordToCheck == null)
+            {
+                if (_stopwatch.IsRunning || _isPausedForIdle)
+                {
+                    LogWorkSession(_isPausedForIdle ? _sessionStartTime.Add(_stopwatch.Elapsed) : (DateTime?)null);
+                    _stopwatch.Reset();
+                }
+                _isPausedForIdle = false;
+                UpdateCharacterInfoPanel("휴식 중");
+                UpdateLiveTimeDisplays();
+                return;
+            }
+
+            bool isDistraction = _settings.DistractionProcesses != null &&
+                                 _settings.DistractionProcesses.Any(p => p != null && keywordToCheck.Contains(p));
+
+            if (isDistraction)
             {
                 if (_stopwatch.IsRunning || _isPausedForIdle)
                 {
@@ -545,8 +559,10 @@ namespace WorkPartner
                 return;
             }
 
-            bool isTrackable = _settings.WorkProcesses.Any(p => keywordToCheck.Contains(p));
-            bool isPassive = _settings.PassiveProcesses.Any(p => keywordToCheck.Contains(p));
+            bool isTrackable = _settings.WorkProcesses != null &&
+                               _settings.WorkProcesses.Any(p => p != null && keywordToCheck.Contains(p));
+            bool isPassive = _settings.PassiveProcesses != null &&
+                             _settings.PassiveProcesses.Any(p => p != null && keywordToCheck.Contains(p));
 
             if (isTrackable || isPassive)
             {
@@ -577,17 +593,24 @@ namespace WorkPartner
                         _isPausedForIdle = false;
                         _stopwatch.Start();
                     }
+                    // ▼▼▼ 여기가 수정된 핵심 로직입니다! ▼▼▼
                     else if (!_stopwatch.IsRunning)
                     {
+                        // 1. 현재 선택된 과목이 없는 경우, 목록의 첫 번째 과목을 선택합니다.
                         if (_currentWorkingTask == null && TaskItems.Any())
                         {
-                            TaskListBox.SelectedIndex = 0;
+                            // TaskListBox의 아이템을 직접 설정하고, _currentWorkingTask 변수에도 즉시 할당합니다.
+                            TaskListBox.SelectedItem = TaskItems.FirstOrDefault();
+                            _currentWorkingTask = TaskListBox.SelectedItem as TaskItem;
                         }
+
+                        // 2. 이제 _currentWorkingTask가 확실히 설정되었으므로, 스톱워치를 시작합니다.
                         if (_currentWorkingTask != null)
                         {
                             _sessionStartTime = DateTime.Now;
                             _stopwatch.Start();
                         }
+                        // 만약 과목 목록이 비어있다면, _currentWorkingTask는 여전히 null이고 스톱워치는 시작되지 않습니다.
                     }
                 }
 
@@ -1015,6 +1038,61 @@ namespace WorkPartner
             }
         }
 
+        // DashboardPage.xaml.cs (메서드 추가)
+
+        private void LoadMemos()
+        {
+            if (!File.Exists(_memosFilePath)) return;
+            var json = File.ReadAllText(_memosFilePath);
+            var loadedMemos = JsonSerializer.Deserialize<ObservableCollection<MemoItem>>(json) ?? new ObservableCollection<MemoItem>();
+            AllMemos.Clear();
+            foreach (var memo in loadedMemos)
+            {
+                AllMemos.Add(memo);
+            }
+            UpdatePinnedMemoView();
+        }
+
+        private void UpdatePinnedMemoView()
+        {
+            var pinnedMemo = AllMemos.FirstOrDefault(m => m.IsPinned);
+
+            if (pinnedMemo != null && !string.IsNullOrWhiteSpace(pinnedMemo.Content))
+            {
+                PinnedMemoView.Visibility = Visibility.Visible;
+                NoPinnedMemoText.Visibility = Visibility.Collapsed;
+                PinnedMemoContent.Text = pinnedMemo.Content;
+            }
+            else
+            {
+                PinnedMemoView.Visibility = Visibility.Collapsed;
+                NoPinnedMemoText.Visibility = Visibility.Visible;
+            }
+        }
+
+        // DashboardPage.xaml.cs -> LoadAllData()
+
+        public void LoadAllData()
+        {
+            LoadSettings();
+            LoadTasks();
+            LoadTodos();
+            LoadTimeLogs();
+            LoadMemos(); // ▼▼▼ 추가 ▼▼▼
+            UpdateCharacterInfoPanel();
+        }
+
+
+        // DashboardPage.xaml.cs (메서드 추가)
+        // DashboardPage.xaml.cs
+        // NewMemoButton_Click, MemoPreviewItem_MouseDoubleClick 두 메서드를 지우고 아래 코드를 추가하세요.
+
+        private void PinnedMemo_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            var memoWindow = new MemoWindow { Owner = Window.GetWindow(this) };
+            memoWindow.Closed += (s, args) => LoadMemos(); // 창이 닫히면 고정 메모 새로고침
+            memoWindow.ShowDialog();
+        }
 
         #endregion
     }
