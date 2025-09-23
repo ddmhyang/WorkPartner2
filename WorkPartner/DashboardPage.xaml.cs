@@ -128,6 +128,7 @@ namespace WorkPartner
             LoadTimeLogs();
             UpdateCharacterInfoPanel();
             if (!_timer.IsEnabled) _timer.Start();
+
         }
 
         public void LoadSettings() { _settings = DataManager.LoadSettings(); }
@@ -190,10 +191,13 @@ namespace WorkPartner
         }
         #endregion
 
+
+
         #region UI 이벤트 핸들러
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
-            TimelineDatePicker.SelectedDate = _currentDateForTimeline;
+            CurrentDateDisplay.Text = _currentDateForTimeline.ToString("yyyy-MM-dd ddd");
+
             RecalculateAllTotals();
             RenderTimeTable();
         }
@@ -467,7 +471,21 @@ namespace WorkPartner
             _mainWindow?.NavigateToPage("Avatar");
         }
 
-        private void AddManualLogButton_Click(object sender, RoutedEventArgs e) { var win = new AddLogWindow(TaskItems) { Owner = Window.GetWindow(this) }; if (win.ShowDialog() == true) { if (win.NewLogEntry != null) TimeLogEntries.Add(win.NewLogEntry); SaveTimeLogs(); RecalculateAllTotals(); RenderTimeTable(); } }
+        private void AddManualLogButton_Click(object sender, RoutedEventArgs e)
+        {
+            var win = new AddLogWindow(TaskItems) { Owner = Window.GetWindow(this) };
+            if (win.ShowDialog() == true)
+            {
+                if (win.NewLogEntry != null)
+                {
+                    TimeLogEntries.Add(win.NewLogEntry);
+                }
+                SaveTimeLogs();
+                RecalculateAllTotals();
+                RenderTimeTable();
+            }
+        }
+
         private void MemoButton_Click(object sender, RoutedEventArgs e) { if (_memoWindow == null || !_memoWindow.IsVisible) { _memoWindow = new MemoWindow { Owner = Window.GetWindow(this) }; _memoWindow.Show(); } else { _memoWindow.Activate(); } }
         private void TimeLogRect_MouseLeftButtonDown(object sender, MouseButtonEventArgs e) { if ((sender as FrameworkElement)?.Tag is TimeLogEntry log) { var win = new AddLogWindow(TaskItems, log) { Owner = Window.GetWindow(this) }; if (win.ShowDialog() == true) { if (win.IsDeleted) TimeLogEntries.Remove(log); else { log.StartTime = win.NewLogEntry.StartTime; log.EndTime = win.NewLogEntry.EndTime; log.TaskText = win.NewLogEntry.TaskText; log.FocusScore = win.NewLogEntry.FocusScore; } SaveTimeLogs(); RecalculateAllTotals(); RenderTimeTable(); } } }
         #endregion
@@ -494,6 +512,11 @@ namespace WorkPartner
 
         private void HandleStopwatchMode()
         {
+            if (_settings == null)
+            {
+                return; // 설정이 아직 로드되지 않았으면, 아무것도 하지 않고 즉시 종료!
+            }
+
             string activeProcess = ActiveWindowHelper.GetActiveProcessName();
             string activeUrl = ActiveWindowHelper.GetActiveBrowserTabUrl();
             string activeTitle = string.IsNullOrEmpty(activeUrl) ? ActiveWindowHelper.GetActiveWindowTitle().ToLower() : activeUrl;
@@ -755,21 +778,33 @@ namespace WorkPartner
             CharacterPreview.UpdateCharacter();
         }
 
-        private void PrevDayButton_Click(object sender, RoutedEventArgs e) { TimelineDatePicker.SelectedDate = _currentDateForTimeline.AddDays(-1); }
-        private void TodayButton_Click(object sender, RoutedEventArgs e) { TimelineDatePicker.SelectedDate = DateTime.Today; }
-        private void NextDayButton_Click(object sender, RoutedEventArgs e) { TimelineDatePicker.SelectedDate = _currentDateForTimeline.AddDays(1); }
-
-        private void TimelineDatePicker_SelectedDateChanged(object sender, SelectionChangedEventArgs e)
+        // [수정] 날짜 변수를 직접 변경하고 UI를 업데이트하는 새 메서드
+        private void UpdateDateAndUI()
         {
-            if (TimelineDatePicker.SelectedDate.HasValue && _currentDateForTimeline.Date != TimelineDatePicker.SelectedDate.Value.Date)
-            {
-                _currentDateForTimeline = TimelineDatePicker.SelectedDate.Value;
-                RenderTimeTable();
-                RecalculateAllTotals();
-                // 날짜가 변경되었으므로, 해당 날짜에 맞는 할 일 목록을 불러옵니다.
-                FilterTodos();
-            }
+            CurrentDateDisplay.Text = _currentDateForTimeline.ToString("yyyy-MM-dd ddd");
+            RenderTimeTable();
+            RecalculateAllTotals();
+            FilterTodos();
         }
+
+        private void PrevDayButton_Click(object sender, RoutedEventArgs e)
+        {
+            _currentDateForTimeline = _currentDateForTimeline.AddDays(-1);
+            UpdateDateAndUI();
+        }
+
+        private void TodayButton_Click(object sender, RoutedEventArgs e)
+        {
+            _currentDateForTimeline = DateTime.Today;
+            UpdateDateAndUI();
+        }
+
+        private void NextDayButton_Click(object sender, RoutedEventArgs e)
+        {
+            _currentDateForTimeline = _currentDateForTimeline.AddDays(1);
+            UpdateDateAndUI();
+        }
+
 
         private void FilterTodos()
         {
