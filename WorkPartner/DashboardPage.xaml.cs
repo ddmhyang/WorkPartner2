@@ -756,6 +756,14 @@ namespace WorkPartner
         {
             var todayLogs = TimeLogEntries.Where(log => log.StartTime.Date == _currentDateForTimeline.Date);
             _totalTimeTodayFromLogs = new TimeSpan(todayLogs.Sum(log => log.Duration.Ticks));
+
+            // 각 과목의 총 시간을 다시 계산합니다.
+            foreach (var task in TaskItems)
+            {
+                var taskLogs = TimeLogEntries.Where(log => log.TaskText == task.Text && log.StartTime.Date == _currentDateForTimeline.Date);
+                task.TotalTime = new TimeSpan(taskLogs.Sum(log => log.Duration.Ticks));
+            }
+
             UpdateLiveTimeDisplays();
             UpdateSelectedTaskTotalTimeDisplay();
         }
@@ -1169,17 +1177,32 @@ namespace WorkPartner
             }
         }
 
+
+        private void ChangeTaskColor_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is Border border && border.Tag is TaskItem selectedTask)
+            {
+                var colorPicker = new ColorPickerWindow
+                {
+                    Owner = Window.GetWindow(this)
+                };
+
+                if (colorPicker.ShowDialog() == true)
+                {
+                    // 사용자가 선택한 새 색상으로 업데이트
+                    _settings.TaskColors[selectedTask.Text] = colorPicker.SelectedColor.ToString();
+                    SaveSettings();
+
+                    // UI를 새로고침하여 변경된 색상을 반영
+                    TaskListBox.Items.Refresh();
+                }
+            }
+        }
+
         #endregion
 
-        private void campfireSlider_ValueChanged_1(object sender, RoutedPropertyChangedEventArgs<double> e)
-        {
 
-        }
 
-        private void Button_Click(object sender, RoutedEventArgs e)
-        {
-
-        }
     }
 }
 
