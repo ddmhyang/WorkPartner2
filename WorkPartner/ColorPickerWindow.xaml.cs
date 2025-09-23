@@ -14,6 +14,12 @@ namespace WorkPartner
             this.Loaded += (s, e) => UpdatePreview();
         }
 
+        public ColorPickerWindow(string type)
+        {
+            InitializeComponent();
+            Enum.TryParse(type, out colorType);
+        }
+
         // [FIX] Added constructor that takes an initial color to fix CS1729 in SettingsPage.xaml.cs
         public ColorPickerWindow(Color initialColor)
         {
