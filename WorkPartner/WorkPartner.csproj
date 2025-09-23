@@ -7,15 +7,18 @@
 		<ImplicitUsings>enable</ImplicitUsings>
 		<UseWPF>true</UseWPF>
 		<ApplicationIcon>app_icon.ico</ApplicationIcon>
+		<GenerateAssemblyInfo>false</GenerateAssemblyInfo>
 	</PropertyGroup>
 
 	<ItemGroup>
-		<None Remove="images\coin.png" />
-		<None Remove="WorkPartner.ico" />
-		<None Remove="app_icon.ico" />
+		<!-- 이미지, 아이콘, 폰트 파일들을 리소스로 포함합니다. -->
+		<Resource Include="images\**" />
+		<Resource Include="WorkPartner.ico" />
+		<Resource Include="Fonts\**" />
 	</ItemGroup>
 
 	<ItemGroup>
+		<!-- 프로그램 실행 시 필요한 파일들을 출력 폴더로 복사합니다. -->
 		<Content Include="app_icon.ico">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</Content>
@@ -28,26 +31,23 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Extended.Wpf.Toolkit" Version="5.0.0" />
+		<!-- 프로젝트에 필요한 모든 NuGet 패키지 목록입니다. -->
+		<PackageReference Include="Extended.Wpf.Toolkit" Version="4.6.0" />
 		<PackageReference Include="LiveCharts.Wpf" Version="0.9.7" />
 		<PackageReference Include="MahApps.Metro" Version="2.4.10" />
 		<PackageReference Include="MaterialDesignThemes.MahApps" Version="0.3.0" />
-		<PackageReference Include="Microsoft.ML" Version="3.0.1" />
-		<PackageReference Include="Microsoft.ML.FastTree" Version="0.20.0" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.4" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.4">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
+		<PackageReference Include="Microsoft.ML" Version="4.0.2" />
+		<PackageReference Include="Microsoft.ML.FastTree" Version="4.0.2" />
 		<PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-		<PackageReference Include="System.Drawing.Common" Version="9.0.9" />
-	</ItemGroup>
-
-	<ItemGroup>
-		<Resource Include="images\coin.png" />
-		<Resource Include="WorkPartner.ico" />
-	</ItemGroup>
-
-	<ItemGroup>
-		<!-- 셰이더 파일을 프로젝트 출력 디렉터리로 복사하도록 설정합니다. -->
-		<Content Include="shaders\**">
-			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-		</Content>
+		<PackageReference Include="System.Drawing.Common" Version="8.0.4" />
+		<PackageReference Include="System.Management" Version="8.0.0" />
 	</ItemGroup>
 
 </Project>
+
+

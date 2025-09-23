@@ -477,6 +477,11 @@ namespace WorkPartner
 
         private void Timer_Tick(object sender, EventArgs e)
         {
+            if (!this.IsVisible)
+            {
+                return;
+            }
+
             if (_stopwatch.IsRunning && _lastUnratedSession != null)
             {
                 SessionReviewPanel.Visibility = Visibility.Collapsed;
@@ -488,6 +493,8 @@ namespace WorkPartner
 
         private void HandleStopwatchMode()
         {
+            if (ActiveProcessDisplay == null) return;
+
             string activeProcess = ActiveWindowHelper.GetActiveProcessName();
             string activeUrl = ActiveWindowHelper.GetActiveBrowserTabUrl();
             string activeTitle = string.IsNullOrEmpty(activeUrl) ? ActiveWindowHelper.GetActiveWindowTitle().ToLower() : activeUrl;
