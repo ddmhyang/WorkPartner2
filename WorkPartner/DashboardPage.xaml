@@ -117,6 +117,24 @@
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <Style x:Key="SmoothListBoxStyle" TargetType="ListBox">
+            <Setter Property="ScrollViewer.CanContentScroll" Value="False"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBox">
+                        <Border BorderBrush="{TemplateBinding BorderBrush}" 
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            Background="{TemplateBinding Background}">
+                            <ScrollViewer VerticalScrollBarVisibility="Hidden"
+                                      HorizontalScrollBarVisibility="Disabled">
+                                <ItemsPresenter/>
+                            </ScrollViewer>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </UserControl.Resources>
 
     <Canvas x:Name="dashboard" Width="682" Height="526" Background="#FFFFFF">

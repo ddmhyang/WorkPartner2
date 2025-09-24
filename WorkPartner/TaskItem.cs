@@ -33,9 +33,11 @@ namespace WorkPartner
                 {
                     _totalTime = value;
                     OnPropertyChanged(nameof(TotalTime));
+                    OnPropertyChanged(nameof(TotalTimeDisplay)); // 시간이 바뀌면 표시 형식도 업데이트
                 }
             }
         }
+
 
         // UI에 표시할 형식으로 변환하는 속성
         [JsonIgnore]
@@ -46,6 +48,11 @@ namespace WorkPartner
         protected virtual void OnPropertyChanged(string propertyName)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+
+        public override string ToString()
+        {
+            return Text;
         }
 
         [JsonIgnore]

@@ -1,0 +1,39 @@
+﻿<Window x:Class="WorkPartner.AlertWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:WorkPartner"
+        mc:Ignorable="d"
+        Title="AlertWindow" Height="150" Width="350"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        Topmost="True"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterScreen"
+        MouseLeftButtonDown="Window_MouseLeftButtonDown">
+    <Border Background="#F0F8FF" CornerRadius="10" BorderBrush="#007AFF" BorderThickness="2">
+        <Border.Effect>
+            <DropShadowEffect ShadowDepth="2" BlurRadius="5" Opacity="0.5" Color="Gray"/>
+        </Border.Effect>
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <TextBlock Grid.Row="0" Text="⚠️ 집중하세요!" FontSize="16" FontWeight="Bold" Foreground="#007AFF" Margin="15,10,15,5" HorizontalAlignment="Center"/>
+
+            <TextBlock Grid.Row="1" x:Name="MessageTextBlock" Text="메시지 내용"
+                       TextWrapping="Wrap"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"
+                       Margin="15,5"/>
+
+            <Button Grid.Row="2" Content="확인" Width="80" HorizontalAlignment="Center" Margin="0,0,0,15"
+                    Click="OkButton_Click" IsDefault="True"/>
+        </Grid>
+    </Border>
+</Window>

@@ -1,0 +1,121 @@
+[
+  {
+    "Id": "00000000-0000-0000-0000-000000000001",
+    "Name": "기본 머리",
+    "Price": 0,
+    "Type": "HairStyle",
+    "ImagePath": "Images/hair_style_01.png"
+  },
+  {
+    "Id": "00000000-0000-0000-0000-000000000002",
+    "Name": "긴 머리",
+    "Price": 100,
+    "Type": "HairStyle",
+    "ImagePath": "Images/hair_style_02.png"
+  },
+  {
+    "Id": "00000000-0000-0000-0000-000000000003",
+    "Name": "검은색",
+    "Price": 10,
+    "Type": "HairColor",
+    "ColorValue": "#2E2E2E"
+  },
+  {
+    "Id": "00000000-0000-0000-0000-000000000004",
+    "Name": "갈색",
+    "Price": 10,
+    "Type": "HairColor",
+    "ColorValue": "#B45F04"
+  },
+  {
+    "Id": "00000000-0000-0000-0000-000000000005",
+    "Name": "기본 옷",
+    "Price": 0,
+    "Type": "Clothes",
+    "ImagePath": "LightBlue"
+  },
+  {
+    "Id": "00000000-0000-0000-0000-000000000006",
+    "Name": "후드티",
+    "Price": 50,
+    "Type": "Clothes",
+    "ImagePath": "Plum"
+  },
+  {
+    "Id": "00000000-0000-0000-0000-000000000007",
+    "Name": "기본 눈",
+    "Price": 0,
+    "Type": "EyeShape",
+    "ImagePath": "LightCoral"
+  },
+  {
+    "Id": "00000000-0000-0000-0000-000000000008",
+    "Name": "초롱초롱 눈",
+    "Price": 40,
+    "Type": "EyeShape",
+    "ImagePath": "Orange"
+  },
+  {
+    "Id": "00000000-0000-0000-0000-000000000009",
+    "Name": "검은색 눈",
+    "Price": 20,
+    "Type": "EyeColor",
+    "ColorValue": "#2E2E2E"
+  },
+  {
+    "Id": "00000000-0000-0000-0000-000000000010",
+    "Name": "녹색 눈",
+    "Price": 20,
+    "Type": "EyeColor",
+    "ColorValue": "#088A08"
+  },
+  {
+    "Id": "00000000-0000-0000-0000-000000000011",
+    "Name": "기본 입",
+    "Price": 0,
+    "Type": "MouthShape",
+    "ImagePath": "IndianRed"
+  },
+  {
+    "Id": "00000000-0000-0000-0000-000000000012",
+    "Name": "미소",
+    "Price": 30,
+    "Type": "MouthShape",
+    "ImagePath": "HotPink"
+  },
+  {
+    "Id": "00000000-0000-0000-0000-000000000013",
+    "Name": "고양이 귀",
+    "Price": 80,
+    "Type": "AnimalEar",
+    "ImagePath": "DimGray"
+  },
+  {
+    "Id": "00000000-0000-0000-0000-000000000014",
+    "Name": "토끼 귀",
+    "Price": 80,
+    "Type": "AnimalEar",
+    "ImagePath": "LightPink"
+  },
+  {
+    "Id": "00000000-0000-0000-0000-000000000015",
+    "Name": "기본 방석",
+    "Price": 0,
+    "Type": "Background",
+    "ImagePath": "LightGoldenrodYellow"
+  },
+  {
+    "Id": "00000000-0000-0000-0000-000000000016",
+    "Name": "구름 방석",
+    "Price": 120,
+    "Type": "Background",
+    "ImagePath": "AliceBlue"
+  },
+  {
+    "Id": "00000000-0000-0000-0000-000000000017",
+    "Name": "기본 몸",
+    "Price": 0,
+    "Type": "Body",
+    "ImagePath": "MistyRose"
+  }
+]
