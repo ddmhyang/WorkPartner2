@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
@@ -84,14 +84,36 @@ namespace WorkPartner
             _lastSuggestionTime = DateTime.MinValue;
             DataManager.SettingsUpdated += OnSettingsUpdated;
 
-            InitializeSoundPlayers();
+            // --- 사운드 파일 경로 확인 코드 시작 ---
+            string[] soundFiles = { "wave.mp3", "forest.mp3", "rain.mp3", "campfire.mp3" };
+            foreach (var file in soundFiles)
+            {
+                // 'Path' 앞에 'System.IO.'를 추가하여 모호성을 해결합니다.
+                string path = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Sounds", file);
+                if (File.Exists(path))
+                {
+                    Debug.WriteLine($"[성공] 사운드 파일을 찾았습니다: {path}");
+                }
+                else
+                {
+                    Debug.WriteLine($"[실패] 사운드 파일을 찾을 수 없습니다: {path}");
+                }
+            }
+            // --- 사운드 파일 경로 확인 코드 끝 ---
 
-            // 백색소음 플레이어 초기화 및 재생
+            // 백색소음 플레이어 초기화
             _waveSoundPlayer = new BackgroundSoundPlayer("Sounds/wave.mp3");
             _forestSoundPlayer = new BackgroundSoundPlayer("Sounds/forest.mp3");
             _rainSoundPlayer = new BackgroundSoundPlayer("Sounds/rain.mp3");
             _campfireSoundPlayer = new BackgroundSoundPlayer("Sounds/campfire.mp3");
 
+            // 플레이어를 즉시 재생 상태로 만듭니다.
+            _waveSoundPlayer.Play();
+            _forestSoundPlayer.Play();
+            _rainSoundPlayer.Play();
+            _campfireSoundPlayer.Play();
+
+            // 초기 볼륨은 0으로 설정합니다.
             _waveSoundPlayer.Volume = 0;
             _forestSoundPlayer.Volume = 0;
             _rainSoundPlayer.Volume = 0;
@@ -102,7 +124,6 @@ namespace WorkPartner
             forestSlider.ValueChanged += ForestSlider_ValueChanged;
             rainSlider.ValueChanged += RainSlider_ValueChanged;
             campfireSlider.ValueChanged += CampfireSlider_ValueChanged;
-
 
             _selectionBox = new Rectangle
             {
@@ -380,24 +401,6 @@ namespace WorkPartner
             }
         }
 
-
-        private void RateSessionButton_Click(object sender, RoutedEventArgs e)
-        {
-            if (_lastUnratedSession != null && sender is Button button)
-            {
-                int score = int.Parse(button.Tag.ToString());
-                _lastUnratedSession.FocusScore = score;
-                SessionReviewPanel.Visibility = Visibility.Collapsed;
-                var breakWin = new BreakActivityWindow { Owner = Window.GetWindow(this) };
-                if (breakWin.ShowDialog() == true)
-                {
-                    _lastUnratedSession.BreakActivities = breakWin.SelectedActivities;
-                }
-                SaveTimeLogs();
-                _lastUnratedSession = null;
-            }
-        }
-
         private void SaveTodos_Event(object sender, RoutedEventArgs e) { if (sender is CheckBox checkBox && checkBox.DataContext is TodoItem todoItem) { if (todoItem.IsCompleted && !todoItem.HasBeenRewarded) { _settings.Coins += 10; todoItem.HasBeenRewarded = true; UpdateCoinDisplay(); SaveSettings(); SoundPlayer.PlayCompleteSound(); } } SaveTodos(); }
 
         private void TaskListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -405,7 +408,7 @@ namespace WorkPartner
             var selectedTask = TaskListBox.SelectedItem as TaskItem;
             if (_currentWorkingTask != selectedTask)
             {
-                SessionReviewPanel.Visibility = Visibility.Collapsed;
+                SessionReviewTextBlock.Visibility = Visibility.Collapsed;
                 if (_stopwatch.IsRunning)
                 {
                     LogWorkSession(); _stopwatch.Reset();
@@ -526,7 +529,7 @@ namespace WorkPartner
 
             if (_stopwatch.IsRunning && _lastUnratedSession != null)
             {
-                SessionReviewPanel.Visibility = Visibility.Collapsed;
+                SessionReviewTextBlock.Visibility = Visibility.Collapsed;
                 _lastUnratedSession = null;
             }
             HandleStopwatchMode();
@@ -673,7 +676,7 @@ namespace WorkPartner
             RecalculateAllTotals();
             RenderTimeTable();
             _lastUnratedSession = entry;
-            SessionReviewPanel.Visibility = Visibility.Visible;
+            SessionReviewTextBlock.Visibility = Visibility.Visible;
         }
 
         private void CheckFocusAndSuggest()
@@ -1182,6 +1185,9 @@ namespace WorkPartner
         {
             if (sender is Border border && border.Tag is TaskItem selectedTask)
             {
+                // 색상 아이콘을 클릭한 과목을 선택 상태로 만듭니다.
+                TaskListBox.SelectedItem = selectedTask;
+
                 var colorPicker = new ColorPickerWindow
                 {
                     Owner = Window.GetWindow(this)
@@ -1196,13 +1202,12 @@ namespace WorkPartner
                     // UI를 새로고침하여 변경된 색상을 반영
                     TaskListBox.Items.Refresh();
                 }
+
+                // 이벤트가 더 이상 전파되지 않도록 처리하여 중복 동작을 방지합니다.
+                e.Handled = true;
             }
         }
 
         #endregion
-
-
-
     }
 }
-

@@ -7,6 +7,30 @@
         mc:Ignorable="d"
         d:DesignHeight="526" d:DesignWidth="682"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent" WindowStartupLocation="CenterScreen">
+    <Window.Resources>
+        <Style x:Key="NavButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="Black"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Margin" Value="10,5"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" Padding="10">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#E0E0E0"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
     <Border Background="{StaticResource AppBackgroundBrush}" CornerRadius="10" BorderBrush="#D0D0D0" BorderThickness="1">
         <Grid>
             <Grid.ColumnDefinitions>
@@ -14,14 +38,20 @@
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
-            <!-- Main Content -->
+            <Border Grid.Column="0" Background="#F5F5F5" CornerRadius="10,0,0,10">
+                <StackPanel Orientation="Vertical" Margin="5">
+                    <Button Content="대시보드" Tag="Dashboard" Click="NavButton_Click" Style="{StaticResource NavButtonStyle}"/>
+                    <Button Content="분석" Tag="Analysis" Click="NavButton_Click" Style="{StaticResource NavButtonStyle}"/>
+                    <Button Content="설정" Tag="Settings" Click="NavButton_Click" Style="{StaticResource NavButtonStyle}"/>
+                </StackPanel>
+            </Border>
+
             <Grid Grid.Column="1">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
 
-                <!-- Top Bar for Window Controls -->
                 <Border Grid.Row="0" Height="30" Background="Transparent" MouseDown="Border_MouseDown">
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                         <Button Content="─" Click="MinimizeButton_Click" Style="{StaticResource WindowControlButton}"/>
@@ -29,11 +59,9 @@
                     </StackPanel>
                 </Border>
 
-                <!-- Page Content -->
                 <Frame x:Name="MainFrame" Grid.Row="1" NavigationUIVisibility="Hidden"/>
 
             </Grid>
         </Grid>
     </Border>
 </Window>
-
