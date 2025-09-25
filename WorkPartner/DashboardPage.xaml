@@ -248,7 +248,7 @@
                         <Border CornerRadius="2" Background="#FFF27821" Margin="0,1,0,0">
                             <StackPanel Orientation="Horizontal" Height="21">
                                 <Image Source="/path/fire.png" Width="15" Height="15" Margin="0,0,5,0" />
-                                <Slider x:Name="campfireSlider" Width="56" Height="6" Value="1" Minimum="0" Maximum="1" Style="{StaticResource RoundSliderStyle}" Background="White" ValueChanged="CampfireSlider_ValueChanged" />
+                                <Slider x:Name="campfireSlider" Width="56" Height="6" Value="0" Minimum="0" Maximum="1" Style="{StaticResource RoundSliderStyle}" Background="White" ValueChanged="CampfireSlider_ValueChanged" />
                             </StackPanel>
                         </Border>
                     </StackPanel>
