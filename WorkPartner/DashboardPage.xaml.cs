@@ -66,6 +66,7 @@ namespace WorkPartner
             forestSlider.ValueChanged += SoundSlider_ValueChanged;
             rainSlider.ValueChanged += SoundSlider_ValueChanged;
             campfireSlider.ValueChanged += SoundSlider_ValueChanged;
+            this.DataContextChanged += DashboardPage_DataContextChanged;
 
             // 드래그 선택 상자 초기화
             _selectionBox = new Rectangle
@@ -783,6 +784,19 @@ namespace WorkPartner
             e.Handled = true;
         }
 
+        private void DashboardPage_DataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
+        {
+            // 새로운 DataContext(ViewModel)가 설정될 때
+            if (e.NewValue is ViewModels.DashboardViewModel viewModel)
+            {
+                // ViewModel의 TimeUpdated 신호(이벤트)를 구독합니다.
+                viewModel.TimeUpdated += (newTime) =>
+                {
+                    // 신호가 오면 MiniTimer의 시간을 업데이트합니다.
+                    _miniTimer?.UpdateTime(newTime);
+                };
+            }
+        }
         #endregion
     }
 }

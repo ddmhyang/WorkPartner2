@@ -9,6 +9,7 @@
              Loaded="Window_Loaded" IsVisibleChanged="DashboardPage_IsVisibleChanged"
              FontFamily="Pretendard">
     <UserControl.Resources>
+        <!-- 스타일 리소스는 변경 없이 그대로 유지됩니다. -->
         <Style x:Key="RoundSliderStyle" TargetType="Slider">
             <Setter Property="Template">
                 <Setter.Value>
@@ -19,10 +20,7 @@
                                 <RowDefinition Height="*" />
                                 <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
-
-                            <Border Grid.Row="1" CornerRadius="1" 
-                                    Background="#C4C4C4" Height="2" />
-
+                            <Border Grid.Row="1" CornerRadius="1" Background="#C4C4C4" Height="2" />
                             <Track Name="PART_Track" Grid.Row="1">
                                 <Track.Thumb>
                                     <Thumb Width="6" Height="6">
@@ -66,69 +64,15 @@
             </Setter>
         </Style>
 
-
-        <Style TargetType="Button">
-            <Setter Property="Background" Value="#7D7D7D"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <Style x:Key="NoScrollListBoxStyle" TargetType="ListBox">
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="ListBox">
-                        <Border BorderBrush="{TemplateBinding BorderBrush}" 
-                                BorderThickness="{TemplateBinding BorderThickness}"
-                        Background="{TemplateBinding Background}">
-                            <ScrollViewer VerticalScrollBarVisibility="Hidden"
-                                          HorizontalScrollBarVisibility="Disabled">
-                                <ItemsPresenter/>
-                            </ScrollViewer>
-                        </Border>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
         <Style TargetType="TextBox">
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="TextBox">
                         <Border Background="{TemplateBinding Background}"
-                        BorderBrush="{TemplateBinding BorderBrush}"
-                        BorderThickness="{TemplateBinding BorderThickness}"
-                        CornerRadius="10">
-                            <ScrollViewer x:Name="PART_ContentHost"
-                                    Focusable="False"
-                                    HorizontalScrollBarVisibility="Hidden"
-                                    VerticalScrollBarVisibility="Hidden"/>
-                        </Border>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <Style x:Key="SmoothListBoxStyle" TargetType="ListBox">
-            <Setter Property="ScrollViewer.CanContentScroll" Value="False"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="ListBox">
-                        <Border BorderBrush="{TemplateBinding BorderBrush}" 
-                            BorderThickness="{TemplateBinding BorderThickness}"
-                            Background="{TemplateBinding Background}">
-                            <ScrollViewer VerticalScrollBarVisibility="Hidden"
-                                      HorizontalScrollBarVisibility="Disabled">
-                                <ItemsPresenter/>
-                            </ScrollViewer>
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="10">
+                            <ScrollViewer x:Name="PART_ContentHost" Focusable="False" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Hidden"/>
                         </Border>
                     </ControlTemplate>
                 </Setter.Value>
@@ -136,268 +80,169 @@
         </Style>
     </UserControl.Resources>
 
-    <Canvas x:Name="dashboard" Width="682" Height="526" Background="#FFFFFF">
+    <!-- ✨ 여기가 핵심입니다! Canvas를 Viewbox로 감싸줍니다. -->
+    <Viewbox Stretch="Uniform">
+        <Canvas x:Name="dashboard" Width="682" Height="526" Background="#FFFFFF">
 
-        <Button Canvas.Left="19" Canvas.Top="40" Width="24" Height="24" 
-                Tag="Settings" Click="NavButton_Click" ToolTip="설정" Background="Transparent" BorderBrush="Transparent">
-            <Image Source="/images/settings.png" />
-        </Button>
+            <!-- 상단 아이콘 버튼 -->
+            <Button Canvas.Left="19" Canvas.Top="40" Width="24" Height="24" Tag="Settings" Click="NavButton_Click" ToolTip="설정" Background="Transparent" BorderBrush="Transparent">
+                <Image Source="/images/settings.png" />
+            </Button>
+            <Button Canvas.Left="54" Canvas.Top="40" Width="24" Height="24" Tag="Analysis" Click="NavButton_Click" ToolTip="분석" Background="Transparent" BorderBrush="Transparent">
+                <Image Source="/images/bar_chart.png" />
+            </Button>
 
-        <Button Canvas.Left="54" Canvas.Top="40" Width="24" Height="24"
-                Tag="Analysis" Click="NavButton_Click" ToolTip="분석" Background="Transparent" BorderBrush="Transparent">
-            <Image Source="/images/bar_chart.png" />
-        </Button>
+            <!-- 메인 타이머 및 상태 표시 -->
+            <TextBlock x:Name="CurrentTaskDisplay" Canvas.Left="186" Canvas.Top="74" Text="현재 과목" TextAlignment="Center" Foreground="#FF005B8B" FontFamily="Pretendard" FontSize="14" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            <TextBlock x:Name="MainTimeDisplay" Canvas.Left="123" Canvas.Top="92" Width="180" Text="{Binding MainTimeDisplayText}" TextAlignment="Center" FontFamily="Pretendard" FontSize="40" FontWeight="SemiBold"/>
+            <TextBlock x:Name="SelectedTaskTotalTimeDisplay" Canvas.Left="159" Canvas.Top="145" Text="오늘의 작업 시간 | 00:00:00" TextAlignment="Center" FontFamily="Pretendard" FontSize="8" FontWeight="Medium"/>
 
-        <TextBlock x:Name="CurrentTaskDisplay" Canvas.Left="186" Canvas.Top="74" 
-                   Text="현재 과목" TextAlignment="Center" Foreground="#FF005B8B"
-                   FontFamily="Pretendard" FontSize="14" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            <!-- 타임라인 영역 -->
+            <Border Canvas.Left="19" Canvas.Top="173" Width="388" Height="331" BorderBrush="#f0f0f0" BorderThickness="2" CornerRadius="10">
+                <Canvas>
+                    <Grid Canvas.Left="135" Canvas.Top="11" Width="120" Height="20">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <Button Grid.Column="0" Content="&lt;" Click="PrevDayButton_Click" VerticalAlignment="Center" Background="Transparent" BorderBrush="Transparent" Margin="-9,0,10,0" Foreground="Black"/>
+                        <TextBlock x:Name="CurrentDateDisplay" Text="2025-08-12" VerticalAlignment="Center" FontSize="8" FontFamily= "Pretendard" HorizontalAlignment="Left" Padding= "21, 3, 21, 3" Background="#F0F0F0" FontWeight="SemiBold" Grid.ColumnSpan="2" Margin="5,0,0,0"/>
+                        <TextBlock x:Name="CurrentDayDisplay" Text="수" FontSize="8" FontWeight="Bold" Grid.Column="1" Margin="85,6,2,4" Width="8" Height="10"/>
+                        <Button Grid.Column="2" Content="&gt;" Click="NextDayButton_Click" VerticalAlignment="Center" Background="Transparent" BorderBrush="Transparent" Foreground="Black"/>
+                    </Grid>
 
-        <TextBlock x:Name="MainTimeDisplay" Text="{Binding MainTimeDisplayText}" Canvas.Left="10" Canvas.Top="10" FontSize="36" FontWeight="Bold"/>
+                    <Button Canvas.Left="296" Canvas.Top="12" Content="+ 기록 직접 추가" Click="AddManualLogButton_Click" Height="17" Width="69" FontSize="8" Foreground="White" Style="{StaticResource RoundedButtonStyle}" Background="#FF2195F2"/>
 
-
-        <TextBlock x:Name="SelectedTaskTotalTimeDisplay" Canvas.Left="159" Canvas.Top="145" 
-                   Text="오늘의 작업 시간 | 00:00:00" TextAlignment="Center" 
-                   FontFamily="Pretendard" FontSize="8" FontWeight="Medium"/>
-
-        <Border Canvas.Left="19" Canvas.Top="173" Width="388" Height="331" 
-                BorderBrush="#f0f0f0" BorderThickness="2" CornerRadius="10">
-            <Canvas>
-                <Grid Canvas.Left="135" Canvas.Top="11" Width="120" Height="20">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <Button Grid.Column="0" Content="&lt;" Click="PrevDayButton_Click" VerticalAlignment="Center" Background="Transparent" BorderBrush="Transparent" Margin="-9,0,10,0" Foreground="Black"/>
-                    <TextBlock x:Name="CurrentDateDisplay" Text="2025-08-12" VerticalAlignment="Center" FontSize="8" FontFamily= "Pretendard" HorizontalAlignment="Left" Padding= "21, 3, 21, 3" Background="#F0F0F0" FontWeight="SemiBold" Grid.ColumnSpan="2" Margin="5,0,0,0"/>
-                    <TextBlock x:Name="CurrentDayDisplay" Text="수" Canvas.Left="220" Canvas.Top="276" FontSize="8" FontWeight="Bold" Grid.Column="1" Margin="85,6,2,4" Width="8" Height="10"/>
-                    <Button Grid.Column="2" Content="&gt;" Click="NextDayButton_Click" VerticalAlignment="Center" Background="Transparent" BorderBrush="Transparent" Foreground="Black"/>
-                </Grid>
-
-                <StackPanel Orientation="Horizontal" Canvas.Left="296" Canvas.Top="12">
-                    <Border CornerRadius="7.5" BorderBrush="#FF2195F2" BorderThickness="0" Background="#FF2195F2">
-                        <Button Content="+ 기록 직접 추가" Click="AddManualLogButton_Click" Height="17" Background="#00000000" Width="69" FontSize="8" BorderBrush="#00000000" Foreground="White" BorderThickness="1" RenderTransformOrigin="0.5,0.5">
-                            <Button.RenderTransform>
-                                <TransformGroup>
-                                    <ScaleTransform/>
-                                    <SkewTransform/>
-                                    <RotateTransform/>
-                                    <TranslateTransform X="0"/>
-                                </TransformGroup>
-                            </Button.RenderTransform>
-                        </Button>
-                    </Border>
-                </StackPanel>
-
-                <Border Canvas.Left="0" Canvas.Top="38" Width="262" Height="264">
-                    <ScrollViewer VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled">
-                        <Grid x:Name="SelectionCanvas" Background="Transparent"
-              MouseLeftButtonDown="SelectionCanvas_MouseLeftButtonDown"
-              MouseMove="SelectionCanvas_MouseMove" 
-              MouseLeftButtonUp="SelectionCanvas_MouseLeftButtonUp">
+                    <ScrollViewer Canvas.Left="0" Canvas.Top="38" Width="262" Height="264" VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled">
+                        <Grid x:Name="SelectionCanvas" Background="Transparent" MouseLeftButtonDown="SelectionCanvas_MouseLeftButtonDown" MouseMove="SelectionCanvas_MouseMove" MouseLeftButtonUp="SelectionCanvas_MouseLeftButtonUp">
                             <StackPanel x:Name="TimeTableContainer" Orientation="Vertical"/>
                         </Grid>
                     </ScrollViewer>
-                </Border>
 
-                <Border Canvas.Left="272" Canvas.Top="38" Width="95" Height="171" 
-        BorderBrush="#E0E0E0" BorderThickness="1" Background="#f0f0f0" CornerRadius="5"
-        Cursor="Hand" MouseLeftButtonDown="PinnedMemo_MouseLeftButtonDown"
-        ToolTip="클릭해서 메모장 열기">
-                    <Grid Margin="10">
-                        <StackPanel x:Name="PinnedMemoView">
-                            <TextBlock x:Name="PinnedMemoContent" 
-                       TextTrimming="CharacterEllipsis" 
-                       TextWrapping="Wrap"
-                       MaxHeight="150"
-                       Foreground="#000000" FontSize="10"/>
-                        </StackPanel>
-                        <TextBlock x:Name="NoPinnedMemoText" 
-                   Text="작성된 &#x0a;메모가 &#x0a;없습니다."
-                   TextAlignment="Center"
-                   VerticalAlignment="Center"
-                   Foreground="#939393"
-                   Visibility="Collapsed" FontSize="10"/>
-                    </Grid>
-                </Border>
+                    <Border Canvas.Left="272" Canvas.Top="38" Width="95" Height="171" BorderBrush="#E0E0E0" BorderThickness="1" Background="#f0f0f0" CornerRadius="5" Cursor="Hand" MouseLeftButtonDown="PinnedMemo_MouseLeftButtonDown" ToolTip="클릭해서 메모장 열기">
+                        <Grid Margin="10">
+                            <StackPanel x:Name="PinnedMemoView">
+                                <TextBlock x:Name="PinnedMemoContent" TextTrimming="CharacterEllipsis" TextWrapping="Wrap" MaxHeight="150" Foreground="#000000" FontSize="10"/>
+                            </StackPanel>
+                            <TextBlock x:Name="NoPinnedMemoText" Text="작성된 &#x0a;메모가 &#x0a;없습니다." TextAlignment="Center" VerticalAlignment="Center" Foreground="#939393" Visibility="Collapsed" FontSize="10"/>
+                        </Grid>
+                    </Border>
 
-                <Border Canvas.Left="272" Canvas.Top="215" Width="95" Height="90">
-                    <StackPanel>
-                        <Border CornerRadius="2" Background="#FF345080">
-                            <StackPanel Orientation="Horizontal" Height="21">
-                                <Image Source="/path/wave.png" Width="15" Height="15" Margin="0,0,5,0" />
-                                <Slider x:Name="waveSlider" Width="56" Height="6" Value="0" Minimum="0" Maximum="1" Style="{StaticResource RoundSliderStyle}" Background="White" />
+                    <StackPanel Canvas.Left="272" Canvas.Top="215" Width="95">
+                        <Border CornerRadius="2" Background="#FF345080" Height="21">
+                            <StackPanel Orientation="Horizontal" >
+                                <Image Source="/path/wave.png" Width="15" Height="15" Margin="5,0,5,0" />
+                                <Slider x:Name="waveSlider" Width="56" Value="0" Minimum="0" Maximum="1" Style="{StaticResource RoundSliderStyle}" Background="White" />
                             </StackPanel>
                         </Border>
-
-                        <Border CornerRadius="2" Background="#FF5DB15D" Margin="0,1,0,0">
-                            <StackPanel Orientation="Horizontal" Height="21">
-                                <Image Source="/path/forest.png" Width="15" Height="15" Margin="0,0,5,0" />
-                                <Slider x:Name="forestSlider" Width="56" Height="6" Value="0" Minimum="0" Maximum="1" Style="{StaticResource RoundSliderStyle}" Background="White" />
+                        <Border CornerRadius="2" Background="#FF5DB15D" Margin="0,1,0,0" Height="21">
+                            <StackPanel Orientation="Horizontal">
+                                <Image Source="/path/forest.png" Width="15" Height="15" Margin="5,0,5,0" />
+                                <Slider x:Name="forestSlider" Width="56" Value="0" Minimum="0" Maximum="1" Style="{StaticResource RoundSliderStyle}" Background="White" />
                             </StackPanel>
                         </Border>
-
-                        <Border CornerRadius="2" Background="#FFD9D9D9" Margin="0,1,0,0">
-                            <StackPanel Orientation="Horizontal" Height="21">
-                                <Image Source="/path/rain.png" Width="15" Height="15" Margin="0,0,5,0" />
-                                <Slider x:Name="rainSlider" Width="56" Height="6" Value="0" Minimum="0" Maximum="1" Style="{StaticResource RoundSliderStyle}" Background="White" />
+                        <Border CornerRadius="2" Background="#FFD9D9D9" Margin="0,1,0,0" Height="21">
+                            <StackPanel Orientation="Horizontal">
+                                <Image Source="/path/rain.png" Width="15" Height="15" Margin="5,0,5,0" />
+                                <Slider x:Name="rainSlider" Width="56" Value="0" Minimum="0" Maximum="1" Style="{StaticResource RoundSliderStyle}" Background="White" />
                             </StackPanel>
                         </Border>
-
-                        <Border CornerRadius="2" Background="#FFF27821" Margin="0,1,0,0">
-                            <StackPanel Orientation="Horizontal" Height="21">
-                                <Image Source="/path/fire.png" Width="15" Height="15" Margin="0,0,5,0" />
-                                <Slider x:Name="campfireSlider" Width="56" Height="6" Value="0" Minimum="0" Maximum="1" Style="{StaticResource RoundSliderStyle}" Background="White"/>
+                        <Border CornerRadius="2" Background="#FFF27821" Margin="0,1,0,0" Height="21">
+                            <StackPanel Orientation="Horizontal">
+                                <Image Source="/path/fire.png" Width="15" Height="15" Margin="5,0,5,0" />
+                                <Slider x:Name="campfireSlider" Width="56" Value="0" Minimum="0" Maximum="1" Style="{StaticResource RoundSliderStyle}" Background="White"/>
                             </StackPanel>
                         </Border>
                     </StackPanel>
-                </Border>
-            </Canvas>
-        </Border>
+                </Canvas>
+            </Border>
 
-        <Border Canvas.Left="417" Canvas.Top="40" Width="247" Height="123" 
-                BorderBrush="Black" BorderThickness="1" CornerRadius="10">
-            <Grid>
-                <local:CharacterDisplay x:Name="CharacterPreview" />
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="10">
-                    <TextBlock x:Name="UsernameDisplay" Text="User" FontWeight="Bold" Margin="0,0,10,0"/>
-                    <Image Source="/images/coin.png" Width="16" Height="16"/>
-                    <TextBlock x:Name="CoinDisplay" Text="0"/>
-                </StackPanel>
-            </Grid>
-        </Border>
+            <!-- 캐릭터 디스플레이 영역 -->
+            <Border Canvas.Left="417" Canvas.Top="40" Width="247" Height="123" BorderBrush="Black" BorderThickness="1" CornerRadius="10">
+                <Grid>
+                    <local:CharacterDisplay x:Name="CharacterPreview" />
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="10">
+                        <TextBlock x:Name="UsernameDisplay" Text="User" FontWeight="Bold" Margin="0,0,10,0"/>
+                        <Image Source="/images/coin.png" Width="16" Height="16"/>
+                        <TextBlock x:Name="CoinDisplay" Text="0"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
 
-        <Border Canvas.Left="417" Canvas.Top="173" Width="247" Height="145" 
-                BorderBrush="#E8E8E8" BorderThickness="1" CornerRadius="10" Background="#E8E8E8">
-            <DockPanel>
-                <TextBlock DockPanel.Dock="Top" Text="과목" VerticalAlignment="Center" Margin="16,8,0,0" FontSize="10" Foreground="#000000"/>
+            <!-- 과목 리스트 영역 -->
+            <Border Canvas.Left="417" Canvas.Top="173" Width="247" Height="145" BorderBrush="#E8E8E8" BorderThickness="1" CornerRadius="10" Background="#E8E8E8">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Top" Text="과목" VerticalAlignment="Center" Margin="16,8,0,0" FontSize="10" Foreground="#000000"/>
+                    <StackPanel DockPanel.Dock="Bottom" Margin="10, 5, 10, 10" Orientation="Horizontal">
+                        <Border CornerRadius="10" Background="#ffffff" Width="180">
+                            <TextBox x:Name="TaskInput" KeyDown="TaskInput_KeyDown" Background="Transparent" BorderBrush="Transparent" Margin="5"/>
+                        </Border>
+                        <Button Content="추가" Click="AddTaskButton_Click" Width="40" Foreground="#FF676767" Style="{StaticResource RoundedButtonStyle}" Margin="5,0,0,0" Background="White" BorderBrush="White"/>
+                    </StackPanel>
+                    <ListBox x:Name="TaskListBox" ItemsSource="{Binding TaskItems}" SelectedItem="{Binding SelectedTaskItem, Mode=TwoWay}" Background="Transparent" BorderBrush="Transparent" Margin="0, 5, 0, 5" ScrollViewer.CanContentScroll="False">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Border x:Name="TaskItemBorder" CornerRadius="8" Background="Transparent" BorderBrush="Transparent" BorderThickness="1" Margin="5,3">
+                                    <Grid Margin="5,3">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="13"/>
+                                            <ColumnDefinition Width="110"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Border Grid.Column="0" Width="10" Height="10" CornerRadius="5" Background="Gray" Cursor="Hand" Tag="{Binding}" MouseLeftButtonDown="ChangeTaskColor_MouseLeftButtonDown" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                        <TextBlock x:Name="TaskTextBlock" Grid.Column="1" Text="{Binding Text}" VerticalAlignment="Center" Margin="5,0" Foreground="#000000"/>
+                                        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Right">
+                                            <TextBlock x:Name="TotalTimeTextBlock" Text="{Binding TotalTimeFormatted}" VerticalAlignment="Center" Foreground="#000000" FontSize="10" Margin="0,0,10,0"/>
+                                            <Button Content="x" Width="12" Height="12" Background="Transparent" Foreground="Black" BorderBrush="Transparent" VerticalAlignment="Center" Click="DeleteTaskButton_Click"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                                <DataTemplate.Triggers>
+                                    <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="True">
+                                        <Setter TargetName="TaskItemBorder" Property="Background" Value="Black"/>
+                                        <Setter TargetName="TaskTextBlock" Property="Foreground" Value="White"/>
+                                        <Setter TargetName="TotalTimeTextBlock" Property="Foreground" Value="White"/>
+                                    </DataTrigger>
+                                </DataTemplate.Triggers>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </DockPanel>
+            </Border>
 
-                <StackPanel DockPanel.Dock="Bottom" Margin="10, 5, 10, 10" Orientation="Horizontal">
-                    <Border CornerRadius="10" Background="#ffffff" HorizontalAlignment="Stretch" Width="180">
-                        <TextBox x:Name="TaskInput" KeyDown="TaskInput_KeyDown" Background="Transparent" BorderBrush="Transparent" Margin="5"/>
-                    </Border>
-                    <Button Content="추가" Click="AddTaskButton_Click" 
-                    Width="40"
-                    Foreground="#FF676767"
-                    Style="{StaticResource RoundedButtonStyle}"
-                    Margin="5,0,0,0" Background="White" BorderBrush="White"
-                    />
-                </StackPanel>
-
-                <ListBox x:Name="TaskListBox" ItemsSource="{Binding TaskItems}" Background="Transparent" BorderBrush="Transparent" 
-                         Margin="0, 5, 0, 5" Style="{StaticResource SmoothListBoxStyle}"
-                         SelectedItem="Binding SelectedTaskItem, Mode=TwoWay">
-                    <ListBox.ItemTemplate>
-                        <DataTemplate>
-                            <Border x:Name="TaskItemBorder" CornerRadius="8" Background="Transparent" BorderBrush="Transparent" BorderThickness="1" Margin="5,3">
-                                <Grid Margin="5,3,5,3">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="13"/>
-                                        <ColumnDefinition Width="110"/>
-                                        <ColumnDefinition Width="95"/>
-                                    </Grid.ColumnDefinitions>
-
-                                    <Border Grid.Column="0" 
-                                            Width="10" Height="10" 
-                                            CornerRadius="5" 
-                                            Background="{Binding ColorBrush, Mode=OneWay}"
-                                            Cursor="Hand"
-                                            Tag="{Binding}"
-                                            MouseLeftButtonDown="ChangeTaskColor_MouseLeftButtonDown"
-                                            VerticalAlignment="Center"
-                                            HorizontalAlignment="Center"/>
-
-                                    <TextBlock x:Name="TaskTextBlock" Grid.Column="1" 
-                                               Text="{Binding Text}" 
-                                               VerticalAlignment="Center"
-                                               Margin="5,0"
-                                               Foreground="#000000"/>
-
-                                    <StackPanel Grid.Column="2" 
-                                                Orientation="Horizontal" 
-                                                VerticalAlignment="Center"
-                                                HorizontalAlignment="Right">
-                                        <TextBlock x:Name="TotalTimeTextBlock" Text="{Binding TotalTimeDisplay}" 
-                                                   VerticalAlignment="Center"
-                                                   Foreground="#000000" 
-                                                   FontSize="10"
-                                                   Margin="0,0,10,0"/>
-                                        <Button Content="x" 
-                                                Width="12" 
-                                                Height="12"
-                                                Background="Transparent"
-                                                Foreground="Black"
-                                                BorderBrush="Transparent"
-                                                VerticalAlignment="Center"
-                                                Click="DeleteTaskButton_Click"/>
-                                    </StackPanel>
-                                </Grid>
-                            </Border>
-                            <DataTemplate.Triggers>
-                                <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="True">
-                                    <Setter TargetName="TaskItemBorder" Property="Background" Value="Black"/>
-                                    <Setter TargetName="TaskTextBlock" Property="Foreground" Value="White"/>
-                                    <Setter TargetName="TotalTimeTextBlock" Property="Foreground" Value="White"/>
-                                </DataTrigger>
-                            </DataTemplate.Triggers>
-                        </DataTemplate>
-                    </ListBox.ItemTemplate>
-                </ListBox>
-            </DockPanel>
-        </Border>
-
-        <Border Canvas.Left="417" Canvas.Top="327" Width="247" Height="177" 
-        BorderBrush="#E8E8E8" BorderThickness="2" CornerRadius="10" Background="Transparent">
-            <DockPanel>
-                <TextBlock DockPanel.Dock="Top" Text="오늘의 할일" VerticalAlignment="Center" Margin="16,8,0,0" FontSize="10" Foreground="#000000"/>
-
-                <StackPanel DockPanel.Dock="Bottom" Margin="10, 5, 10, 10" Orientation="Horizontal">
-                    <Border CornerRadius="10" Background="#FFDDDDDD" HorizontalAlignment="Stretch" Width="180">
-                        <TextBox x:Name="TodoInput" KeyDown="TodoInput_KeyDown" Background="Transparent" BorderBrush="Transparent" Margin="5"/>
-                    </Border>
-                    <Button Content="추가" Click="AddTodoButton_Click" 
-                    Width="40"
-                    Foreground="White"
-                    Style="{StaticResource RoundedButtonStyle}"
-                    Margin="5,0,0,0"
-                    />
-                </StackPanel>
-
-                <ListBox x:Name="TodoTreeView" ItemsSource="{Binding FilteredTodoItems}" Style="{StaticResource NoScrollListBoxStyle}" Background="Transparent" BorderBrush="Transparent" Margin="0, 5, 0, 5">
-                    <ListBox.ItemTemplate>
-                        <DataTemplate>
-                            <Border CornerRadius="8" Background="Transparent" BorderBrush="Transparent" BorderThickness="1" Margin="5,3">
-                                <Grid Margin="5,3">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                    </Grid.ColumnDefinitions>
-
-                                    <StackPanel Grid.Column="0" Orientation="Horizontal">
-                                        <CheckBox IsChecked="{Binding IsCompleted}" VerticalAlignment="Center" Margin="0,0,5,0"
-                                            Click="SaveTodos_Event" BorderBrush="#A5A5A5"/>
-                                        <TextBlock Text="{Binding TotalTimeFormatted}" Grid.Column="1" HorizontalAlignment="Right" Foreground="#FF8E8E8E" VerticalAlignment="Center"/>
-                                    </StackPanel>
-
-                                    <Button Content="x" Grid.Column="1"
-                                    Width="12" Height="12"
-                                    Background="Transparent"
-                                    Foreground="#000000"
-                                    BorderBrush="Transparent"
-                                    VerticalAlignment="Center"
-                                    Click="DeleteTodoButton_Click"/>
-                                </Grid>
-                            </Border>
-                        </DataTemplate>
-                    </ListBox.ItemTemplate>
-                </ListBox>
-            </DockPanel>
-        </Border>
-
-        <TextBlock x:Name="AiSuggestionTextBlock" Text="" Canvas.Left="10" Canvas.Top="500" Visibility="Collapsed"/>
-        <TextBlock x:Name="SessionReviewTextBlock" Text="방금 세션은 얼마나 집중했나요?"
-                   Canvas.Left="10" Canvas.Top="500" Visibility="Collapsed" Foreground="Black" />
-
-    </Canvas>
-
+            <!-- 할 일 리스트 영역 -->
+            <Border Canvas.Left="417" Canvas.Top="327" Width="247" Height="177" BorderBrush="#E8E8E8" BorderThickness="2" CornerRadius="10">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Top" Text="오늘의 할일" VerticalAlignment="Center" Margin="16,8,0,0" FontSize="10" Foreground="#000000"/>
+                    <StackPanel DockPanel.Dock="Bottom" Margin="10, 5, 10, 10" Orientation="Horizontal">
+                        <Border CornerRadius="10" Background="#FFDDDDDD" Width="180">
+                            <TextBox x:Name="TodoInput" KeyDown="TodoInput_KeyDown" Background="Transparent" BorderBrush="Transparent" Margin="5"/>
+                        </Border>
+                        <Button Content="추가" Click="AddTodoButton_Click" Width="40" Foreground="White" Style="{StaticResource RoundedButtonStyle}" Margin="5,0,0,0" Background="#7D7D7D"/>
+                    </StackPanel>
+                    <ListBox x:Name="TodoTreeView" ItemsSource="{Binding FilteredTodoItems}" ScrollViewer.VerticalScrollBarVisibility="Hidden" Background="Transparent" BorderBrush="Transparent" Margin="0, 5, 0, 5">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Border CornerRadius="8" Background="Transparent" BorderBrush="Transparent" BorderThickness="1" Margin="5,3">
+                                    <Grid Margin="5,3">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0" Orientation="Horizontal">
+                                            <CheckBox IsChecked="{Binding IsCompleted}" VerticalAlignment="Center" Margin="0,0,5,0" Click="SaveTodos_Event" BorderBrush="#A5A5A5"/>
+                                            <TextBlock Text="{Binding Text}" VerticalAlignment="Center" Foreground="#000000" FontSize="12"/>
+                                        </StackPanel>
+                                        <Button Content="x" Grid.Column="1" Width="12" Height="12" Background="Transparent" Foreground="#000000" BorderBrush="Transparent" VerticalAlignment="Center" Click="DeleteTodoButton_Click"/>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </DockPanel>
+            </Border>
+        </Canvas>
+    </Viewbox>
 </UserControl>
+

@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
+using System.Windows.Media.Animation;
 using WorkPartner.Services;
 
 namespace WorkPartner.ViewModels
@@ -30,6 +31,8 @@ namespace WorkPartner.ViewModels
         private const int IdleGraceSeconds = 10;
 
         public ObservableCollection<TimeLogEntry> TimeLogEntries { get; private set; }
+        public event Action<string> TimeUpdated;
+
 
         #endregion
 
@@ -224,7 +227,11 @@ namespace WorkPartner.ViewModels
             {
                 timeToDisplay += _stopwatch.Elapsed;
             }
-            MainTimeDisplayText = timeToDisplay.ToString(@"hh\:mm\:ss");
+            string newTime = timeToDisplay.ToString(@"hh\:mm\:ss");
+            MainTimeDisplayText = newTime;
+
+            // ▼▼▼ 계산이 끝난 후, "시간 바뀌었어!"라고 신호를 보냅니다. ▼▼▼
+            TimeUpdated?.Invoke(newTime);
         }
 
         #region --- INotifyPropertyChanged 구현 ---
