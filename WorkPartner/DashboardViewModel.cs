@@ -3,42 +3,36 @@
 using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using System.Windows.Input;
-using WorkPartner.Commands; // RelayCommand가 있는 네임스페이스
-using WorkPartner.Services; // ITaskService, IDialogService 등 서비스 인터페이스가 있는 네임스페이스
+using WorkPartner.Commands;
+using WorkPartner.Services;
 
 namespace WorkPartner.ViewModels
 {
-    /// <summary>
-    /// DashboardPage의 모든 데이터와 로직을 관리하는 ViewModel입니다.
-    /// 이 클래스는 '어떻게' 보일지에 대해서는 전혀 모르며, 오직 '무엇을' 할지만을 정의합니다.
-    /// </summary>
     public class DashboardViewModel : INotifyPropertyChanged
     {
         #region --- 서비스 및 멤버 변수 선언 ---
 
-        // 외부 세계(UI, 파일 시스템)와의 소통을 담당할 전문가(서비스)들입니다.
-        // readonly로 선언하여 생성자에서만 할당되도록 강제합니다.
         private readonly ITaskService _taskService;
         private readonly IDialogService _dialogService;
-        private readonly ISettingsService _settingsService; // 설정 관리를 위한 서비스 추가
+        private readonly ISettingsService _settingsService;
+        private readonly ITimerService _timerService; // 타이머 서비스 추가
+
+        private AppSettings _settings;
+        private string _lastActiveProcessName = string.Empty;
+        private TaskItem _currentWorkingTask;
+        private DateTime _sessionStartTime;
+        private TimeSpan _totalTimeTodayFromLogs; // 파일에서 읽어온 오늘 총 학습 시간
+        private bool _isPausedForIdle = false;
 
         #endregion
 
         #region --- UI와 바인딩될 속성 (Properties) ---
 
-        // Task 입력 텍스트박스와 바인딩될 속성입니다.
-        private string _newTaskText;
-        public string NewTaskText
-        {
-            get => _newTaskText;
-            set => SetProperty(ref _newTaskText, value);
-        }
-
-        // 메인 타이머 디스플레이와 바인딩될 속성입니다.
         private string _mainTimeDisplayText = "00:00:00";
         public string MainTimeDisplayText
         {
@@ -46,131 +40,153 @@ namespace WorkPartner.ViewModels
             set => SetProperty(ref _mainTimeDisplayText, value);
         }
 
-        // Task 리스트박스와 바인딩될 컬렉션입니다.
-        // ObservableCollection을 사용해야 아이템 추가/삭제 시 UI가 자동으로 업데이트됩니다.
         public ObservableCollection<TaskItem> TaskItems { get; private set; }
 
-        // 로딩 중일 때 ProgressBar 등을 보여주기 위한 속성입니다.
-        private bool _isLoading;
-        public bool IsLoading
+        private TaskItem _selectedTaskItem;
+        public TaskItem SelectedTaskItem
         {
-            get => _isLoading;
-            set => SetProperty(ref _isLoading, value);
+            get => _selectedTaskItem;
+            set
+            {
+                if (SetProperty(ref _selectedTaskItem, value))
+                {
+                    // 선택된 과목이 바뀌면 로직 수행 (예: 스톱워치 리셋)
+                    OnSelectedTaskChanged(value);
+                }
+            }
         }
 
-        #endregion
-
-        #region --- UI와 바인딩될 명령 (Commands) ---
-
-        // '과목 추가' 버튼과 바인딩될 Command입니다.
-        public ICommand AddTaskCommand { get; }
-        // '데이터 로드'를 위한 Command입니다. (예: 새로고침 버튼)
-        public ICommand LoadDataCommand { get; }
+        // ... (다른 UI 속성들 추가 가능) ...
 
         #endregion
 
         #region --- 생성자 (Constructor) ---
 
-        /// <summary>
-        /// ViewModel이 생성될 때 외부에서 서비스 전문가들을 주입받습니다.
-        /// 이를 '의존성 주입(Dependency Injection)'이라고 하며, 클래스 간의 결합도를 낮춰줍니다.
-        /// </summary>
-        public DashboardViewModel(ITaskService taskService, IDialogService dialogService, ISettingsService settingsService)
+        public DashboardViewModel(ITaskService taskService, IDialogService dialogService, ISettingsService settingsService, ITimerService timerService)
         {
-            // 전달받은 서비스들을 멤버 변수에 할당합니다.
-            _taskService = taskService ?? throw new ArgumentNullException(nameof(taskService));
-            _dialogService = dialogService ?? throw new ArgumentNullException(nameof(dialogService));
-            _settingsService = settingsService ?? throw new ArgumentNullException(nameof(settingsService));
+            _taskService = taskService;
+            _dialogService = dialogService;
+            _settingsService = settingsService;
+            _timerService = timerService; // 타이머 서비스 주입
 
-            // 데이터 컬렉션을 초기화합니다.
             TaskItems = new ObservableCollection<TaskItem>();
 
-            // Command들을 실제 실행될 메서드와 연결합니다.
-            AddTaskCommand = new RelayCommand(async _ => await AddTaskAsync(), _ => !IsLoading && !string.IsNullOrWhiteSpace(NewTaskText));
-            LoadDataCommand = new RelayCommand(async _ => await LoadDataAsync());
+            // 서비스의 Tick 이벤트가 발생할 때마다 OnTimerTick 메서드를 실행하도록 구독합니다.
+            _timerService.Tick += OnTimerTick;
+
+            // ViewModel이 생성될 때 초기 데이터를 로드합니다.
+            LoadInitialData();
         }
 
         #endregion
 
         #region --- 핵심 로직 (Methods) ---
 
-        /// <summary>
-        /// 과목 추가 로직을 비동기로 처리합니다.
-        /// </summary>
-        private async Task AddTaskAsync()
+        private void LoadInitialData()
         {
-            if (TaskItems.Any(t => t.Text.Equals(NewTaskText, StringComparison.OrdinalIgnoreCase)))
+            _settings = _settingsService.LoadSettings();
+            // TODO: 서비스에서 Task, Todo, TimeLog 등을 비동기로 불러오는 로직 필요
+
+            // 데이터 로딩이 끝나면 타이머를 시작합니다.
+            _timerService.Start();
+        }
+
+        private void OnSelectedTaskChanged(TaskItem newSelectedTask)
+        {
+            if (_currentWorkingTask != newSelectedTask)
             {
-                // ViewModel은 MessageBox의 존재를 모릅니다. 단지 서비스에게 메시지를 보여달라고 요청할 뿐입니다.
-                _dialogService.ShowMessageBox("이미 존재하는 과목입니다.");
-                return;
+                // TODO: 현재 진행중인 작업 세션을 기록하는 로직 (LogWorkSession)
+
+                _currentWorkingTask = newSelectedTask;
+                // TODO: 선택된 과목의 총 시간을 다시 계산하고 UI 업데이트
             }
-
-            var newTask = new TaskItem { Text = NewTaskText };
-            TaskItems.Add(newTask);
-
-            // 설정에 색상을 저장하는 로직도 서비스에게 위임합니다.
-            await _settingsService.SetTaskColorAsync(newTask.Text, "#808080"); // 기본 색상 지정
-
-            // 파일 저장 로직 역시 서비스에게 위임합니다.
-            await _taskService.SaveTasksAsync(TaskItems);
-
-            NewTaskText = string.Empty; // 입력창 초기화
         }
 
         /// <summary>
-        /// 모든 데이터를 비동기적으로 로드합니다.
+        /// TimerService로부터 1초마다 호출되는 메서드. 앱의 핵심 두뇌 역할을 합니다.
         /// </summary>
-        private async Task LoadDataAsync()
+        private void OnTimerTick(TimeSpan stopwatchElapsed)
         {
-            IsLoading = true; // 로딩 시작을 UI에 알림
-            try
+            string activeProcess = ActiveWindowHelper.GetActiveProcessName();
+
+            if (activeProcess == _lastActiveProcessName && !string.IsNullOrEmpty(activeProcess))
             {
-                // TaskService를 통해 데이터를 가져옵니다. ViewModel은 데이터가 파일에 있는지 DB에 있는지 모릅니다.
-                var tasks = await _taskService.LoadTasksAsync();
-                TaskItems.Clear();
-                foreach (var task in tasks)
+                UpdateLiveTimeDisplays(stopwatchElapsed);
+                return;
+            }
+
+            _lastActiveProcessName = activeProcess;
+
+            HandleStopwatchMode(stopwatchElapsed);
+        }
+
+        /// <summary>
+        /// 활성 창 상태에 따라 작업 시간을 측정하거나 정지하는 로직입니다.
+        /// DashboardPage.xaml.cs에 있던 코드를 그대로 가져왔습니다.
+        /// </summary>
+        private void HandleStopwatchMode(TimeSpan stopwatchElapsed)
+        {
+            if (_settings == null) return;
+
+            string activeProcess = ActiveWindowHelper.GetActiveProcessName();
+            string activeUrl = ActiveWindowHelper.GetActiveBrowserTabUrl();
+            string keywordToCheck = !string.IsNullOrEmpty(activeUrl) ? activeUrl : activeProcess;
+
+            if (keywordToCheck == null)
+            {
+                // 휴식 상태 처리
+                return;
+            }
+
+            bool isDistraction = _settings.DistractionProcesses.Any(p => keywordToCheck.Contains(p));
+            if (isDistraction)
+            {
+                // 딴짓 상태 처리
+                return;
+            }
+
+            bool isTrackable = _settings.WorkProcesses.Any(p => keywordToCheck.Contains(p));
+            if (isTrackable)
+            {
+                // 작업 상태 처리
+                if (_currentWorkingTask == null && TaskItems.Any())
                 {
-                    TaskItems.Add(task);
+                    SelectedTaskItem = TaskItems.First(); // 자동으로 첫 과목 선택
                 }
 
-                // (이곳에 Todo, TimeLog 등 다른 데이터 로딩 로직을 추가합니다.)
+                if (_currentWorkingTask != null)
+                {
+                    // 스톱워치 시작/정지 로직
+                    // _sessionStartTime = DateTime.Now;
+                }
             }
-            catch (Exception ex)
-            {
-                _dialogService.ShowMessageBox($"데이터 로딩 중 오류가 발생했습니다: {ex.Message}");
-            }
-            finally
-            {
-                IsLoading = false; // 로딩 완료를 UI에 알림
-            }
+
+            UpdateLiveTimeDisplays(stopwatchElapsed);
+        }
+
+        /// <summary>
+        /// 화면의 시간 표시를 업데이트합니다.
+        /// </summary>
+        private void UpdateLiveTimeDisplays(TimeSpan stopwatchElapsed)
+        {
+            // 파일에서 읽어온 오늘 총 시간 + 현재 스톱워치 시간
+            var timeToDisplay = _totalTimeTodayFromLogs + stopwatchElapsed;
+            MainTimeDisplayText = timeToDisplay.ToString(@"hh\:mm\:ss");
+
+            // TODO: 미니 타이머 업데이트 로직 (이벤트나 콜백 사용)
         }
 
         #endregion
 
         #region --- INotifyPropertyChanged 구현 ---
-
         public event PropertyChangedEventHandler PropertyChanged;
-
-        /// <summary>
-        /// 속성 값이 변경될 때 UI에 자동으로 알려주는 헬퍼 메서드입니다.
-        /// </summary>
-        /// <typeparam name="T">속성의 타입</typeparam>
-        /// <param name="field">속성의 기반이 되는 private 필드</param>
-        /// <param name="newValue">새로운 값</param>
-        /// <param name="propertyName">속성의 이름</param>
-        /// <returns>값의 변경 여부</returns>
         protected bool SetProperty<T>(ref T field, T newValue, [CallerMemberName] string propertyName = null)
         {
-            if (Equals(field, newValue))
-            {
-                return false;
-            }
+            if (Equals(field, newValue)) return false;
             field = newValue;
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
             return true;
         }
-
         #endregion
     }
 }

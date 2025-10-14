@@ -17,20 +17,20 @@ namespace WorkPartner
             // --- 1. 모든 실제 서비스 전문가들을 생성합니다. ---
             ITaskService taskService = new TaskService();
             IDialogService dialogService = new DialogService();
-            ISettingsService settingsService = new SettingsService(); // SettingsService 추가
+            ISettingsService settingsService = new SettingsService();
+            ITimerService timerService = new TimerService(); // TimerService 추가
 
             // --- 2. ViewModel에게 이 전문가들을 모두 연결(주입)해줍니다. ---
-            // ▼▼▼ 오류 수정: 생성자에 settingsService를 추가하여 3개의 인수를 전달합니다. ▼▼▼
-            var dashboardViewModel = new ViewModels.DashboardViewModel(taskService, dialogService, settingsService);
+            var dashboardViewModel = new ViewModels.DashboardViewModel(
+                taskService,
+                dialogService,
+                settingsService,
+                timerService // ViewModel에 timerService 전달
+            );
 
             // --- 3. MainWindow를 생성하고, DashboardPage에 ViewModel을 연결합니다. ---
             var mainWindow = new MainWindow();
-
-            // MainWindow가 내부적으로 생성하는 _dashboardPage를 찾아서 DataContext를 설정해야 합니다.
-            // 이를 위해 MainWindow에 public 속성을 추가하거나, 생성자에서 ViewModel을 전달받도록 수정하는 것이 좋습니다.
-            // 여기서는 간단하게 접근할 수 있다고 가정합니다. (아래 MainWindow.xaml.cs 수정 참고)
             mainWindow.SetDashboardViewModel(dashboardViewModel);
-
             mainWindow.Show();
 
             // 기존 테마 적용 로직은 그대로 둡니다.
