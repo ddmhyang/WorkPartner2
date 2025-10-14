@@ -241,7 +241,7 @@ namespace WorkPartner
             var newTask = new TaskItem { Text = newTaskText };
             TaskItems.Add(newTask);
 
-            var colorPicker = new ColorPickerWindow { Owner = Window.GetWindow(this) };
+            var colorPicker = new ColorPalette { Owner = Window.GetWindow(this) };
             if (colorPicker.ShowDialog() == true)
             {
                 _settings.TaskColors[newTask.Text] = colorPicker.SelectedColor.ToString();
@@ -774,7 +774,7 @@ namespace WorkPartner
             if (sender is not Border { Tag: TaskItem selectedTask }) return;
 
             TaskListBox.SelectedItem = selectedTask;
-            var colorPicker = new ColorPickerWindow { Owner = Window.GetWindow(this) };
+            var colorPicker = new ColorPalette { Owner = Window.GetWindow(this) };
 
             if (colorPicker.ShowDialog() != true) return;
 

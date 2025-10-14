@@ -248,6 +248,8 @@ namespace WorkPartner
             }
         }
 
+
+
         // 공통 삭제 로직을 담은 private 메서드
         private void DeleteProcess(string type, ProcessViewModel selectedVm)
         {

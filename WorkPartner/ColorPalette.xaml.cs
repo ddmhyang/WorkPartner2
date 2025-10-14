@@ -4,18 +4,18 @@ using System.Windows.Media;
 
 namespace WorkPartner
 {
-    public partial class ColorPickerWindow : Window
+    public partial class ColorPalette : Window
     {
         public Color SelectedColor { get; set; }
 
-        public ColorPickerWindow()
+        public ColorPalette()
         {
             InitializeComponent();
             this.Loaded += (s, e) => UpdatePreview();
         }
 
         // [FIX] Added constructor that takes an initial color to fix CS1729 in SettingsPage.xaml.cs
-        public ColorPickerWindow(Color initialColor)
+        public ColorPalette(Color initialColor)
         {
             InitializeComponent();
             SelectedColor = initialColor;
