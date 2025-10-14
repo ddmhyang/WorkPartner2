@@ -4,6 +4,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://expression.blend/2008" 
              xmlns:local="clr-namespace:WorkPartner"
+             xmlns:svgc="http://sharpvectors.codeplex.com/svgc/"
              mc:Ignorable="d" 
              d:DesignHeight="526" d:DesignWidth="682"
              Loaded="Window_Loaded" IsVisibleChanged="DashboardPage_IsVisibleChanged"
@@ -44,7 +45,7 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border CornerRadius="10" Background="{TemplateBinding Background}" BorderBrush="Transparent">
+                        <Border CornerRadius="5" Background="{TemplateBinding Background}" BorderBrush="Transparent">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                     </ControlTemplate>
@@ -132,25 +133,25 @@
                     <StackPanel Canvas.Left="272" Canvas.Top="215" Width="95">
                         <Border CornerRadius="2" Background="#FF345080" Height="21">
                             <StackPanel Orientation="Horizontal" >
-                                <Image Source="/path/wave.png" Width="15" Height="15" Margin="5,0,5,0" />
+                                <svgc:SvgViewbox Source="/path/wave.svg" Width="12" Height="12" Margin="5,0,8,0" />
                                 <Slider x:Name="waveSlider" Width="56" Value="0" Minimum="0" Maximum="1" Style="{StaticResource RoundSliderStyle}" Background="White" />
                             </StackPanel>
                         </Border>
                         <Border CornerRadius="2" Background="#FF5DB15D" Margin="0,1,0,0" Height="21">
                             <StackPanel Orientation="Horizontal">
-                                <Image Source="/path/forest.png" Width="15" Height="15" Margin="5,0,5,0" />
+                                <svgc:SvgViewbox Source="/path/forest.svg" Width="12" Height="12" Margin="5,0,8,0" />
                                 <Slider x:Name="forestSlider" Width="56" Value="0" Minimum="0" Maximum="1" Style="{StaticResource RoundSliderStyle}" Background="White" />
                             </StackPanel>
                         </Border>
                         <Border CornerRadius="2" Background="#FFD9D9D9" Margin="0,1,0,0" Height="21">
                             <StackPanel Orientation="Horizontal">
-                                <Image Source="/path/rain.png" Width="15" Height="15" Margin="5,0,5,0" />
+                                <svgc:SvgViewbox Source="/path/rain.svg" Width="12" Height="12" Margin="5,0,8,0" />
                                 <Slider x:Name="rainSlider" Width="56" Value="0" Minimum="0" Maximum="1" Style="{StaticResource RoundSliderStyle}" Background="White" />
                             </StackPanel>
                         </Border>
                         <Border CornerRadius="2" Background="#FFF27821" Margin="0,1,0,0" Height="21">
                             <StackPanel Orientation="Horizontal">
-                                <Image Source="/path/fire.png" Width="15" Height="15" Margin="5,0,5,0" />
+                                <svgc:SvgViewbox Source="/path/fire.svg" Width="12" Height="12" Margin="5,0,8,0" />
                                 <Slider x:Name="campfireSlider" Width="56" Value="0" Minimum="0" Maximum="1" Style="{StaticResource RoundSliderStyle}" Background="White"/>
                             </StackPanel>
                         </Border>
@@ -180,7 +181,7 @@
                         </Border>
                         <Button Content="추가" Click="AddTaskButton_Click" Width="40" Foreground="#FF676767" Style="{StaticResource RoundedButtonStyle}" Margin="5,0,0,0" Background="White" BorderBrush="White"/>
                     </StackPanel>
-                    <ListBox x:Name="TaskListBox" ItemsSource="{Binding TaskItems}" SelectedItem="{Binding SelectedTaskItem, Mode=TwoWay}" Background="Transparent" BorderBrush="Transparent" Margin="0, 5, 0, 5" ScrollViewer.CanContentScroll="False">
+                    <ListBox x:Name="TaskListBox" ItemsSource="{Binding TaskItems}" ScrollViewer.VerticalScrollBarVisibility="Hidden" SelectedItem="{Binding SelectedTaskItem, Mode=TwoWay}" Background="Transparent" BorderBrush="Transparent" Margin="0, 5, 0, 5" ScrollViewer.CanContentScroll="False">
                         <ListBox.ItemTemplate>
                             <DataTemplate>
                                 <Border x:Name="TaskItemBorder" CornerRadius="8" Background="Transparent" BorderBrush="Transparent" BorderThickness="1" Margin="5,3">
@@ -194,7 +195,7 @@
                                         <TextBlock x:Name="TaskTextBlock" Grid.Column="1" Text="{Binding Text}" VerticalAlignment="Center" Margin="5,0" Foreground="#000000"/>
                                         <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Right">
                                             <TextBlock x:Name="TotalTimeTextBlock" Text="{Binding TotalTimeFormatted}" VerticalAlignment="Center" Foreground="#000000" FontSize="10" Margin="0,0,10,0"/>
-                                            <Button Content="x" Width="12" Height="12" Background="Transparent" Foreground="Black" BorderBrush="Transparent" VerticalAlignment="Center" Click="DeleteTaskButton_Click"/>
+                                            <Button Content="×" FontSize="8" Background="Transparent" Foreground="Black" BorderBrush="Transparent" VerticalAlignment="Center" Click="DeleteTaskButton_Click"/>
                                         </StackPanel>
                                     </Grid>
                                 </Border>
@@ -212,7 +213,7 @@
             </Border>
 
             <!-- 할 일 리스트 영역 -->
-            <Border Canvas.Left="417" Canvas.Top="327" Width="247" Height="177" BorderBrush="#E8E8E8" BorderThickness="2" CornerRadius="10">
+            <Border Canvas.Left="417" Canvas.Top="327" Width="247" Height="177" BorderBrush="#E8E8E8" BorderThickness="1" CornerRadius="10">
                 <DockPanel>
                     <TextBlock DockPanel.Dock="Top" Text="오늘의 할일" VerticalAlignment="Center" Margin="16,8,0,0" FontSize="10" Foreground="#000000"/>
                     <StackPanel DockPanel.Dock="Bottom" Margin="10, 5, 10, 10" Orientation="Horizontal">
@@ -230,11 +231,13 @@
                                             <ColumnDefinition Width="*"/>
                                             <ColumnDefinition Width="Auto"/>
                                         </Grid.ColumnDefinitions>
+
                                         <StackPanel Grid.Column="0" Orientation="Horizontal">
                                             <CheckBox IsChecked="{Binding IsCompleted}" VerticalAlignment="Center" Margin="0,0,5,0" Click="SaveTodos_Event" BorderBrush="#A5A5A5"/>
                                             <TextBlock Text="{Binding Text}" VerticalAlignment="Center" Foreground="#000000" FontSize="12"/>
                                         </StackPanel>
-                                        <Button Content="x" Grid.Column="1" Width="12" Height="12" Background="Transparent" Foreground="#000000" BorderBrush="Transparent" VerticalAlignment="Center" Click="DeleteTodoButton_Click"/>
+
+                                        <Button Grid.Column="1" Content="×" FontSize="8" Background="Transparent" Foreground="Black" BorderBrush="Transparent" VerticalAlignment="Center" Click="DeleteTodoButton_Click"/>
                                     </Grid>
                                 </Border>
                             </DataTemplate>

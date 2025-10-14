@@ -1,13 +1,10 @@
-﻿// SettingsPage.xaml.cs
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
-using System.IO.Compression;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
@@ -18,10 +15,8 @@ using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Microsoft.Win32;
-using System.Windows.Media.Media3D;
-using System.Windows.Media;
 using System.Globalization;
-using System.Text.RegularExpressions; // Add this using statement for Regex
+using System.IO.Compression;
 
 namespace WorkPartner
 {
@@ -30,11 +25,11 @@ namespace WorkPartner
         private MainWindow _mainWindow;
         public AppSettings Settings { get; private set; }
         private bool _isLoaded;
+        private string _currentProcessType; // [추가] 팝업에서 어떤 종류의 프로세스를 추가할지 저장
 
         public ObservableCollection<ProcessViewModel> WorkProcessViewModels { get; set; }
         public ObservableCollection<ProcessViewModel> PassiveProcessViewModels { get; set; }
         public ObservableCollection<ProcessViewModel> DistractionProcessViewModels { get; set; }
-
 
         public SettingsPage()
         {
@@ -104,7 +99,10 @@ namespace WorkPartner
 
         private void Theme_Changed(object sender, RoutedEventArgs e)
         {
-            if (!_isLoaded) return;
+            if (!_isLoaded)
+            {
+                return;
+            }
 
             if (sender is RadioButton rb && rb.IsChecked == true)
             {
@@ -142,30 +140,88 @@ namespace WorkPartner
             foreach (var p in Settings.DistractionProcesses) { DistractionProcessViewModels.Add(await ProcessViewModel.Create(p)); }
         }
 
-        private async void AddProcess_Click(object sender, RoutedEventArgs e)
+        // [수정] '+' 버튼은 이제 팝업을 띄우는 역할만 합니다.
+        private void AddProcessButton_Click(object sender, RoutedEventArgs e)
         {
             if (sender is Button button && button.Tag is string type)
             {
-                TextBox inputTextBox = null;
-                ObservableCollection<string> targetList = null;
-                ObservableCollection<ProcessViewModel> targetViewModelList = null;
-
-                if (type == "Work") { inputTextBox = WorkProcessInput; targetList = Settings.WorkProcesses; targetViewModelList = WorkProcessViewModels; }
-                else if (type == "Passive") { inputTextBox = PassiveProcessInput; targetList = Settings.PassiveProcesses; targetViewModelList = PassiveProcessViewModels; }
-                else if (type == "Distraction") { inputTextBox = DistractionProcessInput; targetList = Settings.DistractionProcesses; targetViewModelList = DistractionProcessViewModels; }
-
-                if (inputTextBox != null && targetList != null)
-                {
-                    string process = inputTextBox.Text.Trim().ToLower();
-                    if (!string.IsNullOrEmpty(process))
-                    {
-                        await AddProcessInternalAsync(type, process);
-                    }
-                }
+                _currentProcessType = type; // 어떤 종류(+작업, +수동, +방해)인지 저장
+                AddProcessMethodPopup.PlacementTarget = button;
+                AddProcessMethodPopup.IsOpen = true;
             }
         }
 
-        // 키보드 Delete 키로 프로세스를 삭제하는 이벤트 핸들러
+        // [추가] 팝업의 "실행 중인 앱에서 선택" 버튼 클릭 이벤트
+        private async void Popup_SelectAppButton_Click(object sender, RoutedEventArgs e)
+        {
+            AddProcessMethodPopup.IsOpen = false; // 팝업 닫기
+
+            var runningProcesses = Process.GetProcesses()
+                                          .Where(p => !string.IsNullOrEmpty(p.MainWindowTitle) && p.MainWindowHandle != IntPtr.Zero)
+                                          .ToList();
+            var appList = new List<InstalledProgram>();
+            var addedProcesses = new HashSet<string>();
+
+            foreach (var proc in runningProcesses)
+            {
+                try
+                {
+                    string processName = proc.ProcessName.ToLower();
+                    if (addedProcesses.Contains(processName)) continue;
+                    Icon icon = Icon.ExtractAssociatedIcon(proc.MainModule.FileName);
+                    appList.Add(new InstalledProgram
+                    {
+                        DisplayName = proc.MainWindowTitle,
+                        ProcessName = processName,
+                        Icon = icon?.ToBitmapSource()
+                    });
+                    addedProcesses.Add(processName);
+                }
+                catch { /* Access denied */ }
+            }
+
+            var selectionWindow = new AppSelectionWindow(appList.OrderBy(a => a.DisplayName).ToList())
+            {
+                Owner = Window.GetWindow(this)
+            };
+
+            if (selectionWindow.ShowDialog() == true && !string.IsNullOrEmpty(selectionWindow.SelectedAppKeyword))
+            {
+                await AddProcessInternalAsync(_currentProcessType, selectionWindow.SelectedAppKeyword);
+            }
+        }
+
+        // [추가] 팝업의 "활성 브라우저 탭 추가" 버튼 클릭 이벤트
+        private async void Popup_AddActiveTabButton_Click(object sender, RoutedEventArgs e)
+        {
+            AddProcessMethodPopup.IsOpen = false; // 팝업 닫기
+
+            Mouse.OverrideCursor = Cursors.Wait;
+            await Task.Delay(3000); // 3초 대기
+
+            string activeUrl = ActiveWindowHelper.GetActiveBrowserTabUrl();
+            Mouse.OverrideCursor = null;
+
+            if (string.IsNullOrEmpty(activeUrl))
+            {
+                MessageBox.Show("웹 브라우저의 주소를 가져오지 못했습니다. (지원 브라우저: Chrome, Edge, Firefox, Whale 등)", "오류");
+                return;
+            }
+            try
+            {
+                if (Uri.TryCreate(activeUrl, UriKind.Absolute, out Uri uriResult))
+                {
+                    var idn = new IdnMapping();
+                    string domain = idn.GetAscii(uriResult.Host).ToLower();
+                    await AddProcessInternalAsync(_currentProcessType, domain);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"주소 처리 중 오류: {ex.Message}", "오류");
+            }
+        }
+
         private void DeleteProcess_KeyDown(object sender, KeyEventArgs e)
         {
             if (e.Key == Key.Delete && sender is ListBox listBox && listBox.SelectedItem is ProcessViewModel selectedVm)
@@ -174,83 +230,6 @@ namespace WorkPartner
             }
         }
 
-        // [수정] ListBox 아이템의 삭제 버튼 클릭 이벤트 핸들러
-        private void DeleteProcess_Click(object sender, RoutedEventArgs e)
-        {
-            if (sender is Button button && button.Tag is ProcessViewModel selectedVm)
-            {
-                var parentListBox = FindAncestor<ListBox>(button);
-                if (parentListBox != null)
-                {
-                    DeleteProcess(parentListBox.Tag as string, selectedVm);
-                }
-            }
-        }
-
-        // [수정] 입력 텍스트 박스의 값으로 프로세스를 삭제하는 이벤트 핸들러
-        private void DeleteProcessButton_Click(object sender, RoutedEventArgs e)
-        {
-            if (sender is Button button && button.Tag is string type)
-            {
-                ObservableCollection<string> targetList = null;
-                ObservableCollection<ProcessViewModel> targetViewModelList = null;
-                TextBox inputTextBox = null;
-
-                if (type == "Work")
-                {
-                    targetList = Settings.WorkProcesses;
-                    targetViewModelList = WorkProcessViewModels;
-                    inputTextBox = WorkProcessInput;
-                }
-                else if (type == "Passive")
-                {
-                    targetList = Settings.PassiveProcesses;
-                    targetViewModelList = PassiveProcessViewModels;
-                    inputTextBox = PassiveProcessInput;
-                }
-                else if (type == "Distraction")
-                {
-                    targetList = Settings.DistractionProcesses;
-                    targetViewModelList = DistractionProcessViewModels;
-                    inputTextBox = DistractionProcessInput;
-                }
-
-                if (inputTextBox != null)
-                {
-                    string process = inputTextBox.Text.Trim().ToLower();
-                    if (!string.IsNullOrEmpty(process))
-                    {
-                        var itemToRemove = targetViewModelList?.FirstOrDefault(vm => vm.DisplayName.ToLower() == process);
-                        if (itemToRemove != null)
-                        {
-                            targetList.Remove(itemToRemove.DisplayName);
-                            targetViewModelList.Remove(itemToRemove);
-                            inputTextBox.Clear();
-                            SaveSettings();
-                        }
-                        else
-                        {
-                            MessageBox.Show($"'{process}'는 목록에 존재하지 않습니다.", "알림");
-                        }
-                    }
-                    else if (targetViewModelList != null && targetViewModelList.Any())
-                    {
-                        // 텍스트 박스가 비어있을 경우, 리스트 박스에서 마지막 항목을 삭제
-                        var lastItem = targetViewModelList.LastOrDefault();
-                        if (lastItem != null)
-                        {
-                            targetList.Remove(lastItem.DisplayName);
-                            targetViewModelList.Remove(lastItem);
-                            SaveSettings();
-                        }
-                    }
-                }
-            }
-        }
-
-
-
-        // 공통 삭제 로직을 담은 private 메서드
         private void DeleteProcess(string type, ProcessViewModel selectedVm)
         {
             ObservableCollection<string> targetList = null;
@@ -264,80 +243,41 @@ namespace WorkPartner
             {
                 targetList.Remove(selectedVm.DisplayName);
                 targetViewModelList.Remove(selectedVm);
+
+                // ✨ [수정] 삭제 후 SaveSettings()를 호출하여 변경 사항을 즉시 전파합니다.
                 SaveSettings();
             }
         }
 
-        // UI 트리를 탐색하여 부모 컨트롤을 찾는 Helper 메서드
-        private T FindAncestor<T>(DependencyObject dependencyObject) where T : DependencyObject
+        private void DeleteProcessMenuItem_Click(object sender, RoutedEventArgs e)
         {
-            var parent = VisualTreeHelper.GetParent(dependencyObject);
-            if (parent == null) return null;
-
-            if (parent is T ancestor) return ancestor;
-
-            return FindAncestor<T>(parent);
-        }
-
-        private void SelectAppButton_Click(object sender, RoutedEventArgs e)
-        {
-            if (sender is Button button && button.Tag is string type)
+            // 클릭된 메뉴 아이템과 연결된 프로그램 데이터를 가져옵니다.
+            if (sender is MenuItem menuItem && menuItem.CommandParameter is ProcessViewModel selectedVm)
             {
-                var runningProcesses = Process.GetProcesses()
-                                              .Where(p => !string.IsNullOrEmpty(p.MainWindowTitle) && p.MainWindowHandle != IntPtr.Zero)
-                                              .ToList();
-                var appList = new List<InstalledProgram>();
-                var addedProcesses = new HashSet<string>();
-
-                foreach (var proc in runningProcesses)
+                // 어떤 목록(작업/수동/방해)에 속해있는지 확인하고 삭제를 실행합니다.
+                if (WorkProcessViewModels.Contains(selectedVm))
                 {
-                    try
-                    {
-                        string processName = proc.ProcessName.ToLower();
-                        if (addedProcesses.Contains(processName)) continue;
-
-                        Icon icon = null;
-                        string path = proc.MainModule.FileName;
-                        if (!string.IsNullOrEmpty(path))
-                        {
-                            icon = System.Drawing.Icon.ExtractAssociatedIcon(path);
-                        }
-
-                        appList.Add(new InstalledProgram
-                        {
-                            DisplayName = proc.MainWindowTitle,
-                            ProcessName = processName,
-                            Icon = icon?.ToBitmapSource()
-                        });
-                        addedProcesses.Add(processName);
-                    }
-                    catch { /* Access denied to process will be ignored */ }
+                    DeleteProcess("Work", selectedVm);
                 }
-
-                var selectionWindow = new AppSelectionWindow(appList.OrderBy(a => a.DisplayName).ToList()) { Owner = Window.GetWindow(this) };
-                if (selectionWindow.ShowDialog() == true && !string.IsNullOrEmpty(selectionWindow.SelectedAppKeyword))
+                else if (PassiveProcessViewModels.Contains(selectedVm))
                 {
-                    TextBox inputTextBox = null;
-                    if (type == "Work") inputTextBox = WorkProcessInput;
-                    else if (type == "Passive") inputTextBox = PassiveProcessInput;
-                    else if (type == "Distraction") inputTextBox = DistractionProcessInput;
-
-                    if (inputTextBox != null)
-                        inputTextBox.Text = selectionWindow.SelectedAppKeyword;
+                    DeleteProcess("Passive", selectedVm);
+                }
+                else if (DistractionProcessViewModels.Contains(selectedVm))
+                {
+                    DeleteProcess("Distraction", selectedVm);
                 }
             }
         }
 
-        // Internal method to add a process
         private async Task AddProcessInternalAsync(string type, string processName)
         {
             ObservableCollection<string> targetList = null;
             ObservableCollection<ProcessViewModel> targetViewModelList = null;
-            TextBox inputTextBox = null;
 
-            if (type == "Work") { targetList = Settings.WorkProcesses; targetViewModelList = WorkProcessViewModels; inputTextBox = WorkProcessInput; }
-            else if (type == "Passive") { targetList = Settings.PassiveProcesses; targetViewModelList = PassiveProcessViewModels; inputTextBox = PassiveProcessInput; }
-            else if (type == "Distraction") { targetList = Settings.DistractionProcesses; targetViewModelList = DistractionProcessViewModels; inputTextBox = DistractionProcessInput; }
+            if (type == "Work") { targetList = Settings.WorkProcesses; targetViewModelList = WorkProcessViewModels; }
+            else if (type == "Passive") { targetList = Settings.PassiveProcesses; targetViewModelList = PassiveProcessViewModels; }
+            else if (type == "Distraction") { targetList = Settings.DistractionProcesses; targetViewModelList = DistractionProcessViewModels; }
 
             if (targetList != null && targetViewModelList != null && !string.IsNullOrEmpty(processName))
             {
@@ -345,58 +285,7 @@ namespace WorkPartner
                 {
                     targetList.Add(processName.ToLower());
                     targetViewModelList.Add(await ProcessViewModel.Create(processName.ToLower()));
-                    if (inputTextBox != null)
-                    {
-                        inputTextBox.Clear();
-                    }
                     SaveSettings();
-                }
-            }
-        }
-
-        private async void AddActiveTabButton_Click(object sender, RoutedEventArgs e)
-        {
-            if (sender is Button button && button.Tag is string type)
-            {
-                await Task.Delay(3000);
-
-                string activeUrl = ActiveWindowHelper.GetActiveBrowserTabUrl();
-                if (string.IsNullOrEmpty(activeUrl))
-                {
-                    MessageBox.Show("웹 브라우저의 주소를 가져오지 못했습니다. (지원 브라우저: Chrome, Edge, Firefox, Whale 등)", "오류");
-                    return;
-                }
-                try
-                {
-                    string urlKeyword = null;
-
-                    Uri uriResult;
-                    // Uri.TryCreate를 사용하여 문자열이 유효한 URL인지 확인합니다.
-                    if (Uri.TryCreate(activeUrl, UriKind.Absolute, out uriResult))
-                    {
-                        var idn = new IdnMapping();
-                        // GetAscii를 사용하여 URL의 호스트를 Punycode로 변환합니다.
-                        string punycodeHost = idn.GetAscii(uriResult.Host);
-                        urlKeyword = punycodeHost.ToLower();
-                    }
-                    else
-                    {
-                        // URL이 아닌 경우 원본 문자열을 그대로 사용합니다.
-                        urlKeyword = activeUrl.ToLower();
-                    }
-
-                    if (!string.IsNullOrEmpty(urlKeyword))
-                    {
-                        await AddProcessInternalAsync(type, urlKeyword);
-                    }
-                    else
-                    {
-                        MessageBox.Show($"유효한 URL 또는 제목이 아닙니다: {activeUrl}", "오류");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show($"데이터 처리 중 오류가 발생했습니다: {ex.Message}", "오류");
                 }
             }
         }
@@ -404,6 +293,7 @@ namespace WorkPartner
         #endregion
 
         #region Data Management
+        // ... (데이터 관리 부분은 수정 없이 그대로 유지됩니다)
         private void ExportDataButton_Click(object sender, RoutedEventArgs e)
         {
             var saveFileDialog = new SaveFileDialog
@@ -564,7 +454,7 @@ namespace WorkPartner
                 {
                     using (var client = new HttpClient())
                     {
-                        var response = await client.GetAsync($"https://www.google.com/s2/favicons?sz=32&domain_url={identifier}");
+                        var response = await client.GetAsync($"https-www.google.com/s2/favicons?sz=32&domain_url={identifier}");
                         if (response.IsSuccessStatusCode)
                         {
                             var bytes = await response.Content.ReadAsByteArrayAsync();

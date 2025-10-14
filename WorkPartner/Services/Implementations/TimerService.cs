@@ -1,18 +1,20 @@
 ﻿// 파일: WorkPartner/Services/Implementations/TimerService.cs
+
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Windows.Threading;
 
 namespace WorkPartner.Services.Implementations
 {
-    /// <summary>
-    /// DispatcherTimer와 Stopwatch를 사용하여 ITimerService를 실제로 구현한 클래스입니다.
-    /// </summary>
     public class TimerService : ITimerService
     {
         private readonly DispatcherTimer _timer;
         private readonly Stopwatch _stopwatch;
+        private AppSettings _settings;
 
+        // ✨ [수정] 인터페이스와 일치하도록 이벤트 이름을 'Tick'으로 변경합니다.
         public event Action<TimeSpan> Tick;
 
         public TimerService()
@@ -22,30 +24,83 @@ namespace WorkPartner.Services.Implementations
             {
                 Interval = TimeSpan.FromSeconds(1)
             };
-            _timer.Tick += OnTimerTick;
+            _timer.Tick += Timer_Tick;
+
+            LoadSettings();
+            DataManager.SettingsUpdated += LoadSettings;
         }
 
-
-        private void OnTimerTick(object sender, EventArgs e)
+        private void LoadSettings()
         {
-            // Tick 이벤트를 구독한 모든 곳에 스톱워치의 경과 시간을 알려줍니다.
-            Tick?.Invoke(_stopwatch.Elapsed);
+            _settings = DataManager.LoadSettings();
+            Debug.WriteLine("TimerService: Settings reloaded.");
         }
+
+        private void Timer_Tick(object sender, EventArgs e)
+        {
+            // ✨ [수정] 변경된 이벤트 이름 'Tick'을 사용합니다.
+            Tick?.Invoke(_stopwatch.Elapsed);
+            CheckActiveWindow();
+        }
+
+        private void CheckActiveWindow()
+        {
+            if (_settings == null || IsPaused) return;
+
+            string activeProcessName = ActiveWindowHelper.GetActiveProcessName()?.ToLower();
+            if (string.IsNullOrEmpty(activeProcessName)) return;
+
+            if (_settings.DistractionProcesses.Any(p => activeProcessName.Contains(p)))
+            {
+                Pause();
+            }
+            else if (_settings.WorkProcesses.Any(p => activeProcessName.Contains(p)))
+            {
+                if (IsPaused)
+                {
+                    Resume();
+                }
+            }
+        }
+
+        public bool IsRunning => _timer.IsEnabled;
+        public bool IsPaused { get; private set; }
 
         public void Start()
         {
-            _stopwatch.Start();
-            _timer.Start();
+            if (!IsRunning)
+            {
+                _stopwatch.Start();
+                _timer.Start();
+                IsPaused = false;
+            }
         }
 
         public void Stop()
         {
-            _stopwatch.Stop();
+            _stopwatch.Reset();
             _timer.Stop();
+            IsPaused = false;
+            // ✨ [수정] 변경된 이벤트 이름 'Tick'을 사용합니다.
+            Tick?.Invoke(TimeSpan.Zero);
         }
 
-        // 참고: 스톱워치를 리셋하거나 현재 작업 시간을 기록하는 등의
-        // 구체적인 로직은 이 서비스가 아닌 ViewModel이 담당합니다.
-        // 이 서비스는 오직 '시간을 재고 알리는' 역할에만 충실합니다.
+        public void Pause()
+        {
+            if (IsRunning && !IsPaused)
+            {
+                _stopwatch.Stop();
+                IsPaused = true;
+            }
+        }
+
+        public void Resume()
+        {
+            if (IsRunning && IsPaused)
+            {
+                _stopwatch.Start();
+                IsPaused = false;
+            }
+        }
     }
 }

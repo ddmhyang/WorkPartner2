@@ -14,11 +14,40 @@
 	<ItemGroup>
 		<!-- 이미지, 아이콘, 폰트 파일들을 리소스로 포함합니다. -->
 		<Resource Include="images\**" />
+		<Resource Include="path\fire.svg">
+		  <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Resource>
+		<Resource Include="path\forest.png">
+		  <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+		</Resource>
+		<Resource Include="path\forest.svg">
+		  <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Resource>
+		<Resource Include="path\rain.png">
+		  <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+		</Resource>
+		<Resource Include="path\rain.svg">
+		  <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Resource>
+		<Resource Include="path\wave.png">
+		  <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+		</Resource>
+		<Resource Include="path\wave.svg">
+		  <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Resource>
 		<Resource Include="WorkPartner.ico" />
 		<Resource Include="Fonts\**" />
 	</ItemGroup>
 
 	<ItemGroup>
+	  <None Remove="path\fire.png" />
+	  <None Remove="path\fire.svg" />
+	  <None Remove="path\forest.png" />
+	  <None Remove="path\forest.svg" />
+	  <None Remove="path\rain.png" />
+	  <None Remove="path\rain.svg" />
+	  <None Remove="path\wave.png" />
+	  <None Remove="path\wave.svg" />
 	  <None Remove="rain.png" />
 	</ItemGroup>
 
@@ -36,6 +65,12 @@
 	</ItemGroup>
 
 	<ItemGroup>
+	  <Resource Include="path\fire.png">
+	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+	  </Resource>
+	</ItemGroup>
+
+	<ItemGroup>
 		<!-- 프로젝트에 필요한 모든 NuGet 패키지 목록입니다. -->
 		<PackageReference Include="Extended.Wpf.Toolkit" Version="4.6.0" />
 		<PackageReference Include="LiveCharts.Wpf" Version="0.9.7" />
@@ -50,27 +85,12 @@
 		<PackageReference Include="Microsoft.ML.CpuMath" Version="1.7.1" />
 		<PackageReference Include="Microsoft.ML.FastTree" Version="1.7.1" />
 		<PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+		<PackageReference Include="SharpVectors.Wpf" Version="1.8.5" />
 		<PackageReference Include="System.Drawing.Common" Version="8.0.4" />
 		<PackageReference Include="System.Management" Version="8.0.0" />
 	</ItemGroup>
 
 	<ItemGroup>
-	  <Folder Include="path\" />
-	</ItemGroup>
-
-	<ItemGroup>
-	  <None Update="path\fire.png">
-	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-	  </None>
-	  <None Update="path\forest.png">
-	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-	  </None>
-	  <None Update="path\rain.png">
-	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-	  </None>
-	  <None Update="path\wave.png">
-	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-	  </None>
 	  <None Update="Sounds\campfire.mp3">
 	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
 	  </None>
@@ -83,6 +103,12 @@
 	  <None Update="Sounds\wave.mp3">
 	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
 	  </None>
+	</ItemGroup>
+
+	<ItemGroup>
+	  <Resource Update="images\warning.svg">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </Resource>
 	</ItemGroup>
 
 </Project>
