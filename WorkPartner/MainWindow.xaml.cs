@@ -41,7 +41,7 @@ namespace WorkPartner
             {
                 case "Dashboard":
                     MainFrame.Navigate(_dashboardPage);
-                    _dashboardPage.LoadAllData();
+                    await _dashboardPage.LoadAllDataAsync();
                     break;
                 case "Avatar":
                     if (_avatarPage == null) _avatarPage = new AvatarPage();
@@ -95,6 +95,12 @@ namespace WorkPartner
 
         private void CloseButton_Click(object sender, RoutedEventArgs e) => Application.Current.Shutdown();
         private void MinimizeButton_Click(object sender, RoutedEventArgs e) => this.WindowState = WindowState.Minimized;
+
+
+        public void SetDashboardViewModel(object viewModel)
+        {
+            _dashboardPage.DataContext = viewModel;
+        }
     }
 }
 

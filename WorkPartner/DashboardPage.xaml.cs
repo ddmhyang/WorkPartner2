@@ -53,9 +53,16 @@ namespace WorkPartner
         private DateTime _idleStartTime;
         private const int IdleGraceSeconds = 10;
 
+        private const string StatusResting = "휴식 중";
+        private const string StatusIdle = "자리 비움";
+        private const string StatusDistraction = "딴짓 중!";
+
         private Point _dragStartPoint;
         private Rectangle _selectionBox;
         private bool _isDragging = false;
+
+        // ▼▼▼ 1순위 수정사항: 마지막 활성 프로세스 이름 저장 변수 추가 ▼▼▼
+        private string _lastActiveProcessName = string.Empty;
 
         // 1. MainWindow를 저장할 변수 선언
         private MainWindow _parentWindow;
@@ -78,7 +85,7 @@ namespace WorkPartner
             _timer.Tick += Timer_Tick;
 
             InitializeData();
-            LoadAllData();
+            // LoadAllData(); // <- 동기 호출은 생성자에서 제거
 
             _predictionService = new PredictionService();
             _lastSuggestionTime = DateTime.MinValue;
@@ -168,67 +175,122 @@ namespace WorkPartner
             return new SolidColorBrush(Colors.Gray);
         }
 
-        #region 데이터 저장 / 불러오기
-
+        #region 데이터 저장 / 불러오기 (비동기 방식으로 수정)
 
         public void LoadSettings() { _settings = DataManager.LoadSettings(); }
         private void OnSettingsUpdated() { _settings = DataManager.LoadSettings(); }
         private void SaveSettings() { DataManager.SaveSettingsAndNotify(_settings); }
 
-        private void LoadTasks()
+        private async Task LoadTasksAsync()
         {
             if (!File.Exists(_tasksFilePath)) return;
-            var json = File.ReadAllText(_tasksFilePath);
-            var loadedTasks = JsonSerializer.Deserialize<ObservableCollection<TaskItem>>(json) ?? new ObservableCollection<TaskItem>();
-            TaskItems.Clear();
-            foreach (var task in loadedTasks)
+            try
             {
-                TaskItems.Add(task);
+                using (FileStream stream = File.OpenRead(_tasksFilePath))
+                {
+                    var loadedTasks = await JsonSerializer.DeserializeAsync<ObservableCollection<TaskItem>>(stream);
+                    if (loadedTasks != null)
+                    {
+                        TaskItems.Clear();
+                        foreach (var task in loadedTasks) TaskItems.Add(task);
+                    }
+                }
             }
+            catch (Exception ex) { Debug.WriteLine($"Error loading tasks: {ex.Message}"); }
         }
         private void SaveTasks()
         {
+            // ▼▼▼ 아래 2줄로 수정하여, DataManager.JsonOptions 대신 지역 변수를 사용합니다. ▼▼▼
             var options = new JsonSerializerOptions { WriteIndented = true, Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
             var json = JsonSerializer.Serialize(TaskItems, options);
             File.WriteAllText(_tasksFilePath, json);
         }
 
-        private void LoadTodos()
+        private async Task LoadTodosAsync()
         {
             if (!File.Exists(_todosFilePath)) return;
-            var json = File.ReadAllText(_todosFilePath);
-            var loadedTodos = JsonSerializer.Deserialize<ObservableCollection<TodoItem>>(json) ?? new ObservableCollection<TodoItem>();
-            TodoItems.Clear();
-            foreach (var todo in loadedTodos)
+            try
             {
-                TodoItems.Add(todo);
+                using (FileStream stream = File.OpenRead(_todosFilePath))
+                {
+                    var loadedTodos = await JsonSerializer.DeserializeAsync<ObservableCollection<TodoItem>>(stream);
+                    if (loadedTodos != null)
+                    {
+                        TodoItems.Clear();
+                        foreach (var todo in loadedTodos) TodoItems.Add(todo);
+                    }
+                }
+                FilterTodos();
             }
-            FilterTodos();
+            catch (Exception ex) { Debug.WriteLine($"Error loading todos: {ex.Message}"); }
         }
         private void SaveTodos()
         {
+            // ▼▼▼ 여기도 동일하게 수정합니다. ▼▼▼
             var options = new JsonSerializerOptions { WriteIndented = true, Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
             var json = JsonSerializer.Serialize(TodoItems, options);
             File.WriteAllText(_todosFilePath, json);
         }
 
-        private void LoadTimeLogs()
+        private async Task LoadTimeLogsAsync()
         {
             if (!File.Exists(_timeLogFilePath)) return;
-            var json = File.ReadAllText(_timeLogFilePath);
-            var loadedLogs = JsonSerializer.Deserialize<ObservableCollection<TimeLogEntry>>(json) ?? new ObservableCollection<TimeLogEntry>();
-            TimeLogEntries.Clear();
-            foreach (var log in loadedLogs)
+            try
             {
-                TimeLogEntries.Add(log);
+                using (FileStream stream = File.OpenRead(_timeLogFilePath))
+                {
+                    var loadedLogs = await JsonSerializer.DeserializeAsync<ObservableCollection<TimeLogEntry>>(stream);
+                    if (loadedLogs != null)
+                    {
+                        TimeLogEntries.Clear();
+                        foreach (var log in loadedLogs) TimeLogEntries.Add(log);
+                    }
+                }
             }
+            catch (Exception ex) { Debug.WriteLine($"Error loading time logs: {ex.Message}"); }
         }
         private void SaveTimeLogs()
         {
+            // ▼▼▼ 여기도 동일하게 수정합니다. ▼▼▼
             var options = new JsonSerializerOptions { WriteIndented = true, Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
             var json = JsonSerializer.Serialize(TimeLogEntries, options);
             File.WriteAllText(_timeLogFilePath, json);
         }
+
+        // ▼▼▼ 오류 수정: LoadMemosAsync 추가 ▼▼▼
+        private async Task LoadMemosAsync()
+        {
+            if (!File.Exists(_memosFilePath)) return;
+            try
+            {
+                using (FileStream stream = File.OpenRead(_memosFilePath))
+                {
+                    var loadedMemos = await JsonSerializer.DeserializeAsync<ObservableCollection<MemoItem>>(stream);
+                    if (loadedMemos != null)
+                    {
+                        AllMemos.Clear();
+                        foreach (var memo in loadedMemos) AllMemos.Add(memo);
+                    }
+                }
+                UpdatePinnedMemoView();
+            }
+            catch (Exception ex) { Debug.WriteLine($"Error loading memos: {ex.Message}"); }
+        }
+
+        // ▼▼▼ 오류 수정: LoadAllData를 LoadAllDataAsync로 변경 ▼▼▼
+        public async Task LoadAllDataAsync()
+        {
+            LoadSettings();
+            await LoadTasksAsync();
+            await LoadTodosAsync();
+            await LoadTimeLogsAsync();
+            await LoadMemosAsync();
+            UpdateCharacterInfoPanel();
+
+            RecalculateAllTotals();
+            RenderTimeTable();
+        }
+
         #endregion
 
 
@@ -242,11 +304,12 @@ namespace WorkPartner
             RenderTimeTable();
         }
 
-        private void DashboardPage_IsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
+        // ▼▼▼ 오류 수정: IsVisibleChanged에서 LoadAllDataAsync 호출 ▼▼▼
+        private async void DashboardPage_IsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
         {
             if (e.NewValue is true)
             {
-                LoadAllData();
+                await LoadAllDataAsync();
             }
             if (!_timer.IsEnabled)
             {
@@ -519,8 +582,18 @@ namespace WorkPartner
         #region 핵심 로직
         public void SetMiniTimerReference(MiniTimerWindow timer) { _miniTimer = timer; }
 
+        // ▼▼▼ 1순위 수정사항: Timer_Tick 최적화 코드 적용 ▼▼▼
         private void Timer_Tick(object sender, EventArgs e)
         {
+            string activeProcess = ActiveWindowHelper.GetActiveProcessName();
+
+            if (activeProcess == _lastActiveProcessName && !string.IsNullOrEmpty(activeProcess))
+            {
+                UpdateLiveTimeDisplays();
+                return;
+            }
+
+            _lastActiveProcessName = activeProcess;
 
             if (_stopwatch.IsRunning && _lastUnratedSession != null)
             {
@@ -848,7 +921,7 @@ namespace WorkPartner
             }
             else
             {
-                CurrentTaskDisplay.Text = _currentWorkingTask?.Text ?? "휴식 중";
+                CurrentTaskDisplay.Text = _currentWorkingTask?.Text ?? StatusResting;
             }
 
             CharacterPreview.UpdateCharacter();
@@ -910,21 +983,6 @@ namespace WorkPartner
             return false;
         }
 
-        //private void FocusModeButton_Click(object sender, RoutedEventArgs e)
-        //{
-        //    _isFocusModeActive = !_isFocusModeActive;
-        //    if (_isFocusModeActive)
-        //    {
-        //        FocusModeButton.Background = new SolidColorBrush(Color.FromRgb(0, 122, 255));
-        //        FocusModeButton.Foreground = Brushes.White;
-        //        MessageBox.Show("집중 모드가 활성화되었습니다. 방해 앱으로 등록된 프로그램을 실행하면 경고가 표시됩니다.", "집중 모드 ON");
-        //    }
-        //    else
-        //    {
-        //        FocusModeButton.Background = new SolidColorBrush(Color.FromRgb(0xEF, 0xEF, 0xEF));
-        //        FocusModeButton.Foreground = new SolidColorBrush(Color.FromRgb(0x33, 0x33, 0x33));
-        //    }
-        //}
         #endregion
 
         #region 타임라인 드래그 및 일괄 수정
@@ -1087,21 +1145,6 @@ namespace WorkPartner
             }
         }
 
-        // DashboardPage.xaml.cs (메서드 추가)
-
-        private void LoadMemos()
-        {
-            if (!File.Exists(_memosFilePath)) return;
-            var json = File.ReadAllText(_memosFilePath);
-            var loadedMemos = JsonSerializer.Deserialize<ObservableCollection<MemoItem>>(json) ?? new ObservableCollection<MemoItem>();
-            AllMemos.Clear();
-            foreach (var memo in loadedMemos)
-            {
-                AllMemos.Add(memo);
-            }
-            UpdatePinnedMemoView();
-        }
-
         private void UpdatePinnedMemoView()
         {
             var pinnedMemo = AllMemos.FirstOrDefault(m => m.IsPinned);
@@ -1119,27 +1162,10 @@ namespace WorkPartner
             }
         }
 
-        // DashboardPage.xaml.cs -> LoadAllData()
-
-        public void LoadAllData()
-        {
-            LoadSettings();
-            LoadTasks();
-            LoadTodos();
-            LoadTimeLogs();
-            LoadMemos(); // ▼▼▼ 추가 ▼▼▼
-            UpdateCharacterInfoPanel();
-        }
-
-
-        // DashboardPage.xaml.cs (메서드 추가)
-        // DashboardPage.xaml.cs
-        // NewMemoButton_Click, MemoPreviewItem_MouseDoubleClick 두 메서드를 지우고 아래 코드를 추가하세요.
-
         private void PinnedMemo_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             var memoWindow = new MemoWindow { Owner = Window.GetWindow(this) };
-            memoWindow.Closed += (s, args) => LoadMemos(); // 창이 닫히면 고정 메모 새로고침
+            memoWindow.Closed += async (s, args) => await LoadMemosAsync(); // 창이 닫히면 고정 메모 새로고침
             memoWindow.ShowDialog();
         }
 

@@ -8,6 +8,7 @@ namespace WorkPartner
 {
     public static class DataManager
     {
+        public static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true, Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
         public static event Action SettingsUpdated;
 
         // 1. AppData 안에 우리 프로그램 전용 폴더 경로를 만듭니다.
@@ -21,6 +22,8 @@ namespace WorkPartner
         public static string MemosFilePath { get; }
         public static string ModelFilePath { get; }
         public static string ItemsDbFilePath { get; }
+
+
 
         // 프로그램이 시작될 때 단 한 번만 실행되는 생성자
         static DataManager()
