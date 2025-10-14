@@ -1,14 +1,10 @@
-﻿// 파일: WorkPartner/ViewModels/DashboardViewModel.cs
-
-using System;
+﻿using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
-using System.Windows.Input;
-using WorkPartner.Commands;
 using WorkPartner.Services;
 
 namespace WorkPartner.ViewModels
@@ -17,21 +13,27 @@ namespace WorkPartner.ViewModels
     {
         #region --- 서비스 및 멤버 변수 선언 ---
 
-        private readonly ITaskService _taskService;
-        private readonly IDialogService _dialogService;
+        private readonly ITimerService _timerService;
         private readonly ISettingsService _settingsService;
-        private readonly ITimerService _timerService; // 타이머 서비스 추가
+        private readonly ITaskService _taskService;
+        private readonly ITimeLogService _timeLogService;
 
+        private readonly Stopwatch _stopwatch;
         private AppSettings _settings;
         private string _lastActiveProcessName = string.Empty;
+
         private TaskItem _currentWorkingTask;
         private DateTime _sessionStartTime;
-        private TimeSpan _totalTimeTodayFromLogs; // 파일에서 읽어온 오늘 총 학습 시간
+        private TimeSpan _totalTimeTodayFromLogs;
         private bool _isPausedForIdle = false;
+        private DateTime _idleStartTime;
+        private const int IdleGraceSeconds = 10;
+
+        public ObservableCollection<TimeLogEntry> TimeLogEntries { get; private set; }
 
         #endregion
 
-        #region --- UI와 바인딩될 속성 (Properties) ---
+        #region --- UI와 바인딩될 속성 ---
 
         private string _mainTimeDisplayText = "00:00:00";
         public string MainTimeDisplayText
@@ -50,133 +52,180 @@ namespace WorkPartner.ViewModels
             {
                 if (SetProperty(ref _selectedTaskItem, value))
                 {
-                    // 선택된 과목이 바뀌면 로직 수행 (예: 스톱워치 리셋)
                     OnSelectedTaskChanged(value);
                 }
             }
         }
 
-        // ... (다른 UI 속성들 추가 가능) ...
-
         #endregion
 
-        #region --- 생성자 (Constructor) ---
-
-        public DashboardViewModel(ITaskService taskService, IDialogService dialogService, ISettingsService settingsService, ITimerService timerService)
+        public DashboardViewModel(ITaskService taskService, IDialogService dialogService, ISettingsService settingsService, ITimerService timerService, ITimeLogService timeLogService)
         {
             _taskService = taskService;
-            _dialogService = dialogService;
             _settingsService = settingsService;
-            _timerService = timerService; // 타이머 서비스 주입
+            _timerService = timerService;
+            _timeLogService = timeLogService;
 
+            _stopwatch = new Stopwatch();
             TaskItems = new ObservableCollection<TaskItem>();
+            TimeLogEntries = new ObservableCollection<TimeLogEntry>();
 
-            // 서비스의 Tick 이벤트가 발생할 때마다 OnTimerTick 메서드를 실행하도록 구독합니다.
             _timerService.Tick += OnTimerTick;
-
-            // ViewModel이 생성될 때 초기 데이터를 로드합니다.
-            LoadInitialData();
+            LoadInitialDataAsync();
         }
 
-        #endregion
-
-        #region --- 핵심 로직 (Methods) ---
-
-        private void LoadInitialData()
+        private async void LoadInitialDataAsync()
         {
             _settings = _settingsService.LoadSettings();
-            // TODO: 서비스에서 Task, Todo, TimeLog 등을 비동기로 불러오는 로직 필요
 
-            // 데이터 로딩이 끝나면 타이머를 시작합니다.
+            var loadedTasks = await _taskService.LoadTasksAsync();
+            foreach (var task in loadedTasks) TaskItems.Add(task);
+
+            var loadedLogs = await _timeLogService.LoadTimeLogsAsync();
+            foreach (var log in loadedLogs) TimeLogEntries.Add(log);
+
+            RecalculateTotalTimeToday();
             _timerService.Start();
+        }
+
+        private void RecalculateTotalTimeToday()
+        {
+            _totalTimeTodayFromLogs = new TimeSpan(TimeLogEntries
+                .Where(log => log.StartTime.Date == DateTime.Today)
+                .Sum(log => log.Duration.Ticks));
         }
 
         private void OnSelectedTaskChanged(TaskItem newSelectedTask)
         {
             if (_currentWorkingTask != newSelectedTask)
             {
-                // TODO: 현재 진행중인 작업 세션을 기록하는 로직 (LogWorkSession)
-
+                if (_stopwatch.IsRunning)
+                {
+                    LogWorkSession();
+                    _stopwatch.Reset();
+                }
                 _currentWorkingTask = newSelectedTask;
-                // TODO: 선택된 과목의 총 시간을 다시 계산하고 UI 업데이트
             }
         }
 
-        /// <summary>
-        /// TimerService로부터 1초마다 호출되는 메서드. 앱의 핵심 두뇌 역할을 합니다.
-        /// </summary>
-        private void OnTimerTick(TimeSpan stopwatchElapsed)
+        private void OnTimerTick(TimeSpan ignored)
         {
             string activeProcess = ActiveWindowHelper.GetActiveProcessName();
 
             if (activeProcess == _lastActiveProcessName && !string.IsNullOrEmpty(activeProcess))
             {
-                UpdateLiveTimeDisplays(stopwatchElapsed);
+                UpdateLiveTimeDisplays();
                 return;
             }
 
             _lastActiveProcessName = activeProcess;
-
-            HandleStopwatchMode(stopwatchElapsed);
+            HandleStopwatchMode();
         }
 
-        /// <summary>
-        /// 활성 창 상태에 따라 작업 시간을 측정하거나 정지하는 로직입니다.
-        /// DashboardPage.xaml.cs에 있던 코드를 그대로 가져왔습니다.
-        /// </summary>
-        private void HandleStopwatchMode(TimeSpan stopwatchElapsed)
+        private void HandleStopwatchMode()
         {
             if (_settings == null) return;
 
-            string activeProcess = ActiveWindowHelper.GetActiveProcessName();
-            string activeUrl = ActiveWindowHelper.GetActiveBrowserTabUrl();
-            string keywordToCheck = !string.IsNullOrEmpty(activeUrl) ? activeUrl : activeProcess;
+            string activeProcess = ActiveWindowHelper.GetActiveProcessName().ToLower();
+            string activeUrl = ActiveWindowHelper.GetActiveBrowserTabUrl()?.ToLower() ?? string.Empty;
 
-            if (keywordToCheck == null)
+            Action stopAndLogAction = () =>
             {
-                // 휴식 상태 처리
+                if (_stopwatch.IsRunning || _isPausedForIdle)
+                {
+                    LogWorkSession(_isPausedForIdle ? _sessionStartTime.Add(_stopwatch.Elapsed) : null);
+                    _stopwatch.Reset();
+                }
+                _isPausedForIdle = false;
+            };
+
+            if (_settings.DistractionProcesses.Any(p => activeProcess.Contains(p) || (!string.IsNullOrEmpty(activeUrl) && activeUrl.Contains(p))))
+            {
+                stopAndLogAction();
                 return;
             }
 
-            bool isDistraction = _settings.DistractionProcesses.Any(p => keywordToCheck.Contains(p));
-            if (isDistraction)
+            if (_settings.WorkProcesses.Any(p => activeProcess.Contains(p) || (!string.IsNullOrEmpty(activeUrl) && activeUrl.Contains(p))))
             {
-                // 딴짓 상태 처리
-                return;
+                bool isPassive = _settings.PassiveProcesses.Any(p => activeProcess.Contains(p));
+                bool isCurrentlyIdle = _settings.IsIdleDetectionEnabled && !isPassive && ActiveWindowHelper.GetIdleTime().TotalSeconds > _settings.IdleTimeoutSeconds;
+
+                if (isCurrentlyIdle)
+                {
+                    if (_stopwatch.IsRunning)
+                    {
+                        _stopwatch.Stop();
+                        _isPausedForIdle = true;
+                        _idleStartTime = DateTime.Now;
+                    }
+                    else if (_isPausedForIdle && (DateTime.Now - _idleStartTime).TotalSeconds > IdleGraceSeconds)
+                    {
+                        LogWorkSession(_sessionStartTime.Add(_stopwatch.Elapsed));
+                        _stopwatch.Reset();
+                        _isPausedForIdle = false;
+                    }
+                }
+                else
+                {
+                    if (_isPausedForIdle)
+                    {
+                        _isPausedForIdle = false;
+                        _stopwatch.Start();
+                    }
+                    else if (!_stopwatch.IsRunning)
+                    {
+                        _currentWorkingTask = SelectedTaskItem;
+                        if (_currentWorkingTask == null && TaskItems.Any())
+                        {
+                            SelectedTaskItem = TaskItems.First();
+                            _currentWorkingTask = SelectedTaskItem;
+                        }
+
+                        if (_currentWorkingTask != null)
+                        {
+                            _sessionStartTime = DateTime.Now;
+                            _stopwatch.Start();
+                        }
+                    }
+                }
+            }
+            else
+            {
+                stopAndLogAction();
             }
 
-            bool isTrackable = _settings.WorkProcesses.Any(p => keywordToCheck.Contains(p));
-            if (isTrackable)
-            {
-                // 작업 상태 처리
-                if (_currentWorkingTask == null && TaskItems.Any())
-                {
-                    SelectedTaskItem = TaskItems.First(); // 자동으로 첫 과목 선택
-                }
-
-                if (_currentWorkingTask != null)
-                {
-                    // 스톱워치 시작/정지 로직
-                    // _sessionStartTime = DateTime.Now;
-                }
-            }
-
-            UpdateLiveTimeDisplays(stopwatchElapsed);
+            UpdateLiveTimeDisplays();
         }
 
-        /// <summary>
-        /// 화면의 시간 표시를 업데이트합니다.
-        /// </summary>
-        private void UpdateLiveTimeDisplays(TimeSpan stopwatchElapsed)
+        private void LogWorkSession(DateTime? endTime = null)
         {
-            // 파일에서 읽어온 오늘 총 시간 + 현재 스톱워치 시간
-            var timeToDisplay = _totalTimeTodayFromLogs + stopwatchElapsed;
-            MainTimeDisplayText = timeToDisplay.ToString(@"hh\:mm\:ss");
+            if (_currentWorkingTask == null || _stopwatch.Elapsed.TotalSeconds < 1)
+            {
+                _stopwatch.Reset();
+                return;
+            }
 
-            // TODO: 미니 타이머 업데이트 로직 (이벤트나 콜백 사용)
+            var entry = new TimeLogEntry
+            {
+                StartTime = _sessionStartTime,
+                EndTime = endTime ?? _sessionStartTime.Add(_stopwatch.Elapsed),
+                TaskText = _currentWorkingTask.Text
+            };
+
+            TimeLogEntries.Insert(0, entry);
+            _timeLogService.SaveTimeLogsAsync(TimeLogEntries);
+            RecalculateTotalTimeToday();
         }
 
-        #endregion
+        private void UpdateLiveTimeDisplays()
+        {
+            var timeToDisplay = _totalTimeTodayFromLogs;
+            if (_stopwatch.IsRunning)
+            {
+                timeToDisplay += _stopwatch.Elapsed;
+            }
+            MainTimeDisplayText = timeToDisplay.ToString(@"hh\:mm\:ss");
+        }
 
         #region --- INotifyPropertyChanged 구현 ---
         public event PropertyChangedEventHandler PropertyChanged;

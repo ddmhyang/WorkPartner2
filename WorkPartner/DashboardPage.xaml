@@ -152,9 +152,8 @@
                    Text="현재 과목" TextAlignment="Center" Foreground="#FF005B8B"
                    FontFamily="Pretendard" FontSize="14" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
 
-        <TextBlock x:Name="MainTimeDisplay" Canvas.Left="123" Canvas.Top="92" Width="180"
-                   Text="00:00:00" TextAlignment="Center" 
-                   FontFamily="Pretendard" FontSize="40" FontWeight="SemiBold"/>
+        <TextBlock x:Name="MainTimeDisplay" Text="{Binding MainTimeDisplayText}" Canvas.Left="10" Canvas.Top="10" FontSize="36" FontWeight="Bold"/>
+
 
         <TextBlock x:Name="SelectedTaskTotalTimeDisplay" Canvas.Left="159" Canvas.Top="145" 
                    Text="오늘의 작업 시간 | 00:00:00" TextAlignment="Center" 
@@ -287,7 +286,7 @@
 
                 <ListBox x:Name="TaskListBox" ItemsSource="{Binding TaskItems}" Background="Transparent" BorderBrush="Transparent" 
                          Margin="0, 5, 0, 5" Style="{StaticResource SmoothListBoxStyle}"
-                         SelectionChanged="TaskListBox_SelectionChanged">
+                         SelectedItem="Binding SelectedTaskItem, Mode=TwoWay">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
                             <Border x:Name="TaskItemBorder" CornerRadius="8" Background="Transparent" BorderBrush="Transparent" BorderThickness="1" Margin="5,3">
