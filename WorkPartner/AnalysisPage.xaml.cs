@@ -55,7 +55,6 @@ namespace WorkPartner
 
         private async void AnalysisPage_IsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
         {
-            // 화면이 보이게 될 때, 데이터가 아직 로드되지 않았을 경우에만 로드합니다.
             if (e.NewValue is true && !_isDataLoaded)
             {
                 await LoadAndAnalyzeData();
