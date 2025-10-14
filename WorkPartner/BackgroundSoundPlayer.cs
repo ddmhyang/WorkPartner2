@@ -1,52 +1,49 @@
-﻿using System;
+﻿// 파일: WorkPartner/BackgroundSoundPlayer.cs
+using System;
+using System.IO;
 using System.Windows.Media;
 
 namespace WorkPartner
 {
     public class BackgroundSoundPlayer
     {
-        private MediaPlayer _mediaPlayer;
-        private bool _isPlaying = false;
+        private readonly MediaPlayer _mediaPlayer;
+
+        // ▼▼▼ 오류 수정: IsPlaying 속성 추가 ▼▼▼
+        public bool IsPlaying { get; private set; }
 
         public BackgroundSoundPlayer(string soundFilePath)
         {
             _mediaPlayer = new MediaPlayer();
-            _mediaPlayer.Open(new Uri(soundFilePath, UriKind.RelativeOrAbsolute));
-            _mediaPlayer.MediaEnded += (s, e) =>
-            {
-                _mediaPlayer.Position = TimeSpan.Zero;
-                _mediaPlayer.Play();
-            };
-        }
+            string fullPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, soundFilePath);
 
-        public double Volume
-        {
-            get => _mediaPlayer.Volume;
-            set
+            if (File.Exists(fullPath))
             {
-                _mediaPlayer.Volume = value;
-                // 볼륨이 0보다 크고, 재생 중이 아닐 때만 재생을 시작합니다.
-                if (value > 0 && !_isPlaying)
+                _mediaPlayer.Open(new Uri(fullPath));
+                _mediaPlayer.MediaEnded += (s, e) =>
                 {
-                    Play();
-                }
-                // 볼륨이 0이 되어도 Stop()을 호출하지 않도록 수정합니다.
+                    _mediaPlayer.Position = TimeSpan.Zero;
+                    _mediaPlayer.Play();
+                };
             }
         }
 
         public void Play()
         {
-            if (!_isPlaying)
-            {
-                _mediaPlayer.Play();
-                _isPlaying = true;
-            }
+            _mediaPlayer.Play();
+            IsPlaying = true; // 상태 업데이트
         }
 
         public void Stop()
         {
             _mediaPlayer.Stop();
-            _isPlaying = false;
+            IsPlaying = false; // 상태 업데이트
+        }
+
+        public double Volume
+        {
+            get => _mediaPlayer.Volume;
+            set => _mediaPlayer.Volume = value;
         }
     }
 }

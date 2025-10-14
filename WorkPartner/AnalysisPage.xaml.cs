@@ -19,6 +19,7 @@ namespace WorkPartner
         private readonly string _timeLogFilePath = DataManager.TimeLogFilePath;
         private readonly string _tasksFilePath = DataManager.TasksFilePath;
         private List<TimeLogEntry> _allTimeLogs;
+        private bool _isDataLoaded = false; // 데이터 로딩 여부를 확인하는 플래그 추가
         private PredictionService _predictionService;
 
         public SeriesCollection HourAnalysisSeries { get; set; }
@@ -54,9 +55,11 @@ namespace WorkPartner
 
         private async void AnalysisPage_IsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
         {
-            if (e.NewValue is true)
+            // 화면이 보이게 될 때, 데이터가 아직 로드되지 않았을 경우에만 로드합니다.
+            if (e.NewValue is true && !_isDataLoaded)
             {
                 await LoadAndAnalyzeData();
+                _isDataLoaded = true; // 로딩 완료 플래그 설정
             }
         }
 

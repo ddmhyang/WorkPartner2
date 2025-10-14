@@ -40,12 +40,10 @@ namespace WorkPartner
         private AppSettings _settings;
         private bool _isFocusModeActive = false;
         private DateTime _lastNagTime;
-        private TodoItem _lastAddedTodo;
         private TimeLogEntry _lastUnratedSession;
         private MiniTimerWindow _miniTimer;
 
         private readonly PredictionService _predictionService;
-        private readonly Dictionary<string, MediaPlayer> _soundPlayers = new Dictionary<string, MediaPlayer>();
         private DateTime _currentDateForTimeline = DateTime.Today;
         private DateTime _lastSuggestionTime;
 
@@ -53,28 +51,24 @@ namespace WorkPartner
         private DateTime _idleStartTime;
         private const int IdleGraceSeconds = 10;
 
-        private const string StatusResting = "휴식 중";
-        private const string StatusIdle = "자리 비움";
-        private const string StatusDistraction = "딴짓 중!";
-
         private Point _dragStartPoint;
         private Rectangle _selectionBox;
         private bool _isDragging = false;
 
-        // ▼▼▼ 1순위 수정사항: 마지막 활성 프로세스 이름 저장 변수 추가 ▼▼▼
+        private const string StatusResting = "휴식 중";
+        private const string StatusIdle = "자리 비움";
+        private const string StatusDistraction = "딴짓 중!";
+
+        // 타이머 최적화를 위한 마지막 활성 프로세스 이름 저장 변수
         private string _lastActiveProcessName = string.Empty;
 
-        // 1. MainWindow를 저장할 변수 선언
         private MainWindow _parentWindow;
-        // DashboardPage.xaml.cs -> #region 변수 선언
 
         private readonly string _memosFilePath = DataManager.MemosFilePath;
         public ObservableCollection<MemoItem> AllMemos { get; set; }
 
-        private BackgroundSoundPlayer _waveSoundPlayer;
-        private BackgroundSoundPlayer _forestSoundPlayer;
-        private BackgroundSoundPlayer _rainSoundPlayer;
-        private BackgroundSoundPlayer _campfireSoundPlayer;
+        // 사운드 플레이어 최적화: Dictionary로 통합 관리
+        private readonly Dictionary<string, BackgroundSoundPlayer> _soundPlayers = new Dictionary<string, BackgroundSoundPlayer>();
         #endregion
 
         public DashboardPage()
@@ -85,52 +79,19 @@ namespace WorkPartner
             _timer.Tick += Timer_Tick;
 
             InitializeData();
-            // LoadAllData(); // <- 동기 호출은 생성자에서 제거
 
             _predictionService = new PredictionService();
             _lastSuggestionTime = DateTime.MinValue;
             DataManager.SettingsUpdated += OnSettingsUpdated;
 
-            // --- 사운드 파일 경로 확인 코드 시작 ---
-            string[] soundFiles = { "wave.mp3", "forest.mp3", "rain.mp3", "campfire.mp3" };
-            foreach (var file in soundFiles)
-            {
-                // 'Path' 앞에 'System.IO.'를 추가하여 모호성을 해결합니다.
-                string path = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Sounds", file);
-                if (File.Exists(path))
-                {
-                    Debug.WriteLine($"[성공] 사운드 파일을 찾았습니다: {path}");
-                }
-                else
-                {
-                    Debug.WriteLine($"[실패] 사운드 파일을 찾을 수 없습니다: {path}");
-                }
-            }
-            // --- 사운드 파일 경로 확인 코드 끝 ---
+            // 사운드 플레이어 초기화 (최적화된 방식)
+            InitializeSoundPlayers();
 
-            // 백색소음 플레이어 초기화
-            _waveSoundPlayer = new BackgroundSoundPlayer("Sounds/wave.mp3");
-            _forestSoundPlayer = new BackgroundSoundPlayer("Sounds/forest.mp3");
-            _rainSoundPlayer = new BackgroundSoundPlayer("Sounds/rain.mp3");
-            _campfireSoundPlayer = new BackgroundSoundPlayer("Sounds/campfire.mp3");
-
-            // 플레이어를 즉시 재생 상태로 만듭니다.
-            _waveSoundPlayer.Play();
-            _forestSoundPlayer.Play();
-            _rainSoundPlayer.Play();
-            _campfireSoundPlayer.Play();
-
-            // 초기 볼륨은 0으로 설정합니다.
-            _waveSoundPlayer.Volume = 0;
-            _forestSoundPlayer.Volume = 0;
-            _rainSoundPlayer.Volume = 0;
-            _campfireSoundPlayer.Volume = 0;
-
-            // 슬라이더 변경 이벤트 핸들러 연결
-            waveSlider.ValueChanged += WaveSlider_ValueChanged;
-            forestSlider.ValueChanged += ForestSlider_ValueChanged;
-            rainSlider.ValueChanged += RainSlider_ValueChanged;
-            campfireSlider.ValueChanged += CampfireSlider_ValueChanged;
+            // 슬라이더 변경 이벤트를 하나의 핸들러에 연결합니다.
+            waveSlider.ValueChanged += SoundSlider_ValueChanged;
+            forestSlider.ValueChanged += SoundSlider_ValueChanged;
+            rainSlider.ValueChanged += SoundSlider_ValueChanged;
+            campfireSlider.ValueChanged += SoundSlider_ValueChanged;
 
             _selectionBox = new Rectangle
             {
@@ -145,8 +106,6 @@ namespace WorkPartner
             }
         }
 
-
-
         private void InitializeData()
         {
             TaskItems = new ObservableCollection<TaskItem>();
@@ -157,10 +116,9 @@ namespace WorkPartner
             TodoTreeView.ItemsSource = FilteredTodoItems;
 
             TimeLogEntries = new ObservableCollection<TimeLogEntry>();
-            // SuggestedTagsItemsControl is not in the new XAML
-            // SuggestedTagsItemsControl.ItemsSource = SuggestedTags;
             AllMemos = new ObservableCollection<MemoItem>();
         }
+
 
         private SolidColorBrush GetColorForTask(string taskName)
         {
@@ -1100,30 +1058,20 @@ namespace WorkPartner
         #region 사운드 믹서
         private void InitializeSoundPlayers()
         {
-            var sounds = new[] { "wave", "forest", "rain", "campfire" };
-            foreach (var sound in sounds)
+            var soundControls = new Dictionary<string, Slider>
             {
-                string path = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Sounds", $"{sound}.mp3");
-                if (File.Exists(path))
-                {
-                    var player = new MediaPlayer();
-                    player.Open(new Uri(path));
-                    player.MediaEnded += (s, e) => { player.Position = TimeSpan.Zero; player.Play(); }; // Loop
-                    player.Volume = 0;
-                    player.Play();
-                    _soundPlayers[sound] = player;
-                }
-            }
-        }
+                { "wave", waveSlider },
+                { "forest", forestSlider },
+                { "rain", rainSlider },
+                { "campfire", campfireSlider }
+            };
 
-        private void SoundSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-        {
-            if (sender is Slider slider && slider.Tag is string soundName)
+            foreach (var sound in soundControls)
             {
-                if (_soundPlayers.TryGetValue(soundName, out var player))
-                {
-                    player.Volume = slider.Value;
-                }
+                // 'camfire.mp3' 파일 이름 오타를 확인하고 수정해야 할 수 있습니다.
+                var player = new BackgroundSoundPlayer($"Sounds/{soundFileName}.mp3");
+                _soundPlayers[sound.Key] = player;
+                sound.Value.Tag = sound.Key;
             }
         }
 
@@ -1169,38 +1117,26 @@ namespace WorkPartner
             memoWindow.ShowDialog();
         }
 
-        private void WaveSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        private void SoundSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
-            if (_waveSoundPlayer != null)
+            if (sender is Slider slider && slider.Tag is string soundName)
             {
-                _waveSoundPlayer.Volume = e.NewValue;
+                if (_soundPlayers.TryGetValue(soundName, out var player))
+                {
+                    // 볼륨이 0.05보다 커질 때만 재생을 시작하고,
+                    // 그보다 작아지면 정지하여 리소스를 절약합니다.
+                    if (e.NewValue > 0.05 && !player.IsPlaying)
+                    {
+                        player.Play();
+                    }
+                    else if (e.NewValue <= 0.05 && player.IsPlaying)
+                    {
+                        player.Stop();
+                    }
+                    player.Volume = e.NewValue;
+                }
             }
         }
-
-        private void ForestSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-        {
-            if (_forestSoundPlayer != null)
-            {
-                _forestSoundPlayer.Volume = e.NewValue;
-            }
-        }
-
-        private void RainSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-        {
-            if (_rainSoundPlayer != null)
-            {
-                _rainSoundPlayer.Volume = e.NewValue;
-            }
-        }
-
-        private void CampfireSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-        {
-            if (_campfireSoundPlayer != null)
-            {
-                _campfireSoundPlayer.Volume = e.NewValue;
-            }
-        }
-
 
         private void ChangeTaskColor_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
