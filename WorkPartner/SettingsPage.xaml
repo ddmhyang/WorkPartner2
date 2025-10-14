@@ -77,6 +77,7 @@
             <TextBlock Canvas.Left="19" Canvas.Top="403" Text="AI 태그 규칙 설정" FontSize="12" FontFamily="Pretendard" FontWeight="SemiBold"/>
             <TextBlock Canvas.Left="19" Canvas.Top="588" Text="집중모드 설정" FontSize="12" FontFamily="Pretendard" FontWeight="SemiBold"/>
             <TextBlock Canvas.Left="406" Canvas.Top="588" Text="데이터 관리" FontSize="12" FontFamily="Pretendard" FontWeight="SemiBold"/>
+
             <Border Canvas.Left="19" Canvas.Top="95" Width="247" Height="123" BorderBrush="#2195F2" BorderThickness="2" CornerRadius="10">
                 <Grid>
                     <local:CharacterDisplay x:Name="CharacterPreview"/>

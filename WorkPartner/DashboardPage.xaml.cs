@@ -80,6 +80,30 @@ namespace WorkPartner
             {
                 SelectionCanvas.Children.Add(_selectionBox);
             }
+
+            // ✨ [수정] 설정이 변경될 때 UI를 새로고침하도록 이벤트 핸들러를 등록합니다.
+            DataManager.SettingsUpdated += OnSettingsUpdated;
+            // ✨ [수정] 페이지가 언로드될 때 메모리 누수 방지를 위해 이벤트 핸들러를 제거합니다.
+            this.Unloaded += (s, e) => DataManager.SettingsUpdated -= OnSettingsUpdated;
+        }
+
+        // ✨ [추가] 설정 파일이 변경되었을 때 호출될 메서드
+        private void OnSettingsUpdated()
+        {
+            LoadSettings();
+            Dispatcher.Invoke(() =>
+            {
+                // ✨ [추가] 모든 과목의 색상을 설정에 맞게 업데이트합니다.
+                foreach (var taskItem in TaskItems)
+                {
+                    if (_settings.TaskColors.TryGetValue(taskItem.Text, out string colorHex))
+                    {
+                        taskItem.ColorBrush = (SolidColorBrush)new BrushConverter().ConvertFromString(colorHex);
+                    }
+                }
+                RenderTimeTable();
+                // TaskListBox.Items.Refresh()는 더 이상 필요 없습니다.
+            });
         }
 
         private void InitializeData()
@@ -124,10 +148,23 @@ namespace WorkPartner
             try
             {
                 await using var stream = File.OpenRead(_tasksFilePath);
-                var loadedTasks = await JsonSerializer.DeserializeAsync<ObservableCollection<TaskItem>>(stream);
+                var loadedTasks = await JsonSerializer.DeserializeAsync<List<TaskItem>>(stream); // ObservableCollection 대신 List로 받습니다.
                 if (loadedTasks == null) return;
-                TaskItems.Clear();
-                foreach (var task in loadedTasks) TaskItems.Add(task);
+
+                // ✨ [수정] UI와 관련된 모든 작업은 Dispatcher를 통해 메인 UI 스레드에서 실행합니다.
+                Application.Current.Dispatcher.Invoke(() =>
+                {
+                    TaskItems.Clear();
+                    foreach (var task in loadedTasks)
+                    {
+                        if (_settings.TaskColors.TryGetValue(task.Text, out var colorHex))
+                        {
+                            // Brush 생성도 UI 스레드에서 수행합니다.
+                            task.ColorBrush = (SolidColorBrush)new BrushConverter().ConvertFromString(colorHex);
+                        }
+                        TaskItems.Add(task); // 컬렉션에 추가하는 작업도 UI 스레드에서 수행합니다.
+                    }
+                });
             }
             catch (Exception ex) { Debug.WriteLine($"Error loading tasks: {ex.Message}"); }
         }
@@ -768,7 +805,6 @@ namespace WorkPartner
                 }
             }
         }
-
         private void ChangeTaskColor_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             if (sender is not Border { Tag: TaskItem selectedTask }) return;
@@ -778,9 +814,12 @@ namespace WorkPartner
 
             if (colorPicker.ShowDialog() != true) return;
 
-            _settings.TaskColors[selectedTask.Text] = colorPicker.SelectedColor.ToString();
-            SaveSettings();
-            TaskListBox.Items.Refresh();
+            var newColor = colorPicker.SelectedColor;
+            _settings.TaskColors[selectedTask.Text] = newColor.ToString();
+
+            selectedTask.ColorBrush = new SolidColorBrush(newColor);
+            DataManager.SaveSettingsAndNotify(_settings);
+
             e.Handled = true;
         }
 
