@@ -521,11 +521,6 @@ namespace WorkPartner
 
         private void Timer_Tick(object sender, EventArgs e)
         {
-            // 페이지가 현재 보이지 않으면 아무것도 하지 않고 돌아갑니다.
-            if (!this.IsVisible)
-            {
-                return;
-            }
 
             if (_stopwatch.IsRunning && _lastUnratedSession != null)
             {
