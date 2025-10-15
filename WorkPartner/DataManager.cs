@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Diagnostics;
 using System.IO;
 using System.Text.Json;
@@ -37,8 +38,45 @@ namespace WorkPartner
             MemosFilePath = Path.Combine(AppDataFolder, "memos.json");
             ModelFilePath = Path.Combine(AppDataFolder, "FocusPredictionModel.zip");
             ItemsDbFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "items_db.json");
+            Directory.CreateDirectory(AppDataPath);
+            Directory.CreateDirectory(TimeLogPath);
         }
 
+        public static List<TimeLogEntry> LoadTimeLogs(DateTime date)
+        {
+            string filePath = Path.Combine(TimeLogPath, $"{date:yyyy-MM-dd}.json");
+            if (!File.Exists(filePath)) return new List<TimeLogEntry>();
+            string json = File.ReadAllText(filePath);
+            return JsonConvert.DeserializeObject<List<TimeLogEntry>>(json) ?? new List<TimeLogEntry>();
+        }
+
+        public static void SaveTimeLogs(DateTime date, List<TimeLogEntry> logs)
+        {
+            string filePath = Path.Combine(TimeLogPath, $"{date:yyyy-MM-dd}.json");
+            string json = JsonConvert.SerializeObject(logs, Formatting.Indented);
+            File.WriteAllText(filePath, json);
+        }
+
+        public static void LogTime(string taskName, string appName, int seconds)
+        {
+            var date = DateTime.Now;
+            var logs = LoadTimeLogs(date);
+            var taskLog = logs.FirstOrDefault(t => t.TaskName == taskName);
+            if (taskLog == null)
+            {
+                taskLog = new TimeLogEntry { TaskName = taskName, TimeSegments = new Dictionary<string, int>() };
+                logs.Add(taskLog);
+            }
+            if (taskLog.TimeSegments.ContainsKey(appName))
+            {
+                taskLog.TimeSegments[appName] += seconds;
+            }
+            else
+            {
+                taskLog.TimeSegments[appName] = seconds;
+            }
+            SaveTimeLogs(date, logs);
+        }
         // DataManager.cs 파일의 LoadSettings 메서드를 아래 코드로 교체하세요.
 
         public static AppSettings LoadSettings()

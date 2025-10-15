@@ -1,46 +1,56 @@
-﻿// 파일: Services/Implementations/TimerService.cs (수정 후)
-
-using System;
-using System.Diagnostics;
+﻿using System;
+using System.Linq;
 using System.Windows.Threading;
+using WorkPartner.Services;
 
 namespace WorkPartner.Services.Implementations
 {
     public class TimerService : ITimerService
     {
         private readonly DispatcherTimer _timer;
-        private readonly Stopwatch _stopwatch;
-
-        // ▼▼▼ 인터페이스 규칙을 구현하는 이벤트입니다. ▼▼▼
-        public event Action<TimeSpan> TimeUpdated;
-
-        // 기존 Tick 이벤트는 내부적으로만 사용되거나 삭제될 수 있습니다.
-        // public event EventHandler Tick; 
+        private readonly ITimeLogService _timeLogService;
+        private readonly ISettingsService _settingsService;
 
         public bool IsRunning => _timer.IsEnabled;
+        public string CurrentTask { get; private set; }
+        public event Action TimerStateChanged;
+        public event Action<TimeSpan> TimeUpdated;
 
-        public TimerService()
+        public TimerService(ITimeLogService timeLogService, ISettingsService settingsService)
         {
-            _stopwatch = new Stopwatch();
-            _timer = new DispatcherTimer
-            {
-                Interval = TimeSpan.FromMilliseconds(100)
-            };
-
-            // ▼▼▼ 타이머가 Tick할 때마다 TimeUpdated 이벤트를 발생시켜 경과 시간을 알립니다. ▼▼▼
-            _timer.Tick += (s, e) => TimeUpdated?.Invoke(_stopwatch.Elapsed);
+            _timeLogService = timeLogService;
+            _settingsService = settingsService;
+            _timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+            _timer.Tick += Timer_Tick;
         }
 
-        public void Start()
+        public void Start(string task)
         {
-            _stopwatch.Start();
+            CurrentTask = task;
             _timer.Start();
+            TimerStateChanged?.Invoke();
         }
 
         public void Stop()
         {
-            _stopwatch.Stop();
             _timer.Stop();
+            CurrentTask = null;
+            TimerStateChanged?.Invoke();
+        }
+
+        private void Timer_Tick(object sender, EventArgs e)
+        {
+            var settings = _settingsService.LoadSettings();
+            var activeAppName = ActiveWindowHelper.GetActiveWindowInfo().ProcessName;
+            bool isProductive = settings.ProductiveApps.Any(p => p.IsSelected && p.Name.Equals(activeAppName, StringComparison.OrdinalIgnoreCase));
+
+            if (!string.IsNullOrEmpty(CurrentTask) && isProductive)
+            {
+                _timeLogService.LogTime(CurrentTask, activeAppName, 1);
+            }
+
+            var totalTime = _timeLogService.GetTotalTimeForTask(CurrentTask, DateTime.Now);
+            TimeUpdated?.Invoke(totalTime); // 1초마다 신호 보내기
         }
     }
 }

@@ -75,6 +75,21 @@ namespace WorkPartner
             this.Unloaded += (s, e) => DataManager.SettingsUpdated -= OnSettingsUpdated;
         }
 
+        private void StartButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_viewModel.TimerService.IsRunning)
+            {
+                _viewModel.StopTimerCommand.Execute(null);
+                StartButton.Content = "Start";
+            }
+            else
+            {
+                // View-Model의 StartTimerCommand를 호출합니다.
+                _viewModel.StartTimerCommand.Execute(null);
+                StartButton.Content = "Stop";
+            }
+        }
+
         private void OnSettingsUpdated()
         {
             LoadSettings();

@@ -1,82 +1,74 @@
 ﻿using System;
+using System.Linq;
 using System.Windows;
-using System.Windows.Controls;
 using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
+using System.Windows.Threading;
 
 namespace WorkPartner
 {
     public partial class MiniTimerWindow : Window
     {
-        private readonly SolidColorBrush _runningBrush = new SolidColorBrush(Color.FromRgb(0, 122, 255)) { Opacity = 0.6 };
-        private readonly SolidColorBrush _stoppedBrush = new SolidColorBrush(Colors.Black) { Opacity = 0.6 };
-        private AppSettings _settings;
+        private DispatcherTimer _timer;
+        private string _currentTask;
+        private bool _isWorkTime = true;
 
         public MiniTimerWindow()
         {
             InitializeComponent();
-            (this.Content as Border).Background = _stoppedBrush;
-            LoadSettings();
+            _timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+            _timer.Tick += Timer_Tick;
+            _timer.Start();
+        }
+
+        // DashboardViewModel에서 현재 작업 이름을 받아옵니다.
+        public void SetCurrentTask(string task)
+        {
+            _currentTask = task;
+        }
+
+        // 1초마다 UI를 업데이트합니다.
+        private void Timer_Tick(object sender, EventArgs e)
+        {
+            if (string.IsNullOrEmpty(_currentTask))
+            {
+                TimerDisplay.Text = "00:00:00";
+                return;
+            }
+
+            var timeLogs = DataManager.LoadTimeLogs(DateTime.Now); // DataManager 직접 사용
+            var currentTaskLog = timeLogs.FirstOrDefault(t => t.TaskName == _currentTask);
+
+            if (currentTaskLog != null)
+            {
+                var totalSeconds = currentTaskLog.TimeSegments.Sum(s => s.Value);
+                TimeSpan time = TimeSpan.FromSeconds(totalSeconds);
+                TimerDisplay.Text = $"{time.Hours:D2}:{time.Minutes:D2}:{time.Seconds:D2}";
+            }
+            else
+            {
+                TimerDisplay.Text = "00:00:00";
+            }
+        }
+
+        public void UpdateTimerState(bool isWorking, string task)
+        {
+            _isWorkTime = isWorking;
+            _currentTask = task;
+
+            if (!_isWorkTime)
+            {
+                TimerDisplay.Text = "00:00:00";
+            }
         }
 
         private void Window_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            if (e.ButtonState == MouseButtonState.Pressed)
-            {
-                DragMove();
-            }
+            DragMove();
         }
 
-        // ✨ UI 스레드에서 안전하게 업데이트하도록 수정
-        public void UpdateTime(string time)
+        private void CloseButton_Click(object sender, RoutedEventArgs e)
         {
-            Dispatcher.Invoke(() =>
-            {
-                TimeTextBlock.Text = time;
-            });
-        }
-
-        public void UpdateTaskInfo(string taskName)
-        {
-            Dispatcher.Invoke(() =>
-            {
-                InfoTextBlock.Text = taskName;
-            });
-        }
-
-        public void SetRunningStyle()
-        {
-            (this.Content as Border).Background = _runningBrush;
-        }
-
-        public void SetStoppedStyle()
-        {
-            (this.Content as Border).Background = _stoppedBrush;
-        }
-
-        public void LoadSettings()
-        {
-            _settings = DataManager.LoadSettings();
-            ApplySettings();
-        }
-
-        private void ApplySettings()
-        {
-            if (_settings.MiniTimerShowBackground)
-            {
-                TimerBorder.Background = Brushes.Transparent;
-            }
-            else
-            {
-                BackgroundImage.Source = null;
-                SetStoppedStyle();
-            }
-
-            MiniCharacterDisplay.Visibility = _settings.MiniTimerShowCharacter ? Visibility.Visible : Visibility.Collapsed;
-            if (_settings.MiniTimerShowCharacter) MiniCharacterDisplay.UpdateCharacter();
-
-            InfoTextBlock.Visibility = _settings.MiniTimerShowInfo ? Visibility.Visible : Visibility.Collapsed;
+            this.Close();
         }
     }
 }
