@@ -14,6 +14,7 @@ namespace WorkPartner.Services.Implementations
 
         public async Task<ObservableCollection<TimeLogEntry>> LoadTimeLogsAsync()
         {
+
             if (!File.Exists(_filePath))
             {
                 return new ObservableCollection<TimeLogEntry>();
