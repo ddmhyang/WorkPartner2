@@ -820,6 +820,9 @@ namespace WorkPartner
             selectedTask.ColorBrush = new SolidColorBrush(newColor);
             DataManager.SaveSettingsAndNotify(_settings);
 
+            // 이 한 줄을 추가하여 타임라인을 즉시 다시 그립니다.
+            RenderTimeTable();
+
             e.Handled = true;
         }
 
