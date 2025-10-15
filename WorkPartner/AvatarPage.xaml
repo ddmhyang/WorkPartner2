@@ -1,103 +1,64 @@
 ﻿<UserControl x:Class="WorkPartner.AvatarPage"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
-             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://expression.blend/2008"
              xmlns:local="clr-namespace:WorkPartner"
-             xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit"
-             mc:Ignorable="d" 
-             d:DesignHeight="600" d:DesignWidth="800">
+             mc:Ignorable="d"
+             d:DesignHeight="526" d:DesignWidth="682"
+             Background="{DynamicResource MainBackgroundBrush}">
     <UserControl.Resources>
-        <local:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+        <Style x:Key="CategoryButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
+            <Setter Property="FontSize" Value="10"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="10" Padding="10,5">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="SelectedCategoryButtonStyle" TargetType="Button" BasedOn="{StaticResource CategoryButtonStyle}">
+            <Setter Property="Background" Value="{DynamicResource AccentColorBrush}"/>
+            <Setter Property="Foreground" Value="White"/>
+        </Style>
+
     </UserControl.Resources>
-    <Grid Background="{StaticResource AppBackgroundBrush}">
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="250"/>
-            <ColumnDefinition Width="*"/>
-        </Grid.ColumnDefinitions>
 
-        <!-- 왼쪽: 현재 아바타 및 색상 꾸미기 -->
-        <Border Grid.Column="0" Style="{StaticResource SectionBorderStyle}" Margin="10">
-            <StackPanel>
-                <TextBlock Text="현재 아바타" Style="{StaticResource SectionHeaderStyle}"/>
-                <!-- 캐릭터 미리보기 -->
-                <local:CharacterDisplay x:Name="CharacterPreviewControl" Height="200"/>
-                <StackPanel Orientation="Horizontal" Margin="0,10,0,5">
-                    <TextBlock x:Name="UsernameTextBlock" Text="사용자" FontWeight="Bold" VerticalAlignment="Center"/>
-                    <TextBlock Text=" |  " VerticalAlignment="Center"/>
-                    <Image Source="/images/coin.png" Width="16" Height="16" VerticalAlignment="Center"/>
-                    <TextBlock Text="{Binding TempCoins, StringFormat={}{0:N0}}" VerticalAlignment="Center" Margin="5,0,0,0"/>
+    <Viewbox Stretch="Uniform">
+        <Canvas Width="682" Height="526">
+
+            <TextBlock Canvas.Left="40" Canvas.Top="40" Text="아바타" FontSize="18" FontFamily="Pretendard" FontWeight="Bold" Foreground="{DynamicResource PrimaryTextBrush}"/>
+            <TextBlock Canvas.Left="40" Canvas.Top="70" Text="획득한 코인으로 나만의 아바타를 꾸며보세요!" FontSize="12" FontFamily="Pretendard" Foreground="{DynamicResource SecondaryTextBrush}"/>
+
+            <Border Canvas.Left="40" Canvas.Top="110" Width="300" Height="380" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="2" CornerRadius="10" Background="{DynamicResource SecondaryBackgroundBrush}">
+                <local:CharacterDisplay x:Name="CharacterPreview" />
+            </Border>
+
+            <StackPanel Canvas.Left="360" Canvas.Top="110" Width="282">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="보유 코인:" VerticalAlignment="Center" FontWeight="Bold" Foreground="{DynamicResource PrimaryTextBrush}"/>
+                    <Image Source="/images/coin.png" Width="16" Height="16" Margin="10,0,5,0"/>
+                    <TextBlock x:Name="CoinDisplay" Text="0" VerticalAlignment="Center" FontWeight="Bold" Foreground="{DynamicResource PrimaryTextBrush}"/>
                 </StackPanel>
 
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,10,0,0">
-                    <Button Content="저장" Click="SaveButton_Click" Style="{StaticResource ActionButtonStyle}" Margin="5"/>
-                    <Button Content="되돌리기" Click="RevertButton_Click" Style="{StaticResource ActionButtonStyle}" Background="Gray" Margin="5"/>
-                </StackPanel>
+                <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" Margin="0,15,0,0">
+                    <StackPanel x:Name="CategoryPanel" Orientation="Horizontal"/>
+                </ScrollViewer>
 
-                <Separator Margin="0,20,0,10"/>
-
-                <TextBlock Text="색깔 꾸미기" Style="{StaticResource SectionHeaderStyle}" Margin="0,10,0,10"/>
-                <StackPanel>
-                    <TextBlock Text="머리 색" Margin="0,0,0,5"/>
-                    <xctk:ColorPicker x:Name="HairColorPicker" SelectedColorChanged="ColorPicker_SelectedColorChanged" DisplayColorAndName="True" Tag="{x:Static local:ItemType.HairColor}"/>
-                    <TextBlock Text="눈 색" Margin="0,5,0,5"/>
-                    <xctk:ColorPicker x:Name="EyeColorPicker" SelectedColorChanged="ColorPicker_SelectedColorChanged" DisplayColorAndName="True" Tag="{x:Static local:ItemType.EyeColor}"/>
-                    <TextBlock Text="옷 색" Margin="0,5,0,5"/>
-                    <xctk:ColorPicker x:Name="ClothesColorPicker" SelectedColorChanged="ColorPicker_SelectedColorChanged" DisplayColorAndName="True" Tag="{x:Static local:ItemType.ClothesColor}"/>
-                </StackPanel>
+                <Border Width="282" Height="300" Margin="0,15,0,0" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="2" CornerRadius="10">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <WrapPanel x:Name="ItemPanel" Margin="10"/>
+                    </ScrollViewer>
+                </Border>
             </StackPanel>
-        </Border>
-
-        <!-- 오른쪽: 옷장 -->
-        <DockPanel Grid.Column="1">
-            <ListBox x:Name="CategoryListBox" DockPanel.Dock="Top" SelectionChanged="CategoryListBox_SelectionChanged" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
-                <ListBox.ItemsPanel>
-                    <ItemsPanelTemplate>
-                        <WrapPanel Orientation="Horizontal"/>
-                    </ItemsPanelTemplate>
-                </ListBox.ItemsPanel>
-                <ListBox.ItemTemplate>
-                    <DataTemplate>
-                        <TextBlock Text="{Binding}" Margin="10,5"/>
-                    </DataTemplate>
-                </ListBox.ItemTemplate>
-            </ListBox>
-
-            <ScrollViewer VerticalScrollBarVisibility="Auto">
-                <ItemsControl x:Name="ItemsListView">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <WrapPanel Orientation="Horizontal" />
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate DataType="{x:Type local:DisplayShopItem}">
-                            <Button Margin="5" Width="120" Height="120" Click="ItemButton_Click"
-                                    BorderBrush="{Binding BorderColor}" BorderThickness="3">
-                                <StackPanel>
-                                    <Image Source="{Binding ImagePath}" Width="80" Height="80" Stretch="Uniform">
-                                        <Image.Style>
-                                            <Style TargetType="Image">
-                                                <Setter Property="Opacity" Value="1.0"/>
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding IsOwned}" Value="False">
-                                                        <Setter Property="Opacity" Value="0.7"/>
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </Image.Style>
-                                    </Image>
-                                    <TextBlock Text="{Binding Name}" HorizontalAlignment="Center" Margin="0,5,0,0"/>
-                                    <TextBlock Text="{Binding Price, StringFormat={}{0:N0} 코인}" 
-                                               HorizontalAlignment="Center" FontSize="10"
-                                               Visibility="{Binding IsFree, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=invert}"/>
-                                </StackPanel>
-                            </Button>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-            </ScrollViewer>
-        </DockPanel>
-    </Grid>
+        </Canvas>
+    </Viewbox>
 </UserControl>
-

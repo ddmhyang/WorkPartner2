@@ -73,7 +73,12 @@ namespace WorkPartner
         private void UpdateUIFromSettings()
         {
             CharacterPreview.UpdateCharacter();
+
+            // ✨ 미리보기 UI 업데이트
             UsernameTextBlock.Text = Settings.Username;
+            LevelTextBlock.Text = $"Lv.{Settings.Level}";
+            ExperienceBar.Value = Settings.Experience;
+            CurrentTaskTextBlock.Text = $"현재 작업 : {Settings.CurrentTask}";
             CoinTextBlock.Text = Settings.Coins.ToString("N0");
             UsernameTextBox.Text = Settings.Username;
 
@@ -81,6 +86,18 @@ namespace WorkPartner
                 DarkModeRadioButton.IsChecked = true;
             else
                 LightModeRadioButton.IsChecked = true;
+
+            // ✨ 미니 타이머 설정 UI 업데이트
+            MiniTimerShowInfoCheckBox.IsChecked = Settings.MiniTimerShowInfo;
+            MiniTimerShowCharacterCheckBox.IsChecked = Settings.MiniTimerShowCharacter;
+            MiniTimerShowBackgroundCheckBox.IsChecked = Settings.MiniTimerShowBackground;
+
+            // ✨ 테마 색상 라디오버튼 상태 업데이트
+            var colorButton = FindName($"Color{Settings.AccentColor.Replace("#", "")}") as RadioButton;
+            if (colorButton != null)
+            {
+                colorButton.IsChecked = true;
+            }
         }
         #endregion
 
@@ -95,6 +112,16 @@ namespace WorkPartner
             Settings.Username = UsernameTextBox.Text;
             SaveSettings();
             UpdateUIFromSettings();
+        }
+
+        // ✨ 테마 색상 변경 이벤트 핸들러
+        private void AccentColor_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_isLoaded && sender is RadioButton rb && rb.IsChecked == true)
+            {
+                Settings.AccentColor = rb.Tag.ToString();
+                SaveSettings();
+            }
         }
 
         private void Theme_Changed(object sender, RoutedEventArgs e)
@@ -118,7 +145,15 @@ namespace WorkPartner
 
         private void Setting_Changed(object sender, RoutedEventArgs e)
         {
-            if (_isLoaded) SaveSettings();
+            if (!_isLoaded) return;
+
+            // ✨ 미니 타이머 설정 저장
+            Settings.MiniTimerShowInfo = MiniTimerShowInfoCheckBox.IsChecked ?? false;
+            Settings.MiniTimerShowCharacter = MiniTimerShowCharacterCheckBox.IsChecked ?? false;
+            Settings.MiniTimerShowBackground = MiniTimerShowBackgroundCheckBox.IsChecked ?? false;
+
+            SaveSettings();
+
             if (sender == MiniTimerCheckBox)
             {
                 _mainWindow?.ToggleMiniTimer();

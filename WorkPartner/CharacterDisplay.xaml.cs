@@ -12,127 +12,109 @@ namespace WorkPartner
 {
     public partial class CharacterDisplay : UserControl
     {
-        private List<ShopItem> _fullShopInventory;
+        private AppSettings _settings;
+        private List<ShopItem> _allItems;
+        private readonly Dictionary<ItemType, TintColorEffect> _colorEffects = new();
 
         public CharacterDisplay()
         {
             InitializeComponent();
-            LoadFullInventory();
-            if (!System.ComponentModel.DesignerProperties.GetIsInDesignMode(this))
-            {
-                UpdateCharacter();
-            }
+            LoadItems();
+            UpdateCharacter();
         }
 
-        private void LoadFullInventory()
+        private void LoadItems()
         {
-            if (File.Exists(DataManager.ItemsDbFilePath))
+            try
             {
-                try
-                {
-                    var json = File.ReadAllText(DataManager.ItemsDbFilePath);
-                    // Newtonsoft.Json을 사용하여 대소문자 구분 없이 Enum을 파싱합니다.
-                    _fullShopInventory = JsonConvert.DeserializeObject<List<ShopItem>>(json, new StringEnumConverter()) ?? new List<ShopItem>();
-                }
-                catch (Exception ex)
-                {
-                    System.Windows.MessageBox.Show($"items_db.json 파일을 읽는 중 오류가 발생했습니다: {ex.Message}", "데이터 오류");
-                    _fullShopInventory = new List<ShopItem>();
-                }
+                var json = File.ReadAllText(DataManager.ItemsDbFilePath);
+                _allItems = JsonConvert.DeserializeObject<List<ShopItem>>(json, new StringEnumConverter()) ?? new List<ShopItem>();
             }
-            else
+            catch
             {
-                _fullShopInventory = new List<ShopItem>();
+                _allItems = new List<ShopItem>();
             }
         }
 
-        // 기존 메서드: 설정 파일에서 직접 로드
         public void UpdateCharacter()
         {
-            var settings = DataManager.LoadSettings();
-            RenderCharacter(settings.EquippedItems, settings.CustomColors);
-        }
+            _settings = DataManager.LoadSettings();
+            if (_allItems == null || _allItems.Count == 0) LoadItems();
 
-        // 새로 추가된 메서드: 외부에서 장비/색상 정보를 받아 렌더링
-        public void UpdateCharacter(Dictionary<ItemType, Guid> equippedItems, Dictionary<ItemType, string> customColors)
-        {
-            RenderCharacter(equippedItems, customColors);
-        }
+            // 모든 이미지 초기화
+            BackgroundImage.Source = null;
+            BodyImage.Source = null;
+            ClothesImage.Source = null;
+            EyeShapeImage.Source = null;
+            MouthShapeImage.Source = null;
+            HairStyleImage.Source = null;
 
-        private void RenderCharacter(Dictionary<ItemType, Guid> equippedItems, Dictionary<ItemType, string> customColors)
-        {
-            CharacterCanvas.Children.Clear();
-
-            // 아이템이 그려지는 순서를 정의합니다. (아래 -> 위)
-            var layers = new List<ItemType>
+            // 장착된 아이템 표시
+            foreach (var equipped in _settings.EquippedItems)
             {
-                ItemType.Background,
-                ItemType.Body,
-                ItemType.AnimalTail, // 꼬리가 옷보다 먼저 그려지도록 순서 조정
-                ItemType.Face,
-                ItemType.EyeShape,
-                ItemType.MouthShape,
-                ItemType.Clothes,
-                ItemType.Top,
-                ItemType.Bottom,
-                ItemType.Shoes,
-                ItemType.HairStyle,
-                ItemType.AnimalEar,
-                ItemType.Accessory,
-                ItemType.FaceDeco,
-                ItemType.Cushion
-
-            };
-
-            foreach (var layerType in layers)
-            {
-                if (equippedItems.TryGetValue(layerType, out Guid itemId))
+                var item = _allItems.FirstOrDefault(i => i.Id == equipped.Value);
+                if (item != null)
                 {
-                    var item = _fullShopInventory.FirstOrDefault(i => i.Id == itemId);
-                    if (item != null && !string.IsNullOrEmpty(item.ImagePath))
-                    {
-                        var image = CreateImage(item.ImagePath);
-                        if (image == null) continue;
-
-                        // 색상 적용 로직
-                        ItemType? colorType = null;
-                        if (layerType == ItemType.HairStyle) colorType = ItemType.HairColor;
-                        else if (layerType == ItemType.Face || layerType == ItemType.EyeShape) colorType = ItemType.EyeColor;
-                        else if (layerType == ItemType.Top || layerType == ItemType.Bottom || layerType == ItemType.Clothes) colorType = ItemType.ClothesColor;
-
-                        if (colorType.HasValue && customColors.TryGetValue(colorType.Value, out string colorHex))
-                        {
-                            try
-                            {
-                                var color = (Color)ColorConverter.ConvertFromString(colorHex);
-                                image.Effect = new TintColorEffect { TintColor = color };
-                            }
-                            catch { /* 잘못된 색상 코드 무시 */ }
-                        }
-
-                        CharacterCanvas.Children.Add(image);
-                    }
+                    ApplyItem(item);
                 }
             }
+
+            // 커스텀 색상 적용
+            foreach (var customColor in _settings.CustomColors)
+            {
+                ApplyColor(customColor.Key, customColor.Value);
+            }
         }
 
-        private Image CreateImage(string path)
+        private void ApplyItem(ShopItem item)
         {
-            string absolutePath = Path.IsPathRooted(path) ? path : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, path);
+            if (string.IsNullOrEmpty(item.ImagePath)) return;
 
-            if (!File.Exists(absolutePath))
+            var imageSource = new BitmapImage(new Uri(item.ImagePath, UriKind.RelativeOrAbsolute));
+            var targetImage = GetImageForType(item.Type);
+
+            if (targetImage != null)
             {
-                return null;
+                targetImage.Source = imageSource;
+            }
+        }
+
+        private void ApplyColor(ItemType type, string colorHex)
+        {
+            var targetImage = GetImageForType(type, isColor: true);
+            if (targetImage == null) return;
+
+            if (!_colorEffects.ContainsKey(type))
+            {
+                _colorEffects[type] = new TintColorEffect();
+                targetImage.Effect = _colorEffects[type];
+            }
+            _colorEffects[type].TintColor = (Color)ColorConverter.ConvertFromString(colorHex);
+        }
+
+        private Image GetImageForType(ItemType type, bool isColor = false)
+        {
+            if (isColor)
+            {
+                return type switch
+                {
+                    ItemType.HairColor => HairStyleImage,
+                    ItemType.EyeColor => EyeShapeImage,
+                    // 옷 색상 등 다른 색상 아이템이 추가될 경우 여기에 추가
+                    _ => null,
+                };
             }
 
-            return new Image
+            return type switch
             {
-                Source = new BitmapImage(new Uri(absolutePath)),
-                Width = 150,
-                Height = 150,
-                Stretch = Stretch.Uniform
+                ItemType.Background => BackgroundImage,
+                ItemType.Body => BodyImage,
+                ItemType.Clothes => ClothesImage,
+                ItemType.EyeShape => EyeShapeImage,
+                ItemType.MouthShape => MouthShapeImage,
+                ItemType.HairStyle => HairStyleImage,
+                _ => null,
             };
         }
     }
 }
-

@@ -1,102 +1,65 @@
-﻿using System;
+﻿using System.Collections.Generic;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Shapes;
 
 namespace WorkPartner
 {
     public partial class ColorPalette : Window
     {
-        public Color SelectedColor { get; set; }
+        public Color SelectedColor { get; private set; }
+
+        private readonly List<string> _colorHexes = new List<string>
+        {
+            "#FF5252", "#FF4081", "#E040FB", "#7C4DFF", "#536DFE", "#448AFF",
+            "#03A9F4", "#00BCD4", "#009688", "#4CAF50", "#8BC34A", "#CDDC39",
+            "#FFEB3B", "#FFC107", "#FF9800", "#FF5722", "#795548", "#9E9E9E",
+            "#607D8B", "#FFFFFF", "#000000"
+        };
 
         public ColorPalette()
         {
             InitializeComponent();
-            this.Loaded += (s, e) => UpdatePreview();
+            PopulateColors();
         }
 
-        // [FIX] Added constructor that takes an initial color to fix CS1729 in SettingsPage.xaml.cs
-        public ColorPalette(Color initialColor)
+        private void PopulateColors()
         {
-            InitializeComponent();
-            SelectedColor = initialColor;
-            this.Loaded += (s, e) =>
+            foreach (var hex in _colorHexes)
             {
-                (double hue, double saturation, double lightness) = RgbToHsl(initialColor);
-                HueSlider.Value = hue;
-                SaturationSlider.Value = saturation;
-                LightnessSlider.Value = lightness;
-                UpdatePreview();
-            };
-        }
-
-        private void Slider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-        {
-            if (IsLoaded)
-            {
-                UpdatePreview();
-            }
-        }
-
-        private void UpdatePreview()
-        {
-            SelectedColor = HslToRgb(HueSlider.Value, SaturationSlider.Value, LightnessSlider.Value);
-            ColorPreview.Fill = new SolidColorBrush(SelectedColor);
-        }
-
-        private void OkButton_Click(object sender, RoutedEventArgs e)
-        {
-            DialogResult = true;
-        }
-
-        // [NEW] RGB to HSL conversion method
-        public static (double h, double s, double l) RgbToHsl(Color c)
-        {
-            double r = c.R / 255.0;
-            double g = c.G / 255.0;
-            double b = c.B / 255.0;
-            double max = Math.Max(r, Math.Max(g, b));
-            double min = Math.Min(r, Math.Min(g, b));
-            double h = 0, s = 0, l = (max + min) / 2.0;
-
-            if (max != min)
-            {
-                double d = max - min;
-                s = l > 0.5 ? d / (2.0 - max - min) : d / (max + min);
-                if (max == r) h = (g - b) / d + (g < b ? 6.0 : 0);
-                else if (max == g) h = (b - r) / d + 2.0;
-                else if (max == b) h = (r - g) / d + 4.0;
-                h /= 6.0;
-            }
-            return (h * 360, s, l);
-        }
-
-        // [FIX] Renamed lambda parameters to fix CS0136
-        public static Color HslToRgb(double h, double s, double l)
-        {
-            double r, g, b;
-            if (s == 0)
-            {
-                r = g = b = l;
-            }
-            else
-            {
-                Func<double, double, double, double> hue2rgb = (p_lambda, q_lambda, t_lambda) =>
+                var color = (Color)ColorConverter.ConvertFromString(hex);
+                var colorButton = new Button
                 {
-                    if (t_lambda < 0) t_lambda += 1;
-                    if (t_lambda > 1) t_lambda -= 1;
-                    if (t_lambda < 1.0 / 6) return p_lambda + (q_lambda - p_lambda) * 6 * t_lambda;
-                    if (t_lambda < 1.0 / 2) return q_lambda;
-                    if (t_lambda < 2.0 / 3) return p_lambda + (q_lambda - p_lambda) * (2.0 / 3 - t_lambda) * 6;
-                    return p_lambda;
+                    Width = 25,
+                    Height = 25,
+                    Margin = new Thickness(3),
+                    Background = new SolidColorBrush(color),
+                    Tag = color,
+                    Cursor = Cursors.Hand
                 };
-                var q = l < 0.5 ? l * (1 + s) : l + s - l * s;
-                var p = 2 * l - q;
-                r = hue2rgb(p, q, h / 360 + 1.0 / 3);
-                g = hue2rgb(p, q, h / 360);
-                b = hue2rgb(p, q, h / 360 - 1.0 / 3);
+
+                // 테두리를 추가하여 흰색과 같은 밝은 색을 구분
+                if (color == Colors.White)
+                {
+                    colorButton.BorderBrush = Brushes.LightGray;
+                    colorButton.BorderThickness = new Thickness(1);
+                }
+
+                colorButton.Click += ColorButton_Click;
+                ColorPanel.Children.Add(colorButton);
             }
-            return Color.FromRgb((byte)(r * 255), (byte)(g * 255), (byte)(b * 255));
+        }
+
+        private void ColorButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button button && button.Tag is Color color)
+            {
+                SelectedColor = color;
+                this.DialogResult = true;
+                this.Close();
+            }
         }
     }
 }
-

@@ -1,233 +1,254 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
-using Xceed.Wpf.Toolkit;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 
 namespace WorkPartner
 {
-    public partial class AvatarPage : UserControl, INotifyPropertyChanged
+    public partial class AvatarPage : UserControl
     {
         private AppSettings _settings;
-        private List<ShopItem> _fullShopInventory;
-
-        private Dictionary<ItemType, Guid> _tempEquippedItems;
-        private Dictionary<ItemType, string> _tempCustomColors;
-        private List<Guid> _tempOwnedItemIds;
-        private int _tempCoins;
-
-        public event PropertyChangedEventHandler PropertyChanged;
-        protected void OnPropertyChanged(string name)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
-        }
-
-        public int TempCoins
-        {
-            get => _tempCoins;
-            set
-            {
-                _tempCoins = value;
-                OnPropertyChanged(nameof(TempCoins));
-            }
-        }
+        private List<ShopItem> _allItems;
+        private ItemType _selectedCategory = ItemType.HairStyle;
+        private Button _selectedCategoryButton = null;
 
         public AvatarPage()
         {
             InitializeComponent();
-            DataContext = this;
+            LoadData();
         }
 
         public void LoadData()
         {
             _settings = DataManager.LoadSettings();
-            LoadFullInventory();
+            CoinDisplay.Text = _settings.Coins.ToString("N0");
 
-            // 임시 데이터 초기화
-            _tempEquippedItems = new Dictionary<ItemType, Guid>(_settings.EquippedItems);
-            _tempCustomColors = new Dictionary<ItemType, string>(_settings.CustomColors);
-            _tempOwnedItemIds = new List<Guid>(_settings.OwnedItemIds);
-            TempCoins = _settings.Coins;
-
-            UsernameTextBlock.Text = _settings.Username;
-            PopulateCategories();
-            UpdateCharacterPreview();
-        }
-
-        private void LoadFullInventory()
-        {
-            if (File.Exists(DataManager.ItemsDbFilePath))
+            try
             {
                 var json = File.ReadAllText(DataManager.ItemsDbFilePath);
-                _fullShopInventory = JsonConvert.DeserializeObject<List<ShopItem>>(json, new StringEnumConverter()) ?? new List<ShopItem>();
+                _allItems = JsonConvert.DeserializeObject<List<ShopItem>>(json, new StringEnumConverter()) ?? new List<ShopItem>();
             }
-            else
+            catch (Exception ex)
             {
-                System.Windows.MessageBox.Show("아이템 데이터베이스 파일(items_db.json)을 찾을 수 없습니다.", "오류");
-                _fullShopInventory = new List<ShopItem>();
+                MessageBox.Show($"아이템 DB 로딩 실패: {ex.Message}");
+                _allItems = new List<ShopItem>();
             }
+
+            CharacterPreview.UpdateCharacter();
+            PopulateCategories();
+            UpdateItemList();
         }
 
         private void PopulateCategories()
         {
-            var categories = _fullShopInventory.Select(i => i.Type)
-                                               .Distinct()
-                                               .Where(t => t != ItemType.Body)
-                                               .OrderBy(t => t.ToString())
-                                               .ToList();
-            CategoryListBox.ItemsSource = categories;
-            if (categories.Any())
+            CategoryPanel.Children.Clear();
+            var categories = _allItems.Select(i => i.Type).Distinct().OrderBy(t => t.ToString());
+
+            foreach (var category in categories)
             {
-                CategoryListBox.SelectedIndex = 0;
-            }
-        }
-
-        private void CategoryListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            if (CategoryListBox.SelectedItem is ItemType selectedType)
-            {
-                RefreshItemsList(selectedType);
-
-                var colorPickers = new[] { HairColorPicker, EyeColorPicker, ClothesColorPicker };
-                foreach (var picker in colorPickers)
+                var button = new Button
                 {
-                    picker.Visibility = Visibility.Collapsed;
-                }
+                    Content = GetCategoryDisplayName(category),
+                    Tag = category,
+                    Style = (Style)FindResource("CategoryButtonStyle")
+                };
+                button.Click += CategoryButton_Click;
+                CategoryPanel.Children.Add(button);
 
-                if (IsColorCategory(selectedType))
+                if (category == _selectedCategory)
                 {
-                    LoadCustomColorToPicker(selectedType);
+                    button.Style = (Style)FindResource("SelectedCategoryButtonStyle");
+                    _selectedCategoryButton = button;
                 }
             }
         }
 
-        private void ItemButton_Click(object sender, RoutedEventArgs e)
+        private void CategoryButton_Click(object sender, RoutedEventArgs e)
         {
-            if ((sender as Button)?.DataContext is DisplayShopItem displayItem)
+            if (sender is Button button && button.Tag is ItemType category)
             {
-                var clickedItem = displayItem.OriginalItem;
-                if (clickedItem == null) return;
+                _selectedCategory = category;
 
-                if (!displayItem.IsOwned && clickedItem.Price > 0)
+                if (_selectedCategoryButton != null)
                 {
-                    if (System.Windows.MessageBox.Show($"'{clickedItem.Name}' 아이템을 {clickedItem.Price} 코인으로 구매하시겠습니까?", "구매 확인", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
-                    {
-                        if (TempCoins >= clickedItem.Price)
-                        {
-                            TempCoins -= clickedItem.Price;
-                            _tempOwnedItemIds.Add(clickedItem.Id);
-                        }
-                        else
-                        {
-                            System.Windows.MessageBox.Show("코인이 부족합니다.", "알림");
-                            return;
-                        }
-                    }
-                    else
-                    {
-                        return;
-                    }
+                    _selectedCategoryButton.Style = (Style)FindResource("CategoryButtonStyle");
                 }
+                button.Style = (Style)FindResource("SelectedCategoryButtonStyle");
+                _selectedCategoryButton = button;
 
-                if (IsColorCategory(clickedItem.Type))
-                {
-                    if (!string.IsNullOrEmpty(clickedItem.ColorValue))
-                    {
-                        _tempCustomColors[clickedItem.Type] = clickedItem.ColorValue;
-                    }
-                }
-                else
-                {
-                    if (_tempEquippedItems.TryGetValue(clickedItem.Type, out Guid currentId) && currentId == clickedItem.Id)
-                    {
-                        _tempEquippedItems.Remove(clickedItem.Type);
-                    }
-                    else
-                    {
-                        _tempEquippedItems[clickedItem.Type] = clickedItem.Id;
-                    }
-                }
-
-                RefreshItemsList();
-                UpdateCharacterPreview();
+                UpdateItemList();
             }
         }
 
-        private void RevertButton_Click(object sender, RoutedEventArgs e)
+        private void UpdateItemList()
         {
-            LoadData(); // 저장된 설정으로 모든 임시 데이터를 다시 로드
-        }
+            ItemPanel.Children.Clear();
+            var itemsInCategory = _allItems.Where(i => i.Type == _selectedCategory);
 
-        private void SaveButton_Click(object sender, RoutedEventArgs e)
-        {
-            _settings.EquippedItems = _tempEquippedItems;
-            _settings.CustomColors = _tempCustomColors;
-            _settings.OwnedItemIds = _tempOwnedItemIds;
-            _settings.Coins = TempCoins;
-            DataManager.SaveSettingsAndNotify(_settings);
-            System.Windows.MessageBox.Show("변경 사항이 저장되었습니다.", "저장 완료");
-        }
-
-        private void ColorPicker_SelectedColorChanged(object sender, RoutedPropertyChangedEventArgs<Color?> e)
-        {
-            if (sender is ColorPicker picker && picker.Tag is ItemType colorType && picker.SelectedColor.HasValue)
+            foreach (var item in itemsInCategory)
             {
-                if (!IsColorCategory(colorType)) return;
-                _tempCustomColors[colorType] = picker.SelectedColor.Value.ToString();
-                UpdateCharacterPreview();
+                var itemView = CreateItemView(item);
+                ItemPanel.Children.Add(itemView);
             }
         }
 
-        private void UpdateCharacterPreview()
+        private Border CreateItemView(ShopItem item)
         {
-            CharacterPreviewControl.UpdateCharacter(_tempEquippedItems, _tempCustomColors);
-        }
+            bool isOwned = _settings.OwnedItemIds.Contains(item.Id);
+            bool isEquipped = IsItemEquipped(item);
 
-        private void RefreshItemsList(ItemType? type = null)
-        {
-            var selectedType = type ?? CategoryListBox.SelectedItem as ItemType?;
-            if (selectedType.HasValue)
+            var border = new Border
             {
-                var itemsToShow = _fullShopInventory.Where(item => item.Type == selectedType.Value).ToList();
-                var displayItems = itemsToShow.Select(item => new DisplayShopItem(item, _tempOwnedItemIds, _tempEquippedItems)).ToList();
-                ItemsListView.ItemsSource = displayItems;
-            }
-        }
+                Width = 60,
+                Height = 80,
+                Margin = new Thickness(5),
+                CornerRadius = new CornerRadius(5),
+                BorderBrush = isEquipped ? (Brush)FindResource("AccentColorBrush") : Brushes.LightGray,
+                BorderThickness = new Thickness(isEquipped ? 2 : 1),
+                Background = (Brush)FindResource("SecondaryBackgroundBrush"),
+                Cursor = Cursors.Hand,
+                Tag = item
+            };
 
-        private bool IsColorCategory(ItemType type)
-        {
-            return type == ItemType.HairColor || type == ItemType.EyeColor || type == ItemType.ClothesColor || type == ItemType.CushionColor;
-        }
-
-        private void LoadCustomColorToPicker(ItemType type)
-        {
-            ColorPicker targetPicker = null;
-            if (type == ItemType.HairColor) targetPicker = HairColorPicker;
-            else if (type == ItemType.EyeColor) targetPicker = EyeColorPicker;
-            else if (type == ItemType.ClothesColor) targetPicker = ClothesColorPicker;
-
-            if (targetPicker == null) return;
-
-            targetPicker.Visibility = Visibility.Visible;
-            if (_tempCustomColors.TryGetValue(type, out string colorHex))
+            var grid = new Grid();
+            var image = new Image
             {
-                try
-                {
-                    targetPicker.SelectedColor = (Color)ColorConverter.ConvertFromString(colorHex);
-                }
-                catch { targetPicker.SelectedColor = Colors.White; }
+                Source = item.IconPath != null ? new ImageSourceConverter().ConvertFromString(item.IconPath) as ImageSource : null,
+                Width = 40,
+                Height = 40,
+                VerticalAlignment = VerticalAlignment.Top,
+                Margin = new Thickness(0, 5, 0, 0)
+            };
+
+            var nameLabel = new TextBlock
+            {
+                Text = item.Name,
+                FontSize = 8,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Bottom,
+                Margin = new Thickness(0, 0, 0, 18),
+                Foreground = (Brush)FindResource("PrimaryTextBrush")
+            };
+
+            var pricePanel = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Bottom,
+                Margin = new Thickness(0, 0, 0, 5)
+            };
+
+            if (isOwned)
+            {
+                var ownedLabel = new TextBlock { Text = "보유 중", FontSize = 9, FontWeight = FontWeights.Bold, Foreground = Brushes.Green };
+                pricePanel.Children.Add(ownedLabel);
             }
             else
             {
-                targetPicker.SelectedColor = Colors.White;
+                var coinIcon = new Image { Source = new ImageSourceConverter().ConvertFromString("/images/coin.png") as ImageSource, Width = 10, Height = 10 };
+                var priceLabel = new TextBlock { Text = item.Price.ToString("N0"), FontSize = 9, Margin = new Thickness(3, 0, 0, 0), Foreground = (Brush)FindResource("PrimaryTextBrush") };
+                pricePanel.Children.Add(coinIcon);
+                pricePanel.Children.Add(priceLabel);
             }
+
+            grid.Children.Add(image);
+            grid.Children.Add(nameLabel);
+            grid.Children.Add(pricePanel);
+            border.Child = grid;
+
+            border.MouseLeftButtonDown += Item_Click;
+
+            return border;
+        }
+
+        private void Item_Click(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is FrameworkElement element && element.Tag is ShopItem selectedItem)
+            {
+                bool isOwned = _settings.OwnedItemIds.Contains(selectedItem.Id);
+
+                if (isOwned)
+                {
+                    EquipItem(selectedItem);
+                }
+                else
+                {
+                    BuyItem(selectedItem);
+                }
+            }
+        }
+
+        private void BuyItem(ShopItem item)
+        {
+            if (_settings.Coins >= item.Price)
+            {
+                if (MessageBox.Show($"{item.Name}을(를) {item.Price}코인에 구매하시겠습니까?", "구매 확인", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
+                {
+                    _settings.Coins -= item.Price;
+                    _settings.OwnedItemIds.Add(item.Id);
+                    DataManager.SaveSettingsAndNotify(_settings);
+                    CoinDisplay.Text = _settings.Coins.ToString("N0");
+                    EquipItem(item);
+                }
+            }
+            else
+            {
+                MessageBox.Show("코인이 부족합니다.");
+            }
+        }
+
+        private void EquipItem(ShopItem item)
+        {
+            if (item.IsColor)
+            {
+                _settings.CustomColors[item.Type] = item.ColorValue;
+            }
+            else
+            {
+                if (_settings.EquippedItems.ContainsKey(item.Type))
+                {
+                    _settings.EquippedItems.Remove(item.Type);
+                }
+                _settings.EquippedItems[item.Type] = item.Id;
+            }
+
+            DataManager.SaveSettingsAndNotify(_settings);
+            CharacterPreview.UpdateCharacter();
+            UpdateItemList();
+        }
+
+        private bool IsItemEquipped(ShopItem item)
+        {
+            if (item.IsColor)
+            {
+                return _settings.CustomColors.TryGetValue(item.Type, out var color) && color == item.ColorValue;
+            }
+            else
+            {
+                return _settings.EquippedItems.TryGetValue(item.Type, out var equippedId) && equippedId == item.Id;
+            }
+        }
+
+        private string GetCategoryDisplayName(ItemType itemType)
+        {
+            return itemType switch
+            {
+                ItemType.HairStyle => "머리",
+                ItemType.HairColor => "머리색",
+                ItemType.EyeShape => "눈",
+                ItemType.EyeColor => "눈색",
+                ItemType.MouthShape => "입",
+                ItemType.Clothes => "옷",
+                ItemType.Background => "배경",
+                ItemType.Body => "몸",
+                _ => itemType.ToString(),
+            };
         }
     }
 }
-
