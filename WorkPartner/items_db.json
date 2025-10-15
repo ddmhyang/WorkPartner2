@@ -1,121 +1,146 @@
 [
+  // ================= Hair Items =================
   {
     "Id": "00000000-0000-0000-0000-000000000001",
     "Name": "기본 머리",
-    "Price": 0,
     "Type": "HairStyle",
-    "ImagePath": "Images/hair_style_01.png"
+    "Price": 0,
+    "ImagePath": "/images/character/hair1.png",
+    "IconPath": "/images/character/hair1.png",
+    "IsColor": false,
+    "ColorValue": null
   },
   {
     "Id": "00000000-0000-0000-0000-000000000002",
-    "Name": "긴 머리",
-    "Price": 100,
+    "Name": "숏컷",
     "Type": "HairStyle",
-    "ImagePath": "Images/hair_style_02.png"
+    "Price": 100,
+    "ImagePath": "/images/character/hair2.png",
+    "IconPath": "/images/character/hair2.png",
+    "IsColor": false,
+    "ColorValue": null
   },
   {
     "Id": "00000000-0000-0000-0000-000000000003",
-    "Name": "검은색",
-    "Price": 10,
-    "Type": "HairColor",
-    "ColorValue": "#2E2E2E"
+    "Name": "포니테일",
+    "Type": "HairStyle",
+    "Price": 150,
+    "ImagePath": "/images/character/hair3.png",
+    "IconPath": "/images/character/hair3.png",
+    "IsColor": false,
+    "ColorValue": null
   },
+  // ================= Face (EyeShape) Items =================
   {
     "Id": "00000000-0000-0000-0000-000000000004",
-    "Name": "갈색",
-    "Price": 10,
-    "Type": "HairColor",
-    "ColorValue": "#B45F04"
+    "Name": "기본 눈",
+    "Type": "EyeShape",
+    "Price": 0,
+    "ImagePath": "/images/character/face1.png",
+    "IconPath": "/images/character/face1.png",
+    "IsColor": false,
+    "ColorValue": null
   },
   {
     "Id": "00000000-0000-0000-0000-000000000005",
-    "Name": "기본 옷",
-    "Price": 0,
-    "Type": "Clothes",
-    "ImagePath": "LightBlue"
+    "Name": "웃는 눈",
+    "Type": "EyeShape",
+    "Price": 100,
+    "ImagePath": "/images/character/face2.png",
+    "IconPath": "/images/character/face2.png",
+    "IsColor": false,
+    "ColorValue": null
   },
   {
     "Id": "00000000-0000-0000-0000-000000000006",
-    "Name": "후드티",
-    "Price": 50,
-    "Type": "Clothes",
-    "ImagePath": "Plum"
+    "Name": "화난 눈",
+    "Type": "EyeShape",
+    "Price": 150,
+    "ImagePath": "/images/character/face3.png",
+    "IconPath": "/images/character/face3.png",
+    "IsColor": false,
+    "ColorValue": null
   },
+  // ================= Clothes Items =================
   {
     "Id": "00000000-0000-0000-0000-000000000007",
-    "Name": "기본 눈",
+    "Name": "기본 옷",
+    "Type": "Clothes",
     "Price": 0,
-    "Type": "EyeShape",
-    "ImagePath": "LightCoral"
+    "ImagePath": "/images/character/clothes1.png",
+    "IconPath": "/images/character/clothes1.png",
+    "IsColor": false,
+    "ColorValue": null
   },
   {
     "Id": "00000000-0000-0000-0000-000000000008",
-    "Name": "초롱초롱 눈",
-    "Price": 40,
-    "Type": "EyeShape",
-    "ImagePath": "Orange"
+    "Name": "후드티",
+    "Type": "Clothes",
+    "Price": 200,
+    "ImagePath": "/images/character/clothes2.png",
+    "IconPath": "/images/character/clothes2.png",
+    "IsColor": false,
+    "ColorValue": null
   },
   {
     "Id": "00000000-0000-0000-0000-000000000009",
-    "Name": "검은색 눈",
-    "Price": 20,
-    "Type": "EyeColor",
-    "ColorValue": "#2E2E2E"
+    "Name": "정장",
+    "Type": "Clothes",
+    "Price": 300,
+    "ImagePath": "/images/character/clothes3.png",
+    "IconPath": "/images/character/clothes3.png",
+    "IsColor": false,
+    "ColorValue": null
   },
+  // ================= 기본 제공 아이템 (눈에 보이지 않음) =================
   {
-    "Id": "00000000-0000-0000-0000-000000000010",
-    "Name": "녹색 눈",
-    "Price": 20,
-    "Type": "EyeColor",
-    "ColorValue": "#088A08"
-  },
-  {
-    "Id": "00000000-0000-0000-0000-000000000011",
+    "Id": "10000000-0000-0000-0000-000000000001",
     "Name": "기본 입",
-    "Price": 0,
     "Type": "MouthShape",
-    "ImagePath": "IndianRed"
-  },
-  {
-    "Id": "00000000-0000-0000-0000-000000000012",
-    "Name": "미소",
-    "Price": 30,
-    "Type": "MouthShape",
-    "ImagePath": "HotPink"
-  },
-  {
-    "Id": "00000000-0000-0000-0000-000000000013",
-    "Name": "고양이 귀",
-    "Price": 80,
-    "Type": "AnimalEar",
-    "ImagePath": "DimGray"
-  },
-  {
-    "Id": "00000000-0000-0000-0000-000000000014",
-    "Name": "토끼 귀",
-    "Price": 80,
-    "Type": "AnimalEar",
-    "ImagePath": "LightPink"
-  },
-  {
-    "Id": "00000000-0000-0000-0000-000000000015",
-    "Name": "기본 방석",
     "Price": 0,
-    "Type": "Background",
-    "ImagePath": "LightGoldenrodYellow"
+    "ImagePath": null,
+    "IconPath": null,
+    "IsColor": false,
+    "ColorValue": null
   },
   {
-    "Id": "00000000-0000-0000-0000-000000000016",
-    "Name": "구름 방석",
-    "Price": 120,
-    "Type": "Background",
-    "ImagePath": "AliceBlue"
-  },
-  {
-    "Id": "00000000-0000-0000-0000-000000000017",
+    "Id": "10000000-0000-0000-0000-000000000002",
     "Name": "기본 몸",
-    "Price": 0,
     "Type": "Body",
-    "ImagePath": "MistyRose"
+    "Price": 0,
+    "ImagePath": null,
+    "IconPath": null,
+    "IsColor": false,
+    "ColorValue": null
+  },
+  {
+    "Id": "10000000-0000-0000-0000-000000000003",
+    "Name": "기본 방석",
+    "Type": "Background",
+    "Price": 0,
+    "ImagePath": null,
+    "IconPath": null,
+    "IsColor": false,
+    "ColorValue": null
+  },
+  {
+    "Id": "20000000-0000-0000-0000-000000000001",
+    "Name": "검은색",
+    "Type": "HairColor",
+    "Price": 0,
+    "ImagePath": null,
+    "IconPath": null,
+    "IsColor": true,
+    "ColorValue": "#000000"
+  },
+  {
+    "Id": "20000000-0000-0000-0000-000000000002",
+    "Name": "검은색 눈",
+    "Type": "EyeColor",
+    "Price": 0,
+    "ImagePath": null,
+    "IconPath": null,
+    "IsColor": true,
+    "ColorValue": "#000000"
   }
 ]

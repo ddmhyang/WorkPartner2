@@ -1,11 +1,14 @@
-﻿using System;
+﻿// 파일: DashboardViewModel.cs (최종 수정)
+
+using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
-using System.Windows.Media.Animation;
+using System.Windows.Input;
+using WorkPartner.Commands;
 using WorkPartner.Services;
 
 namespace WorkPartner.ViewModels
@@ -13,226 +16,116 @@ namespace WorkPartner.ViewModels
     public class DashboardViewModel : INotifyPropertyChanged
     {
         #region --- 서비스 및 멤버 변수 선언 ---
-
         private readonly ITimerService _timerService;
         private readonly ISettingsService _settingsService;
         private readonly ITaskService _taskService;
         private readonly ITimeLogService _timeLogService;
-
         private readonly Stopwatch _stopwatch;
         private AppSettings _settings;
-        private string _lastActiveProcessName = string.Empty;
-
         private TaskItem _currentWorkingTask;
         private DateTime _sessionStartTime;
         private TimeSpan _totalTimeTodayFromLogs;
-        private bool _isPausedForIdle = false;
-        private DateTime _idleStartTime;
-        private const int IdleGraceSeconds = 10;
-
         public ObservableCollection<TimeLogEntry> TimeLogEntries { get; private set; }
         public event Action<string> TimeUpdated;
-
-
         #endregion
 
-        #region --- UI와 바인딩될 속성 ---
-
+        #region --- UI 바인딩 속성 ---
         private string _mainTimeDisplayText = "00:00:00";
-        public string MainTimeDisplayText
-        {
-            get => _mainTimeDisplayText;
-            set => SetProperty(ref _mainTimeDisplayText, value);
-        }
-
-        public ObservableCollection<TaskItem> TaskItems { get; private set; }
-
-        private TaskItem _selectedTaskItem;
-        public TaskItem SelectedTaskItem
-        {
-            get => _selectedTaskItem;
-            set
-            {
-                if (SetProperty(ref _selectedTaskItem, value))
-                {
-                    OnSelectedTaskChanged(value);
-                }
-            }
-        }
-
+        public string MainTimeDisplayText { get => _mainTimeDisplayText; set => SetProperty(ref _mainTimeDisplayText, value); }
+        private bool _isTimerRunning;
+        public bool IsTimerRunning { get => _isTimerRunning; set => SetProperty(ref _isTimerRunning, value); }
         #endregion
 
-        public DashboardViewModel(ITaskService taskService, IDialogService dialogService, ISettingsService settingsService, ITimerService timerService, ITimeLogService timeLogService)
-        {
-            _taskService = taskService;
-            _settingsService = settingsService;
-            _timerService = timerService;
-            _timeLogService = timeLogService;
+        #region --- Command ---
+        public ICommand StartStopTimerCommand { get; }
+        public ICommand StopTimerCommand { get; }
+        #endregion
 
+        #region --- 생성자 ---
+        public DashboardViewModel(ITimerService timerService, ISettingsService settingsService, ITaskService taskService, ITimeLogService timeLogService)
+        {
+            _timerService = timerService;
+            _settingsService = settingsService;
+            _taskService = taskService;
+            _timeLogService = timeLogService;
             _stopwatch = new Stopwatch();
-            TaskItems = new ObservableCollection<TaskItem>();
             TimeLogEntries = new ObservableCollection<TimeLogEntry>();
 
-            _timerService.Tick += OnTimerTick;
-            LoadInitialDataAsync();
-        }
+            StartStopTimerCommand = new RelayCommand(p => ToggleTimer());
+            StopTimerCommand = new RelayCommand(p => StopTimer());
 
-        private async void LoadInitialDataAsync()
+            // ★★★ 핵심 수정: 이제 ITimerService의 TimeUpdated 이벤트를 직접 구독합니다. (형변환 필요 없음) ★★★
+            _timerService.TimeUpdated += UpdateLiveTimeDisplays;
+        }
+        #endregion
+
+        #region --- 핵심 로직 ---
+        public async Task LoadAllDataAsync()
         {
             _settings = _settingsService.LoadSettings();
-
-            var loadedTasks = await _taskService.LoadTasksAsync();
-            foreach (var task in loadedTasks) TaskItems.Add(task);
-
-            var loadedLogs = await _timeLogService.LoadTimeLogsAsync();
-            foreach (var log in loadedLogs) TimeLogEntries.Add(log);
-
+            var logs = await _timeLogService.LoadTimeLogsAsync();
+            TimeLogEntries.Clear();
+            foreach (var log in logs) TimeLogEntries.Add(log);
             RecalculateTotalTimeToday();
+        }
+
+        private void ToggleTimer()
+        {
+            if (_timerService.IsRunning) StopTimer();
+            else StartTimer();
+        }
+
+        private void StartTimer()
+        {
+            _sessionStartTime = DateTime.Now;
+            _stopwatch.Start(); // Stopwatch도 ViewModel이 직접 관리
             _timerService.Start();
+            IsTimerRunning = true;
         }
 
-        private void RecalculateTotalTimeToday()
+        private void StopTimer(DateTime? endTime = null)
         {
-            _totalTimeTodayFromLogs = new TimeSpan(TimeLogEntries
-                .Where(log => log.StartTime.Date == DateTime.Today)
-                .Sum(log => log.Duration.Ticks));
+            if (!_timerService.IsRunning) return;
+            _timerService.Stop();
+            _stopwatch.Stop(); // Stopwatch도 ViewModel이 직접 관리
+            IsTimerRunning = false;
+            SaveTimeLog(endTime);
         }
 
-        private void OnSelectedTaskChanged(TaskItem newSelectedTask)
+        private void SaveTimeLog(DateTime? endTime = null)
         {
-            if (_currentWorkingTask != newSelectedTask)
-            {
-                if (_stopwatch.IsRunning)
-                {
-                    LogWorkSession();
-                    _stopwatch.Reset();
-                }
-                _currentWorkingTask = newSelectedTask;
-            }
-        }
-
-        private void OnTimerTick(TimeSpan ignored)
-        {
-            string activeProcess = ActiveWindowHelper.GetActiveProcessName();
-
-            if (activeProcess == _lastActiveProcessName && !string.IsNullOrEmpty(activeProcess))
-            {
-                UpdateLiveTimeDisplays();
-                return;
-            }
-
-            _lastActiveProcessName = activeProcess;
-            HandleStopwatchMode();
-        }
-
-        private void HandleStopwatchMode()
-        {
-            if (_settings == null) return;
-
-            string activeProcess = ActiveWindowHelper.GetActiveProcessName().ToLower();
-            string activeUrl = ActiveWindowHelper.GetActiveBrowserTabUrl()?.ToLower() ?? string.Empty;
-
-            Action stopAndLogAction = () =>
-            {
-                if (_stopwatch.IsRunning || _isPausedForIdle)
-                {
-                    LogWorkSession(_isPausedForIdle ? _sessionStartTime.Add(_stopwatch.Elapsed) : null);
-                    _stopwatch.Reset();
-                }
-                _isPausedForIdle = false;
-            };
-
-            if (_settings.DistractionProcesses.Any(p => activeProcess.Contains(p) || (!string.IsNullOrEmpty(activeUrl) && activeUrl.Contains(p))))
-            {
-                stopAndLogAction();
-                return;
-            }
-
-            if (_settings.WorkProcesses.Any(p => activeProcess.Contains(p) || (!string.IsNullOrEmpty(activeUrl) && activeUrl.Contains(p))))
-            {
-                bool isPassive = _settings.PassiveProcesses.Any(p => activeProcess.Contains(p));
-                bool isCurrentlyIdle = _settings.IsIdleDetectionEnabled && !isPassive && ActiveWindowHelper.GetIdleTime().TotalSeconds > _settings.IdleTimeoutSeconds;
-
-                if (isCurrentlyIdle)
-                {
-                    if (_stopwatch.IsRunning)
-                    {
-                        _stopwatch.Stop();
-                        _isPausedForIdle = true;
-                        _idleStartTime = DateTime.Now;
-                    }
-                    else if (_isPausedForIdle && (DateTime.Now - _idleStartTime).TotalSeconds > IdleGraceSeconds)
-                    {
-                        LogWorkSession(_sessionStartTime.Add(_stopwatch.Elapsed));
-                        _stopwatch.Reset();
-                        _isPausedForIdle = false;
-                    }
-                }
-                else
-                {
-                    if (_isPausedForIdle)
-                    {
-                        _isPausedForIdle = false;
-                        _stopwatch.Start();
-                    }
-                    else if (!_stopwatch.IsRunning)
-                    {
-                        _currentWorkingTask = SelectedTaskItem;
-                        if (_currentWorkingTask == null && TaskItems.Any())
-                        {
-                            SelectedTaskItem = TaskItems.First();
-                            _currentWorkingTask = SelectedTaskItem;
-                        }
-
-                        if (_currentWorkingTask != null)
-                        {
-                            _sessionStartTime = DateTime.Now;
-                            _stopwatch.Start();
-                        }
-                    }
-                }
-            }
-            else
-            {
-                stopAndLogAction();
-            }
-
-            UpdateLiveTimeDisplays();
-        }
-
-        private void LogWorkSession(DateTime? endTime = null)
-        {
-            if (_currentWorkingTask == null || _stopwatch.Elapsed.TotalSeconds < 1)
-            {
-                _stopwatch.Reset();
-                return;
-            }
-
+            if (_stopwatch.Elapsed.TotalSeconds < 1) { _stopwatch.Reset(); return; }
             var entry = new TimeLogEntry
             {
                 StartTime = _sessionStartTime,
                 EndTime = endTime ?? _sessionStartTime.Add(_stopwatch.Elapsed),
-                TaskText = _currentWorkingTask.Text
+                TaskText = _currentWorkingTask?.Text ?? "지정되지 않은 작업"
             };
-
             TimeLogEntries.Insert(0, entry);
             _timeLogService.SaveTimeLogsAsync(TimeLogEntries);
+            _stopwatch.Reset(); // 로그 저장 후 리셋
             RecalculateTotalTimeToday();
         }
 
-        private void UpdateLiveTimeDisplays()
+        private void RecalculateTotalTimeToday()
         {
-            var timeToDisplay = _totalTimeTodayFromLogs;
-            if (_stopwatch.IsRunning)
-            {
-                timeToDisplay += _stopwatch.Elapsed;
-            }
+            _totalTimeTodayFromLogs = TimeLogEntries
+                .Where(log => log.StartTime.Date == DateTime.Today)
+                .Aggregate(TimeSpan.Zero, (total, log) => total + log.Duration);
+            UpdateLiveTimeDisplays(_stopwatch.Elapsed); // 초기 시간 표시
+        }
+
+        // ★★★ 핵심 수정: TimeUpdated 이벤트(Action<TimeSpan>)에 맞는 형식으로 변경 ★★★
+        private void UpdateLiveTimeDisplays(TimeSpan elapsed)
+        {
+            var timeToDisplay = _totalTimeTodayFromLogs + elapsed;
             string newTime = timeToDisplay.ToString(@"hh\:mm\:ss");
             MainTimeDisplayText = newTime;
 
-            // ▼▼▼ 계산이 끝난 후, "시간 바뀌었어!"라고 신호를 보냅니다. ▼▼▼
+            // 미니 타이머 등을 위한 신호
             TimeUpdated?.Invoke(newTime);
         }
+        #endregion
 
         #region --- INotifyPropertyChanged 구현 ---
         public event PropertyChangedEventHandler PropertyChanged;
