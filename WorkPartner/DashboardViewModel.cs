@@ -220,7 +220,7 @@ namespace WorkPartner.ViewModels
             RecalculateTotalTimeToday();
         }
 
-        private void UpdateLiveTimeDisplays()
+        private void UpdateLiveTimeDisplays(object sender, EventArgs e)
         {
             var timeToDisplay = _totalTimeTodayFromLogs;
             if (_stopwatch.IsRunning)
@@ -230,7 +230,6 @@ namespace WorkPartner.ViewModels
             string newTime = timeToDisplay.ToString(@"hh\:mm\:ss");
             MainTimeDisplayText = newTime;
 
-            // ▼▼▼ 계산이 끝난 후, "시간 바뀌었어!"라고 신호를 보냅니다. ▼▼▼
             TimeUpdated?.Invoke(newTime);
         }
 

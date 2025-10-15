@@ -12,6 +12,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Shapes;
 using WorkPartner.AI;
+using WorkPartner.Services.Implementations;
 
 namespace WorkPartner
 {
@@ -825,16 +826,31 @@ namespace WorkPartner
 
         private void DashboardPage_DataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
         {
-            // 새로운 DataContext(ViewModel)가 설정될 때
-            if (e.NewValue is ViewModels.DashboardViewModel viewModel)
+            // 기존 ViewModel과의 이벤트 구독 해제
+            if (e.OldValue is ViewModels.DashboardViewModel oldViewModel)
             {
-                // ViewModel의 TimeUpdated 신호(이벤트)를 구독합니다.
-                viewModel.TimeUpdated += (newTime) =>
-                {
-                    // 신호가 오면 MiniTimer의 시간을 업데이트합니다.
-                    _miniTimer?.UpdateTime(newTime);
-                };
+                oldViewModel.TimeUpdated -= OnViewModelTimeUpdated;
             }
+
+            // 새로운 ViewModel의 TimeUpdated 신호(이벤트)를 구독
+            if (e.NewValue is ViewModels.DashboardViewModel newViewModel)
+            {
+                newViewModel.TimeUpdated += OnViewModelTimeUpdated;
+            }
+
+            // ▼▼▼ 이 부분은 ViewModel의 역할이므로 삭제합니다. ▼▼▼
+            /*
+            if (_timerService is TimerService concreteTimerService)
+            {
+                concreteTimerService.Tick += UpdateLiveTimeDisplays;
+            }
+            */
+        }
+
+        private void OnViewModelTimeUpdated(string newTime)
+        {
+            // 신호가 오면 MiniTimer의 시간을 업데이트합니다.
+            _miniTimer?.UpdateTime(newTime);
         }
         #endregion
     }
