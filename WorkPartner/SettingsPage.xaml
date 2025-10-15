@@ -1,13 +1,54 @@
 ﻿<UserControl x:Class="WorkPartner.SettingsPage"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             xmlns:d="http://expression.blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://expression.blend/2008" 
              xmlns:local="clr-namespace:WorkPartner"
-             mc:Ignorable="d"
+             mc:Ignorable="d" 
              d:DesignHeight="722" d:DesignWidth="682"
              Background="{DynamicResource MainBackgroundBrush}">
     <UserControl.Resources>
+
+        <Style x:Key="AccentColorProgressBarStyle" TargetType="ProgressBar">
+            <Setter Property="Foreground" Value="{DynamicResource AccentColorBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource SecondaryBackgroundBrush}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ProgressBar">
+                        <Grid>
+                            <Border x:Name="PART_Track" CornerRadius="2.5" Background="{TemplateBinding Background}"/>
+                            <Border x:Name="PART_Indicator" CornerRadius="2.5" Background="{TemplateBinding Foreground}" HorizontalAlignment="Left"/>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="RoundedCornerButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="{DynamicResource SecondaryBackgroundBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border CornerRadius="4"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource AccentColorBrush}"/>
+                    <Setter Property="Foreground" Value="White"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
         <Style x:Key="AddButtonStyle" TargetType="Button">
             <Setter Property="Width" Value="20"/>
             <Setter Property="Height" Value="20"/>
@@ -41,8 +82,8 @@
         </Style>
 
         <Style x:Key="ColorRadioButtonStyle" TargetType="RadioButton">
-            <Setter Property="Width" Value="13"/>
-            <Setter Property="Height" Value="13"/>
+            <Setter Property="Width" Value="15"/>
+            <Setter Property="Height" Value="15"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Template">
                 <Setter.Value>
@@ -100,33 +141,39 @@
             <TextBlock Canvas.Left="19" Canvas.Top="588" Text="집중모드 설정" FontSize="12" FontFamily="Pretendard" FontWeight="SemiBold" Foreground="{DynamicResource PrimaryTextBrush}"/>
             <TextBlock Canvas.Left="406" Canvas.Top="588" Text="데이터 관리" FontSize="12" FontFamily="Pretendard" FontWeight="SemiBold" Foreground="{DynamicResource PrimaryTextBrush}"/>
 
-            <Border Canvas.Left="19" Canvas.Top="95" Width="247" Height="128" BorderBrush="{DynamicResource AccentColorBrush}" BorderThickness="2" CornerRadius="10">
+            <Border Canvas.Left="19" Canvas.Top="95" Width="247" Height="130" BorderBrush="{DynamicResource AccentColorBrush}" BorderThickness="2" CornerRadius="10">
                 <Grid>
-                    <local:CharacterDisplay x:Name="CharacterPreview" Width="128" Height="128" HorizontalAlignment="Right" Margin="0,-4,0,0"/>
+                    <local:CharacterDisplay x:Name="CharacterPreview" Width="128" Height="128" HorizontalAlignment="Left" Margin="115,-2,0,-2"/>
 
                     <StackPanel Orientation="Vertical" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="15,15,0,0">
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock x:Name="UsernameTextBlock" Text="사용자" FontSize="20" FontFamily="Pretendard" FontWeight="Bold" VerticalAlignment="Center" Foreground="{DynamicResource PrimaryTextBrush}"/>
-                            <Border Background="{DynamicResource AccentColorBrush}" CornerRadius="4" Margin="8,0,0,0" Padding="8,1">
-                                <TextBlock x:Name="LevelTextBlock" Text="Lv.1" Foreground="White" FontSize="7" FontWeight="SemiBold"/>
+                            <TextBlock x:Name="UsernameTextBlock" Text="사용자" FontSize="16" FontFamily="Pretendard" FontWeight="Bold" VerticalAlignment="Center" Foreground="{DynamicResource PrimaryTextBrush}"/>
+                            <Border Height="14" Background="{DynamicResource AccentColorBrush}" CornerRadius="4" Margin="8,0,0,0" Padding="8,1">
+                                <TextBlock x:Name="LevelTextBlock" Text="Lv.1" Foreground="White" FontSize="8" FontWeight="SemiBold"/>
                             </Border>
                         </StackPanel>
-                        <ProgressBar x:Name="ExperienceBar" Width="100" Height="5" Value="50" Maximum="100" Margin="0,5,0,0" HorizontalAlignment="Left"/>
-                        <TextBlock x:Name="CurrentTaskTextBlock" Text="현재 작업 : 없음" FontSize="10" Margin="0,5,0,0" Foreground="{DynamicResource PrimaryTextBrush}"/>
+                        <ProgressBar x:Name="ExperienceBar" Width="100" Height="5" Value="50" Maximum="100" Margin="0,5,0,0" HorizontalAlignment="Left" Style="{StaticResource AccentColorProgressBarStyle}"/>
+                        <TextBlock x:Name="CurrentTaskTextBlock" Text="현재 작업 : 없음" FontSize="10" Margin="0,5,0,0" Foreground="{DynamicResource PrimaryTextBrush}" FontWeight="Bold"/>
                     </StackPanel>
 
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="10">
                         <Image Source="/images/coin.png" Width="19" Height="19"/>
                         <TextBlock x:Name="CoinTextBlock" Text="50" VerticalAlignment="Center" Margin="5,0,0,0" Foreground="{DynamicResource PrimaryTextBrush}"/>
                     </StackPanel>
+                    <Button Content="아바타 꾸미기" 
+                            FontSize="8" 
+                            FontWeight="SemiBold"
+                            HorizontalAlignment="Left" 
+                            VerticalAlignment="Bottom" 
+                            Margin="13,0,0,38" 
+                            Padding="10,3"
+                            Click="GoToAvatarButton_Click"
+                            Style="{StaticResource RoundedCornerButtonStyle}" Cursor="Hand" Width="93" Height="17"/>
 
-                    <Button Content="아바타 꾸미기" Canvas.Left="47" Canvas.Top="159" FontSize="8" FontWeight="SemiBold"
-                            HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="13,0,0,31" Padding="10,2"
-                            Click="GoToAvatarButton_Click"/>
                 </Grid>
             </Border>
 
-            <Border Canvas.Left="272" Canvas.Top="95" Width="216" Height="128" BorderBrush="{DynamicResource BorderBrush}" Background="{DynamicResource MainBackgroundBrush}" BorderThickness="2" CornerRadius="10">
+            <Border Canvas.Left="272" Canvas.Top="95" Width="216" Height="130" BorderBrush="{DynamicResource BorderBrush}" Background="{DynamicResource MainBackgroundBrush}" BorderThickness="2" CornerRadius="10">
                 <StackPanel Margin="15">
                     <TextBlock Text="별명" FontSize="10" Foreground="{DynamicResource PrimaryTextBrush}"/>
                     <TextBox x:Name="UsernameTextBox" Margin="0,2,0,5" LostFocus="UsernameTextBox_LostFocus"/>
@@ -139,7 +186,7 @@
 
                         <StackPanel Grid.Column="0">
                             <TextBlock Text="디스플레이 색상" FontSize="10"  Foreground="{DynamicResource PrimaryTextBrush}"/>
-                            <WrapPanel Width="98" Margin="0,2,0,0">
+                            <WrapPanel Width="110" Margin="0,2,0,0">
                                 <RadioButton Style="{StaticResource ColorRadioButtonStyle}" Background="#D50000" Tag="#D50000" Checked="AccentColor_Changed" Margin="0,0,4,4"/>
                                 <RadioButton Style="{StaticResource ColorRadioButtonStyle}" Background="#E65100" Tag="#E65100" Checked="AccentColor_Changed" Margin="0,0,4,4"/>
                                 <RadioButton Style="{StaticResource ColorRadioButtonStyle}" Background="#F9A825" Tag="#F9A825" Checked="AccentColor_Changed" Margin="0,0,4,4"/>
@@ -162,7 +209,7 @@
                 </StackPanel>
             </Border>
 
-            <Border Canvas.Left="494" Canvas.Top="95" Width="170" Height="128" BorderBrush="{DynamicResource BorderBrush}" Background="{DynamicResource MainBackgroundBrush}" BorderThickness="2" CornerRadius="10">
+            <Border Canvas.Left="494" Canvas.Top="95" Width="170" Height="130" BorderBrush="{DynamicResource BorderBrush}" Background="{DynamicResource MainBackgroundBrush}" BorderThickness="2" CornerRadius="10">
                 <StackPanel Margin="10">
                     <CheckBox x:Name="IdleDetectionCheckBox" Content="자리 비움 감지" FontSize="10" Checked="Setting_Changed" Unchecked="Setting_Changed" Foreground="{DynamicResource PrimaryTextBrush}"/>
                     <StackPanel Orientation="Horizontal" Margin="20,2,0,5">
