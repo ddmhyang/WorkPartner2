@@ -257,7 +257,39 @@
             </Border>
 
             <Border Canvas.Left="19" Canvas.Top="421" Width="645" Height="144" BorderBrush="{DynamicResource BorderBrush}" Background="{DynamicResource MainBackgroundBrush}" BorderThickness="2" CornerRadius="10">
-                <TextBlock Text="TODO: AI 태그 규칙 UI" VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="Gray"/>
+                <DockPanel Margin="10">
+                    <Grid DockPanel.Dock="Top" Margin="5">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBox x:Name="TagRuleKeywordTextBox" Grid.Column="0" Margin="0,0,5,0" Tag="키워드"/>
+                        <TextBox x:Name="TagRuleTaskTextBox" Grid.Column="1" Margin="5,0,0,0" Tag="과목"/>
+                        <Button Grid.Column="2" Content="규칙 추가" Click="AddTagRule_Click" Style="{StaticResource RoundedCornerButtonStyle}" Padding="10,2" Margin="10,0,0,0"/>
+                    </Grid>
+
+                    <ListBox x:Name="TagRulesListBox" Background="Transparent" BorderThickness="0" Margin="5,10,5,5"
+                             ScrollViewer.VerticalScrollBarVisibility="Auto">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="20"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="{Binding Key}" VerticalAlignment="Center" Foreground="{DynamicResource PrimaryTextBrush}"/>
+                                    <TextBlock Grid.Column="1" Text="→" VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="{DynamicResource SecondaryTextBrush}"/>
+                                    <TextBlock Grid.Column="2" Text="{Binding Value}" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{DynamicResource PrimaryTextBrush}"/>
+                                    <Button Grid.Column="3" Content="×" FontSize="10" FontWeight="Bold" Foreground="Red" Background="Transparent" BorderThickness="0"
+                                            Click="DeleteTagRule_Click" CommandParameter="{Binding Key}" Cursor="Hand"/>
+                                </Grid>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </DockPanel>
             </Border>
 
             <Border Canvas.Left="19" Canvas.Top="606" Width="380" Height="81" BorderBrush="{DynamicResource BorderBrush}" Background="{DynamicResource MainBackgroundBrush}" BorderThickness="2" CornerRadius="10">

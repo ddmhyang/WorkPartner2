@@ -10,7 +10,6 @@
              Loaded="Window_Loaded" IsVisibleChanged="DashboardPage_IsVisibleChanged"
              FontFamily="Pretendard">
     <UserControl.Resources>
-        <!-- 스타일 리소스는 변경 없이 그대로 유지됩니다. -->
         <Style x:Key="RoundSliderStyle" TargetType="Slider">
             <Setter Property="Template">
                 <Setter.Value>
@@ -81,11 +80,9 @@
         </Style>
     </UserControl.Resources>
 
-    <!-- ✨ 여기가 핵심입니다! Canvas를 Viewbox로 감싸줍니다. -->
     <Viewbox Stretch="Uniform">
-        <Canvas x:Name="dashboard" Width="682" Height="526" Background="#FFFFFF">
+        <Canvas x:Name="dashboard" Width="682" Height="526" Background="{DynamicResource MainBackgroundBrush}">
 
-            <!-- 상단 아이콘 버튼 -->
             <Button Canvas.Left="19" Canvas.Top="40" Width="24" Height="24" Tag="Settings" Click="NavButton_Click" ToolTip="설정" Background="Transparent" BorderBrush="Transparent">
                 <Image Source="/images/settings.png" />
             </Button>
@@ -93,12 +90,10 @@
                 <Image Source="/images/bar_chart.png" />
             </Button>
 
-            <!-- 메인 타이머 및 상태 표시 -->
             <TextBlock x:Name="CurrentTaskDisplay" Canvas.Left="186" Canvas.Top="74" Text="현재 과목" TextAlignment="Center" Foreground="#FF005B8B" FontFamily="Pretendard" FontSize="14" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-            <TextBlock x:Name="MainTimeDisplay" Canvas.Left="123" Canvas.Top="92" Width="180" Text="{Binding MainTimeDisplayText}" TextAlignment="Center" FontFamily="Pretendard" FontSize="40" FontWeight="SemiBold"/>
-            <TextBlock x:Name="SelectedTaskTotalTimeDisplay" Canvas.Left="159" Canvas.Top="145" Text="오늘의 작업 시간 | 00:00:00" TextAlignment="Center" FontFamily="Pretendard" FontSize="8" FontWeight="Medium"/>
+            <TextBlock x:Name="MainTimeDisplay" Canvas.Left="123" Canvas.Top="92" Width="180" Text="{Binding MainTimeDisplayText}" Foreground="{DynamicResource PrimaryTextBrush}" TextAlignment="Center" FontFamily="Pretendard" FontSize="40" FontWeight="SemiBold"/>
+            <TextBlock x:Name="SelectedTaskTotalTimeDisplay" Canvas.Left="159" Canvas.Top="145" Text="오늘의 작업 시간 | 00:00:00" Foreground="{DynamicResource SecondaryTextBrush}" TextAlignment="Center" FontFamily="Pretendard" FontSize="8" FontWeight="Medium"/>
 
-            <!-- 타임라인 영역 -->
             <Border Canvas.Left="19" Canvas.Top="173" Width="388" Height="331" BorderBrush="#f0f0f0" BorderThickness="2" CornerRadius="10">
                 <Canvas>
                     <Grid Canvas.Left="135" Canvas.Top="11" Width="120" Height="20">
@@ -159,29 +154,35 @@
                 </Canvas>
             </Border>
 
-            <!-- 캐릭터 디스플레이 영역 -->
-            <Border Canvas.Left="417" Canvas.Top="40" Width="247" Height="123" BorderBrush="Black" BorderThickness="1" CornerRadius="10">
+            <Border Canvas.Left="417" Canvas.Top="40" Width="247" Height="123" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="10">
                 <Grid>
                     <local:CharacterDisplay x:Name="CharacterPreview" />
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="10">
-                        <TextBlock x:Name="UsernameDisplay" Text="User" FontWeight="Bold" Margin="0,0,10,0"/>
+                        <TextBlock x:Name="UsernameDisplay" Text="User" FontWeight="Bold" Margin="0,0,10,0" Foreground="{DynamicResource PrimaryTextBrush}"/>
                         <Image Source="/images/coin.png" Width="16" Height="16"/>
-                        <TextBlock x:Name="CoinDisplay" Text="0"/>
+                        <TextBlock x:Name="CoinDisplay" Text="0" Foreground="{DynamicResource PrimaryTextBrush}"/>
                     </StackPanel>
                 </Grid>
             </Border>
 
-            <!-- 과목 리스트 영역 -->
-            <Border Canvas.Left="417" Canvas.Top="173" Width="247" Height="145" BorderBrush="#E8E8E8" BorderThickness="1" CornerRadius="10" Background="#E8E8E8">
+            <Border Canvas.Left="417" Canvas.Top="173" Width="247" Height="145" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="10" Background="{DynamicResource SecondaryBackgroundBrush}">
                 <DockPanel>
-                    <TextBlock DockPanel.Dock="Top" Text="과목" VerticalAlignment="Center" Margin="16,8,0,0" FontSize="10" Foreground="#000000"/>
+                    <TextBlock DockPanel.Dock="Top" Text="과목" VerticalAlignment="Center" Margin="16,8,0,0" FontSize="14" Foreground="{DynamicResource PrimaryTextBrush}" FontWeight="Bold"/>
                     <StackPanel DockPanel.Dock="Bottom" Margin="10, 5, 10, 10" Orientation="Horizontal">
-                        <Border CornerRadius="10" Background="#ffffff" Width="180">
+                        <Border CornerRadius="10" Background="{DynamicResource MainBackgroundBrush}" Width="180">
                             <TextBox x:Name="TaskInput" KeyDown="TaskInput_KeyDown" Background="Transparent" BorderBrush="Transparent" Margin="5"/>
                         </Border>
-                        <Button Content="추가" Click="AddTaskButton_Click" Width="40" Foreground="#FF676767" Style="{StaticResource RoundedButtonStyle}" Margin="5,0,0,0" Background="White" BorderBrush="White"/>
+                        <Button Content="추가" Click="AddTaskButton_Click" Width="40" Foreground="#FF676767" Style="{StaticResource RoundedButtonStyle}" Margin="5,0,0,0" Background="{DynamicResource MainBackgroundBrush}" BorderBrush="{DynamicResource MainBackgroundBrush}"/>
                     </StackPanel>
-                    <ListBox x:Name="TaskListBox" ItemsSource="{Binding TaskItems}" ScrollViewer.VerticalScrollBarVisibility="Hidden" SelectedItem="{Binding SelectedTaskItem, Mode=TwoWay}" Background="Transparent" BorderBrush="Transparent" Margin="0, 5, 0, 5" ScrollViewer.CanContentScroll="False">
+                    <ListBox x:Name="TaskListBox" 
+                             ItemsSource="{Binding TaskItems}" 
+                             SelectedItem="{Binding SelectedTask, Mode=TwoWay}"
+                             SelectionChanged="TaskListBox_SelectionChanged"
+                             ScrollViewer.VerticalScrollBarVisibility="Hidden" 
+                             Background="Transparent" 
+                             BorderBrush="Transparent" 
+                             Margin="0, 5, 0, 5" 
+                             ScrollViewer.CanContentScroll="False">
                         <ListBox.ItemTemplate>
                             <DataTemplate>
                                 <Border x:Name="TaskItemBorder" CornerRadius="8" Background="Transparent" BorderBrush="Transparent" BorderThickness="1" Margin="5,3">
@@ -192,16 +193,16 @@
                                             <ColumnDefinition Width="*"/>
                                         </Grid.ColumnDefinitions>
                                         <Border Grid.Column="0" Width="10" Height="10" CornerRadius="5" Background="{Binding ColorBrush}" Cursor="Hand" Tag="{Binding}" MouseLeftButtonDown="ChangeTaskColor_MouseLeftButtonDown" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                                        <TextBlock x:Name="TaskTextBlock" Grid.Column="1" Text="{Binding Text}" VerticalAlignment="Center" Margin="5,0" Foreground="#000000"/>
+                                        <TextBlock x:Name="TaskTextBlock" Grid.Column="1" Text="{Binding Text}" VerticalAlignment="Center" Margin="5,0" Foreground="{DynamicResource PrimaryTextBrush}"/>
                                         <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Right">
-                                            <TextBlock x:Name="TotalTimeTextBlock" Text="{Binding TotalTimeFormatted}" VerticalAlignment="Center" Foreground="#000000" FontSize="10" Margin="0,0,10,0"/>
-                                            <Button Content="×" FontSize="8" Background="Transparent" Foreground="Black" BorderBrush="Transparent" VerticalAlignment="Center" Click="DeleteTaskButton_Click"/>
+                                            <TextBlock x:Name="TotalTimeTextBlock" Text="{Binding TotalTimeFormatted}" VerticalAlignment="Center" Foreground="{DynamicResource PrimaryTextBrush}" FontSize="10" Margin="0,0,10,0"/>
+                                            <Button Content="×" FontSize="8" Background="Transparent" Foreground="{DynamicResource PrimaryTextBrush}" BorderBrush="Transparent" VerticalAlignment="Center" Click="DeleteTaskButton_Click"/>
                                         </StackPanel>
                                     </Grid>
                                 </Border>
                                 <DataTemplate.Triggers>
                                     <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="True">
-                                        <Setter TargetName="TaskItemBorder" Property="Background" Value="Black"/>
+                                        <Setter TargetName="TaskItemBorder" Property="Background" Value="{DynamicResource AccentColorBrush}"/>
                                         <Setter TargetName="TaskTextBlock" Property="Foreground" Value="White"/>
                                         <Setter TargetName="TotalTimeTextBlock" Property="Foreground" Value="White"/>
                                     </DataTrigger>
@@ -212,12 +213,11 @@
                 </DockPanel>
             </Border>
 
-            <!-- 할 일 리스트 영역 -->
-            <Border Canvas.Left="417" Canvas.Top="327" Width="247" Height="177" BorderBrush="#E8E8E8" BorderThickness="1" CornerRadius="10">
+            <Border Canvas.Left="417" Canvas.Top="327" Width="247" Height="177" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="10">
                 <DockPanel>
-                    <TextBlock DockPanel.Dock="Top" Text="오늘의 할일" VerticalAlignment="Center" Margin="16,8,0,0" FontSize="10" Foreground="#000000"/>
+                    <TextBlock DockPanel.Dock="Top" Text="ToDo" VerticalAlignment="Center" Margin="16,8,0,0" FontSize="14" Foreground="{DynamicResource PrimaryTextBrush}" FontWeight="Bold"/>
                     <StackPanel DockPanel.Dock="Bottom" Margin="10, 5, 10, 10" Orientation="Horizontal">
-                        <Border CornerRadius="10" Background="#FFDDDDDD" Width="180">
+                        <Border CornerRadius="10" Background="{DynamicResource SecondaryBackgroundBrush}" Width="180">
                             <TextBox x:Name="TodoInput" KeyDown="TodoInput_KeyDown" Background="Transparent" BorderBrush="Transparent" Margin="5"/>
                         </Border>
                         <Button Content="추가" Click="AddTodoButton_Click" Width="40" Foreground="White" Style="{StaticResource RoundedButtonStyle}" Margin="5,0,0,0" Background="#7D7D7D"/>
@@ -234,10 +234,10 @@
 
                                         <StackPanel Grid.Column="0" Orientation="Horizontal">
                                             <CheckBox IsChecked="{Binding IsCompleted}" VerticalAlignment="Center" Margin="0,0,5,0" Click="SaveTodos_Event" BorderBrush="#A5A5A5"/>
-                                            <TextBlock Text="{Binding Text}" VerticalAlignment="Center" Foreground="#000000" FontSize="12"/>
+                                            <TextBlock Text="{Binding Text}" VerticalAlignment="Center" Foreground="{DynamicResource PrimaryTextBrush}" FontSize="12"/>
                                         </StackPanel>
 
-                                        <Button Grid.Column="1" Content="×" FontSize="8" Background="Transparent" Foreground="Black" BorderBrush="Transparent" VerticalAlignment="Center" Click="DeleteTodoButton_Click"/>
+                                        <Button Grid.Column="1" Content="×" FontSize="8" Background="Transparent" Foreground="{DynamicResource PrimaryTextBrush}" BorderBrush="Transparent" VerticalAlignment="Center" Click="DeleteTodoButton_Click"/>
                                     </Grid>
                                 </Border>
                             </DataTemplate>
@@ -248,4 +248,3 @@
         </Canvas>
     </Viewbox>
 </UserControl>
-

@@ -16,23 +16,15 @@ using WorkPartner.Services.Implementations;
 
 namespace WorkPartner
 {
-    /// <summary>
-    /// DashboardPage의 UI 이벤트와 화면 렌더링 등 순수한 View(화면) 로직만을 담당합니다.
-    /// 데이터와 시간 측정 등 핵심 로직은 DataContext로 연결된 DashboardViewModel이 처리합니다.
-    /// </summary>
     public partial class DashboardPage : UserControl
     {
         #region 변수 선언
 
-        // 이 View는 이제 데이터 파일을 직접 알 필요가 없습니다.
-        // 하지만 점진적인 리팩토링을 위해 일부 파일 경로 참조가 남아있습니다.
         private readonly string _tasksFilePath = DataManager.TasksFilePath;
         private readonly string _todosFilePath = DataManager.TodosFilePath;
         private readonly string _timeLogFilePath = DataManager.TimeLogFilePath;
         private readonly string _memosFilePath = DataManager.MemosFilePath;
 
-        // 데이터 컬렉션은 궁극적으로 ViewModel이 소유해야 하지만,
-        // 현재는 UI 이벤트 핸들러에서 직접 접근하기 위해 View에 남아있습니다.
         public ObservableCollection<TaskItem> TaskItems { get; set; }
         public ObservableCollection<TodoItem> TodoItems { get; set; }
         public ObservableCollection<TodoItem> FilteredTodoItems { get; set; }
@@ -46,12 +38,10 @@ namespace WorkPartner
 
         private DateTime _currentDateForTimeline = DateTime.Today;
 
-        // 드래그 선택 관련 변수
         private Point _dragStartPoint;
         private Rectangle _selectionBox;
         private bool _isDragging = false;
 
-        // 사운드 플레이어 최적화: Dictionary로 통합 관리
         private readonly Dictionary<string, BackgroundSoundPlayer> _soundPlayers = new();
 
         #endregion
@@ -62,14 +52,12 @@ namespace WorkPartner
             InitializeData();
             InitializeSoundPlayers();
 
-            // 슬라이더 이벤트 핸들러 연결
             waveSlider.ValueChanged += SoundSlider_ValueChanged;
             forestSlider.ValueChanged += SoundSlider_ValueChanged;
             rainSlider.ValueChanged += SoundSlider_ValueChanged;
             campfireSlider.ValueChanged += SoundSlider_ValueChanged;
             this.DataContextChanged += DashboardPage_DataContextChanged;
 
-            // 드래그 선택 상자 초기화
             _selectionBox = new Rectangle
             {
                 Stroke = Brushes.DodgerBlue,
@@ -82,19 +70,15 @@ namespace WorkPartner
                 SelectionCanvas.Children.Add(_selectionBox);
             }
 
-            // ✨ [수정] 설정이 변경될 때 UI를 새로고침하도록 이벤트 핸들러를 등록합니다.
             DataManager.SettingsUpdated += OnSettingsUpdated;
-            // ✨ [수정] 페이지가 언로드될 때 메모리 누수 방지를 위해 이벤트 핸들러를 제거합니다.
             this.Unloaded += (s, e) => DataManager.SettingsUpdated -= OnSettingsUpdated;
         }
 
-        // ✨ [추가] 설정 파일이 변경되었을 때 호출될 메서드
         private void OnSettingsUpdated()
         {
             LoadSettings();
             Dispatcher.Invoke(() =>
             {
-                // ✨ [추가] 모든 과목의 색상을 설정에 맞게 업데이트합니다.
                 foreach (var taskItem in TaskItems)
                 {
                     if (_settings.TaskColors.TryGetValue(taskItem.Text, out string colorHex))
@@ -103,7 +87,6 @@ namespace WorkPartner
                     }
                 }
                 RenderTimeTable();
-                // TaskListBox.Items.Refresh()는 더 이상 필요 없습니다.
             });
         }
 
@@ -149,10 +132,9 @@ namespace WorkPartner
             try
             {
                 await using var stream = File.OpenRead(_tasksFilePath);
-                var loadedTasks = await JsonSerializer.DeserializeAsync<List<TaskItem>>(stream); // ObservableCollection 대신 List로 받습니다.
+                var loadedTasks = await JsonSerializer.DeserializeAsync<List<TaskItem>>(stream);
                 if (loadedTasks == null) return;
 
-                // ✨ [수정] UI와 관련된 모든 작업은 Dispatcher를 통해 메인 UI 스레드에서 실행합니다.
                 Application.Current.Dispatcher.Invoke(() =>
                 {
                     TaskItems.Clear();
@@ -160,10 +142,9 @@ namespace WorkPartner
                     {
                         if (_settings.TaskColors.TryGetValue(task.Text, out var colorHex))
                         {
-                            // Brush 생성도 UI 스레드에서 수행합니다.
                             task.ColorBrush = (SolidColorBrush)new BrushConverter().ConvertFromString(colorHex);
                         }
-                        TaskItems.Add(task); // 컬렉션에 추가하는 작업도 UI 스레드에서 수행합니다.
+                        TaskItems.Add(task);
                     }
                 });
             }
@@ -311,7 +292,6 @@ namespace WorkPartner
                 return;
             }
 
-            // Update task name everywhere
             foreach (var log in TimeLogEntries.Where(l => l.TaskText == oldName))
             {
                 log.TaskText = newName;
@@ -331,11 +311,15 @@ namespace WorkPartner
 
             TaskListBox.Items.Refresh();
             RenderTimeTable();
-            UpdateSelectedTaskTotalTimeDisplay();
         }
 
         private void DeleteTaskButton_Click(object sender, RoutedEventArgs e)
         {
+            if (DataContext is DashboardViewModel vm)
+            {
+                vm.StopTimerCommand.Execute(null);
+            }
+
             if (TaskListBox.SelectedItem is not TaskItem selectedTask)
             {
                 MessageBox.Show("삭제할 과목을 목록에서 선택해주세요.", "알림", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -369,6 +353,12 @@ namespace WorkPartner
         private void TaskInput_KeyDown(object sender, KeyEventArgs e)
         {
             if (e.Key == Key.Enter) AddTaskButton_Click(sender, e);
+        }
+
+        // ✨ 오류 해결을 위해 빠진 메서드 추가
+        private void TaskListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+
         }
 
         private void AddTodoButton_Click(object sender, RoutedEventArgs e)
@@ -505,12 +495,6 @@ namespace WorkPartner
 
         #region 화면 렌더링 및 UI 업데이트
 
-        private void UpdateSelectedTaskTotalTimeDisplay()
-        {
-            // 이 로직은 ViewModel로 이전되어야 합니다.
-            // 지금은 임시로 남겨둡니다.
-        }
-
         private void RecalculateAllTotals()
         {
             var todayLogs = TimeLogEntries.Where(log => log.StartTime.Date == _currentDateForTimeline.Date);
@@ -521,9 +505,6 @@ namespace WorkPartner
                 var taskLogs = TimeLogEntries.Where(log => log.TaskText == task.Text && log.StartTime.Date == _currentDateForTimeline.Date);
                 task.TotalTime = new TimeSpan(taskLogs.Sum(log => log.Duration.Ticks));
             }
-
-            // MainTimeDisplay 업데이트는 이제 ViewModel 담당입니다.
-            // MainTimeDisplay.Text = totalTimeTodayFromLogs.ToString(@"hh\:mm\:ss");
         }
 
         private SolidColorBrush GetColorForTask(string taskName)
@@ -766,7 +747,6 @@ namespace WorkPartner
         {
             if (_parentWindow != null && sender is Button button && button.Tag is string pageName)
             {
-                // ViewModel로 타이머가 이전되었으므로, 여기서 타이머를 정지할 필요가 없습니다.
                 await _parentWindow.NavigateToPage(pageName);
             }
         }
