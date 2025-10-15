@@ -1,5 +1,6 @@
 ﻿// 𝙃𝙚𝙧𝙚'𝙨 𝙩𝙝𝙚 𝙘𝙤𝙙𝙚 𝙞𝙣 ddmhyang/workpartner2/WorkPartner2-4/WorkPartner/DashboardViewModel.cs
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -25,22 +26,22 @@ namespace WorkPartner.ViewModels
 
         private TaskItem _currentWorkingTask;
         private DateTime _sessionStartTime;
-        private TimeSpan _totalTimeTodayFromLogs;
         private bool _isPausedForIdle = false;
         private DateTime _idleStartTime;
         private const int IdleGraceSeconds = 10;
 
         public ObservableCollection<TimeLogEntry> TimeLogEntries { get; private set; }
-
         public event Action<string> TimeUpdated;
         public event Action<string> CurrentTaskChanged;
         public event Action<bool> IsRunningChanged;
+
+        private Dictionary<string, TimeSpan> _dailyTaskTotals = new Dictionary<string, TimeSpan>();
+        private TimeSpan _totalTimeTodayFromLogs;
 
         #endregion
 
         #region --- UI와 바인딩될 속성 ---
 
-        // ✨ [수정] 이제 '선택된 과목'의 시간을 표시합니다.
         private string _mainTimeDisplayText = "00:00:00";
         public string MainTimeDisplayText
         {
@@ -48,19 +49,18 @@ namespace WorkPartner.ViewModels
             set => SetProperty(ref _mainTimeDisplayText, value);
         }
 
+        public string _totalTimeTodayDisplayText = "오늘의 작업 시간 | 00:00:00";
+        public string TotalTimeTodayDisplayText
+        {
+            get => _totalTimeTodayDisplayText;
+            set => SetProperty(ref _totalTimeTodayDisplayText, value);
+        }
+
         private string _currentTaskDisplayText = "없음";
         public string CurrentTaskDisplayText
         {
             get => _currentTaskDisplayText;
             set => SetProperty(ref _currentTaskDisplayText, value);
-        }
-
-        // ✨ [추가] '오늘의 총 작업 시간'을 표시하기 위한 새 속성
-        private string _totalTimeTodayDisplayText = "오늘의 작업 시간 | 00:00:00";
-        public string TotalTimeTodayDisplayText
-        {
-            get => _totalTimeTodayDisplayText;
-            set => SetProperty(ref _totalTimeTodayDisplayText, value);
         }
 
         public ObservableCollection<TaskItem> TaskItems { get; private set; }
@@ -105,23 +105,28 @@ namespace WorkPartner.ViewModels
             var loadedLogs = await _timeLogService.LoadTimeLogsAsync();
             foreach (var log in loadedLogs) TimeLogEntries.Add(log);
 
-            RecalculateTotalTimeToday();
-            UpdateLiveTimeDisplays(); // 초기 UI 업데이트
+            RecalculateDailyTotals();
+            UpdateLiveTimeDisplays();
             _timerService.Start();
         }
 
-        private void RecalculateTotalTimeToday()
+        private void RecalculateDailyTotals()
         {
-            _totalTimeTodayFromLogs = new TimeSpan(TimeLogEntries
-                .Where(log => log.StartTime.Date == DateTime.Today)
-                .Sum(log => log.Duration.Ticks));
+            _dailyTaskTotals.Clear();
+            var todayLogs = TimeLogEntries.Where(log => log.StartTime.Date == DateTime.Today);
+
+            _totalTimeTodayFromLogs = new TimeSpan(todayLogs.Sum(log => log.Duration.Ticks));
+
+            _dailyTaskTotals = todayLogs
+                .GroupBy(log => log.TaskText)
+                .ToDictionary(g => g.Key, g => new TimeSpan(g.Sum(l => l.Duration.Ticks)));
         }
 
         private void OnSelectedTaskChanged(TaskItem newSelectedTask)
         {
             CurrentTaskDisplayText = newSelectedTask?.Text ?? "없음";
             CurrentTaskChanged?.Invoke(CurrentTaskDisplayText);
-            UpdateLiveTimeDisplays(); // ✨ [추가] 과목 선택 시 즉시 시간 표시 업데이트
+            UpdateLiveTimeDisplays();
 
             if (_currentWorkingTask != newSelectedTask)
             {
@@ -235,14 +240,23 @@ namespace WorkPartner.ViewModels
             };
 
             TimeLogEntries.Insert(0, entry);
+            // ✨ [오류 수정] .ToList()를 제거하여 올바른 타입으로 데이터를 넘겨줍니다.
             _timeLogService.SaveTimeLogsAsync(TimeLogEntries);
-            RecalculateTotalTimeToday();
+
+            var duration = entry.Duration;
+            if (_dailyTaskTotals.ContainsKey(entry.TaskText))
+            {
+                _dailyTaskTotals[entry.TaskText] += duration;
+            }
+            else
+            {
+                _dailyTaskTotals[entry.TaskText] = duration;
+            }
+            _totalTimeTodayFromLogs += duration;
         }
 
-        // ✨ [수정] 두 개의 시간 표시를 모두 업데이트하도록 로직 변경
         private void UpdateLiveTimeDisplays()
         {
-            // 1. 오늘의 '총' 작업 시간 계산 (작은 TextBlock용)
             var totalTimeToday = _totalTimeTodayFromLogs;
             if (_stopwatch.IsRunning)
             {
@@ -250,24 +264,21 @@ namespace WorkPartner.ViewModels
             }
             TotalTimeTodayDisplayText = $"오늘의 작업 시간 | {totalTimeToday:hh\\:mm\\:ss}";
 
-            // 2. '선택된 과목'의 작업 시간 계산 (큰 TextBlock용)
             var timeForSelectedTask = TimeSpan.Zero;
-            if (SelectedTaskItem != null)
+            if (SelectedTaskItem != null && _dailyTaskTotals.TryGetValue(SelectedTaskItem.Text, out var storedTime))
             {
-                var selectedTaskLogs = TimeLogEntries
-                    .Where(log => log.TaskText == SelectedTaskItem.Text && log.StartTime.Date == DateTime.Today);
-                timeForSelectedTask = new TimeSpan(selectedTaskLogs.Sum(log => log.Duration.Ticks));
-
-                // 선택된 과목이 현재 작업중인 과목과 같을 때만 실시간 시간 추가
-                if (_stopwatch.IsRunning && _currentWorkingTask == SelectedTaskItem)
-                {
-                    timeForSelectedTask += _stopwatch.Elapsed;
-                }
+                timeForSelectedTask = storedTime;
             }
-            MainTimeDisplayText = timeForSelectedTask.ToString(@"hh\:mm\:ss");
 
-            // 3. 미니 타이머에는 '선택된 과목'의 시간을 전송
-            TimeUpdated?.Invoke(MainTimeDisplayText);
+            if (_stopwatch.IsRunning && _currentWorkingTask == SelectedTaskItem)
+            {
+                timeForSelectedTask += _stopwatch.Elapsed;
+            }
+
+            string newTime = timeForSelectedTask.ToString(@"hh\:mm\:ss");
+            MainTimeDisplayText = newTime;
+
+            TimeUpdated?.Invoke(newTime);
         }
 
         #region --- INotifyPropertyChanged 구현 ---

@@ -43,6 +43,10 @@ namespace WorkPartner
 
         private readonly Dictionary<string, BackgroundSoundPlayer> _soundPlayers = new();
 
+        private readonly Dictionary<string, SolidColorBrush> _taskBrushCache = new();
+        private static readonly SolidColorBrush DefaultGrayBrush = new SolidColorBrush(Colors.Gray);
+        private static readonly SolidColorBrush BlockBackgroundBrush = new SolidColorBrush(Color.FromRgb(0xF5, 0xF5, 0xF5));
+        private static readonly SolidColorBrush BlockBorderBrush = Brushes.White;
         #endregion
 
         public DashboardPage()
@@ -71,11 +75,15 @@ namespace WorkPartner
 
             DataManager.SettingsUpdated += OnSettingsUpdated;
             this.Unloaded += (s, e) => DataManager.SettingsUpdated -= OnSettingsUpdated;
+
+            RenderOptions.SetBitmapScalingMode(this, BitmapScalingMode.LowQuality);
+            RenderOptions.SetEdgeMode(this, EdgeMode.Aliased);
         }
 
         private void OnSettingsUpdated()
         {
             LoadSettings();
+            _taskBrushCache.Clear();
             Dispatcher.Invoke(() =>
             {
                 foreach (var taskItem in TaskItems)
@@ -136,6 +144,7 @@ namespace WorkPartner
                 Application.Current.Dispatcher.Invoke(() =>
                 {
                     TaskItems.Clear();
+                    _taskBrushCache.Clear();
                     foreach (var task in loadedTasks)
                     {
                         if (_settings.TaskColors.TryGetValue(task.Text, out var colorHex))
@@ -151,9 +160,7 @@ namespace WorkPartner
 
         private void SaveTasks()
         {
-            var options = new JsonSerializerOptions { WriteIndented = true, Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
-            var json = JsonSerializer.Serialize(TaskItems, options);
-            File.WriteAllText(_tasksFilePath, json);
+            DataManager.SaveTasks(TaskItems);
         }
 
         private async Task LoadTodosAsync()
@@ -173,9 +180,7 @@ namespace WorkPartner
 
         private void SaveTodos()
         {
-            var options = new JsonSerializerOptions { WriteIndented = true, Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
-            var json = JsonSerializer.Serialize(TodoItems, options);
-            File.WriteAllText(_todosFilePath, json);
+            DataManager.SaveTodos(TodoItems);
         }
 
         private async Task LoadTimeLogsAsync()
@@ -194,9 +199,7 @@ namespace WorkPartner
 
         private void SaveTimeLogs()
         {
-            var options = new JsonSerializerOptions { WriteIndented = true, Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
-            var json = JsonSerializer.Serialize(TimeLogEntries, options);
-            File.WriteAllText(_timeLogFilePath, json);
+            DataManager.SaveTimeLogs(TimeLogEntries);
         }
 
         private async Task LoadMemosAsync()
@@ -229,6 +232,7 @@ namespace WorkPartner
         #endregion
 
         #region UI 이벤트 핸들러
+
         private async void DashboardPage_IsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
         {
             if (e.NewValue is true)
@@ -298,6 +302,7 @@ namespace WorkPartner
                 var color = _settings.TaskColors[oldName];
                 _settings.TaskColors.Remove(oldName);
                 _settings.TaskColors[newName] = color;
+                _taskBrushCache.Remove(oldName);
             }
 
             selectedTask.Text = newName;
@@ -327,6 +332,7 @@ namespace WorkPartner
             if (_settings.TaskColors.ContainsKey(taskNameToDelete))
             {
                 _settings.TaskColors.Remove(taskNameToDelete);
+                _taskBrushCache.Remove(taskNameToDelete);
                 SaveSettings();
             }
 
@@ -476,10 +482,10 @@ namespace WorkPartner
             RecalculateAllTotals();
             RenderTimeTable();
         }
-
         #endregion
 
         #region 화면 렌더링 및 UI 업데이트
+
         private void RecalculateAllTotals()
         {
             var todayLogs = TimeLogEntries.Where(log => log.StartTime.Date == _currentDateForTimeline.Date);
@@ -494,18 +500,35 @@ namespace WorkPartner
 
         private SolidColorBrush GetColorForTask(string taskName)
         {
+            if (_taskBrushCache.TryGetValue(taskName, out var cachedBrush))
+            {
+                return cachedBrush;
+            }
+
             if (_settings != null && _settings.TaskColors.TryGetValue(taskName, out string colorHex))
             {
-                try { return (SolidColorBrush)new BrushConverter().ConvertFromString(colorHex); }
+                try
+                {
+                    var newBrush = (SolidColorBrush)new BrushConverter().ConvertFromString(colorHex);
+                    newBrush.Freeze();
+                    _taskBrushCache[taskName] = newBrush;
+                    return newBrush;
+                }
                 catch { /* ignore */ }
             }
-            return new SolidColorBrush(Colors.Gray);
+
+            return DefaultGrayBrush;
         }
 
         private void RenderTimeTable()
         {
             TimeTableContainer.Children.Clear();
-            var logsForSelectedDate = TimeLogEntries.Where(log => log.StartTime.Date == _currentDateForTimeline.Date).ToList();
+            var logsForSelectedDate = TimeLogEntries
+                .Where(log => log.StartTime.Date == _currentDateForTimeline.Date)
+                .OrderBy(l => l.StartTime)
+                .ToList();
+
+            if (!logsForSelectedDate.Any()) return;
 
             double blockWidth = 35, blockHeight = 17, hourLabelWidth = 30;
 
@@ -527,46 +550,41 @@ namespace WorkPartner
                 for (int minuteBlock = 0; minuteBlock < 6; minuteBlock++)
                 {
                     var blockStartTime = new TimeSpan(hour, minuteBlock * 10, 0);
-                    var blockEndTime = blockStartTime.Add(TimeSpan.FromMinutes(10));
-                    var blockContainer = new Grid
-                    {
-                        Width = blockWidth,
-                        Height = blockHeight,
-                        Background = new SolidColorBrush(Color.FromRgb(0xF5, 0xF5, 0xF5)),
-                        Margin = new Thickness(1, 0, 1, 0)
-                    };
-                    var overlappingLogs = logsForSelectedDate.Where(log => log.StartTime.TimeOfDay < blockEndTime && log.EndTime.TimeOfDay > blockStartTime).ToList();
+                    var blockContainer = new Grid { Width = blockWidth, Height = blockHeight, Background = BlockBackgroundBrush, Margin = new Thickness(1, 0, 1, 0) };
 
-                    foreach (var logEntry in overlappingLogs)
-                    {
-                        var segmentStart = logEntry.StartTime.TimeOfDay > blockStartTime ? logEntry.StartTime.TimeOfDay : blockStartTime;
-                        var segmentEnd = logEntry.EndTime.TimeOfDay < blockEndTime ? logEntry.EndTime.TimeOfDay : blockEndTime;
-                        var segmentDuration = segmentEnd - segmentStart;
-                        if (segmentDuration.TotalSeconds <= 0) continue;
-
-                        double barWidth = (segmentDuration.TotalMinutes / 10.0) * blockContainer.Width;
-                        double leftOffset = ((segmentStart - blockStartTime).TotalMinutes / 10.0) * blockContainer.Width;
-                        if (barWidth < 1) continue;
-
-                        var coloredBar = new Border
-                        {
-                            Width = barWidth,
-                            Height = blockContainer.Height,
-                            Background = GetColorForTask(logEntry.TaskText),
-                            CornerRadius = new CornerRadius(2),
-                            HorizontalAlignment = HorizontalAlignment.Left,
-                            Margin = new Thickness(leftOffset, 0, 0, 0),
-                            ToolTip = new ToolTip { Content = $"{logEntry.TaskText}\n{logEntry.StartTime:HH:mm} ~ {logEntry.EndTime:HH:mm}\n\n클릭하여 수정 또는 삭제" },
-                            Tag = logEntry,
-                            Cursor = Cursors.Hand
-                        };
-                        coloredBar.MouseLeftButtonDown += TimeLogRect_MouseLeftButtonDown;
-                        blockContainer.Children.Add(coloredBar);
-                    }
-                    var blockWithBorder = new Border { BorderBrush = Brushes.White, BorderThickness = new Thickness(1, 0, (minuteBlock + 1) % 6 == 0 ? 1 : 0, 0), Child = blockContainer };
+                    var blockWithBorder = new Border { BorderBrush = BlockBorderBrush, BorderThickness = new Thickness(1, 0, (minuteBlock + 1) % 6 == 0 ? 1 : 0, 0), Child = blockContainer };
                     hourRowPanel.Children.Add(blockWithBorder);
                 }
                 TimeTableContainer.Children.Add(hourRowPanel);
+            }
+
+            foreach (var logEntry in logsForSelectedDate)
+            {
+                var logStart = logEntry.StartTime.TimeOfDay;
+                var logEnd = logEntry.EndTime.TimeOfDay;
+                var duration = logEnd - logStart;
+                if (duration.TotalSeconds <= 1) continue;
+
+                var topOffset = logStart.TotalHours * (blockHeight + 2);
+                var leftOffset = hourLabelWidth + (logStart.Minutes / 10.0) * (blockWidth + 2);
+                var barWidth = (duration.TotalMinutes / 10.0) * (blockWidth + 2);
+
+                var coloredBar = new Border
+                {
+                    Width = barWidth,
+                    Height = blockHeight,
+                    Background = GetColorForTask(logEntry.TaskText),
+                    CornerRadius = new CornerRadius(2),
+                    HorizontalAlignment = HorizontalAlignment.Left,
+                    VerticalAlignment = VerticalAlignment.Top,
+                    Margin = new Thickness(leftOffset, topOffset, 0, 0),
+                    ToolTip = new ToolTip { Content = $"{logEntry.TaskText}\n{logEntry.StartTime:HH:mm} ~ {logEntry.EndTime:HH:mm}\n\n클릭하여 수정 또는 삭제" },
+                    Tag = logEntry,
+                    Cursor = Cursors.Hand
+                };
+                coloredBar.MouseLeftButtonDown += TimeLogRect_MouseLeftButtonDown;
+
+                SelectionCanvas.Children.Add(coloredBar);
             }
         }
 
@@ -631,6 +649,8 @@ namespace WorkPartner
         #region 타임라인 드래그 및 일괄 수정
         private void SelectionCanvas_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
+            if (e.OriginalSource is Border) return;
+
             _isDragging = true;
             _dragStartPoint = e.GetPosition(SelectionCanvas);
             _selectionBox.SetValue(Canvas.LeftProperty, _dragStartPoint.X);
@@ -659,38 +679,24 @@ namespace WorkPartner
 
         private void SelectionCanvas_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
+            if (!_isDragging) return;
             _isDragging = false;
             SelectionCanvas.ReleaseMouseCapture();
             _selectionBox.Visibility = Visibility.Collapsed;
 
-            var selectionRect = new Rect(
-                Math.Min(_dragStartPoint.X, e.GetPosition(SelectionCanvas).X),
-                Math.Min(_dragStartPoint.Y, e.GetPosition(SelectionCanvas).Y),
-                Math.Abs(_dragStartPoint.X - e.GetPosition(SelectionCanvas).X),
-                Math.Abs(_dragStartPoint.Y - e.GetPosition(SelectionCanvas).Y)
-            );
+            var selectionRect = new Rect(Canvas.GetLeft(_selectionBox), Canvas.GetTop(_selectionBox), _selectionBox.Width, _selectionBox.Height);
 
             if (selectionRect.Width < 10 && selectionRect.Height < 10) return;
 
             var selectedLogs = new List<TimeLogEntry>();
-            foreach (var child in TimeTableContainer.Children.OfType<StackPanel>())
+            foreach (var child in SelectionCanvas.Children.OfType<Border>())
             {
-                foreach (var grandChild in child.Children.OfType<Border>())
+                if (child.Tag is TimeLogEntry logEntry)
                 {
-                    if (grandChild.Child is Grid grid)
+                    var logRect = new Rect(child.Margin.Left, child.Margin.Top, child.ActualWidth, child.ActualHeight);
+                    if (selectionRect.IntersectsWith(logRect))
                     {
-                        foreach (var logBar in grid.Children.OfType<Border>())
-                        {
-                            if (logBar.Tag is TimeLogEntry logEntry)
-                            {
-                                Point logBarPos = logBar.TranslatePoint(new Point(0, 0), SelectionCanvas);
-                                Rect logRect = new Rect(logBarPos.X, logBarPos.Y, logBar.ActualWidth, logBar.ActualHeight);
-                                if (selectionRect.IntersectsWith(logRect))
-                                {
-                                    selectedLogs.Add(logEntry);
-                                }
-                            }
-                        }
+                        selectedLogs.Add(logEntry);
                     }
                 }
             }
@@ -770,6 +776,8 @@ namespace WorkPartner
                 }
             }
         }
+
+        // ✨ [오류 수정] 이벤트 핸들러의 두 번째 매개변수 타입을 MouseButtonEventArgs로 수정했습니다.
         private void ChangeTaskColor_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             if (sender is not Border { Tag: TaskItem selectedTask }) return;
@@ -790,47 +798,22 @@ namespace WorkPartner
             e.Handled = true;
         }
 
-        // ✨ [수정] ViewModel과 View를 연결하는 핵심 로직
         private void DashboardPage_DataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
         {
-            // DataContext가 변경될 때 이전 ViewModel의 이벤트 구독을 해제 (메모리 누수 방지)
             if (e.OldValue is ViewModels.DashboardViewModel oldVm)
             {
                 oldVm.TimeUpdated -= OnViewModelTimeUpdated;
-                oldVm.CurrentTaskChanged -= OnViewModelCurrentTaskChanged;
-                oldVm.IsRunningChanged -= OnViewModelIsRunningChanged;
             }
-            // 새로운 ViewModel의 이벤트를 구독
             if (e.NewValue is ViewModels.DashboardViewModel newVm)
             {
                 newVm.TimeUpdated += OnViewModelTimeUpdated;
-                newVm.CurrentTaskChanged += OnViewModelCurrentTaskChanged;
-                newVm.IsRunningChanged += OnViewModelIsRunningChanged;
             }
         }
 
-        // ✨ [추가] ViewModel에서 보낸 신호를 받아 미니 타이머 UI를 업데이트하는 메서드들
         private void OnViewModelTimeUpdated(string newTime)
         {
             _miniTimer?.UpdateTime(newTime);
         }
-        private void OnViewModelCurrentTaskChanged(string taskName)
-        {
-            _miniTimer?.UpdateTaskInfo(taskName ?? "업무 없음");
-        }
-
-        private void OnViewModelIsRunningChanged(bool isRunning)
-        {
-            if (isRunning)
-            {
-                _miniTimer?.SetRunningStyle();
-            }
-            else
-            {
-                _miniTimer?.SetStoppedStyle();
-            }
-        }
-
         #endregion
     }
 }

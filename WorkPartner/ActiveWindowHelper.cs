@@ -3,8 +3,9 @@ using System;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading.Tasks; // ✨ Task(비동기) 사용을 위해 추가
 using System.Windows.Automation;
-using System.ComponentModel; // Win32Exception 처리를 위해 추가
+using System.ComponentModel;
 
 namespace WorkPartner
 {
@@ -32,9 +33,11 @@ namespace WorkPartner
             public uint dwTime;
         }
 
+        // ✨ [추가] 멈춤 현상을 방지하기 위한 타임아웃 시간 (밀리초 단위)
+        private const int ApiTimeoutMs = 200;
+
         public static string GetActiveWindowTitle()
         {
-            // ✨ [수정] 안정성을 위해 예외 처리 추가
             try
             {
                 const int nChars = 256;
@@ -50,12 +53,13 @@ namespace WorkPartner
             catch (Exception ex)
             {
                 Debug.WriteLine($"[Error] GetActiveWindowTitle: {ex.Message}");
-                return null; // 오류 발생 시 안전하게 null 반환
+                return null;
             }
         }
 
         public static string GetActiveProcessName()
         {
+            string processName = string.Empty;
             try
             {
                 IntPtr handle = GetForegroundWindow();
@@ -64,20 +68,32 @@ namespace WorkPartner
                 GetWindowThreadProcessId(handle, out uint processId);
                 if (processId == 0) return string.Empty;
 
-                Process proc = Process.GetProcessById((int)processId);
-                return proc.ProcessName.ToLower();
-            }
-            // ✨ [수정] 권한 문제로 인한 충돌을 막기 위한 예외 처리 강화
-            catch (Win32Exception ex)
-            {
-                Debug.WriteLine($"[Handled Error] GetActiveProcessName (Permission Denied?): {ex.Message}");
-                return string.Empty; // 권한 오류 발생 시 안전하게 빈 문자열 반환
+                // ✨ [수정] 프로세스 정보 조회를 별도 스레드에서 타임아웃을 갖고 실행
+                var task = Task.Run(() =>
+                {
+                    try
+                    {
+                        Process proc = Process.GetProcessById((int)processId);
+                        return proc.ProcessName.ToLower();
+                    }
+                    catch { return string.Empty; }
+                });
+
+                // ✨ 지정된 시간 안에 작업이 완료되면 결과 반환, 아니면 빈 문자열 반환
+                if (task.Wait(TimeSpan.FromMilliseconds(ApiTimeoutMs)))
+                {
+                    processName = task.Result;
+                }
+                else
+                {
+                    Debug.WriteLine($"[Timeout] GetActiveProcessName timed out for process ID {processId}.");
+                }
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"[Error] GetActiveProcessName: {ex.Message}");
-                return string.Empty; // 기타 오류 발생 시에도 안전하게 반환
             }
+            return processName;
         }
 
         public static TimeSpan GetIdleTime()
@@ -95,36 +111,58 @@ namespace WorkPartner
 
         public static string GetActiveBrowserTabUrl()
         {
-            // ✨ [수정] UI 자동화 오류로 인한 프로그램 멈춤을 방지하기 위해 전체를 try-catch로 감쌈
+            string url = null;
             try
             {
-                IntPtr handle = GetForegroundWindow();
-                if (handle == IntPtr.Zero) return null;
-
-                AutomationElement element = AutomationElement.FromHandle(handle);
-                if (element == null) return null;
-
-                var conditions = new OrCondition(
-                    new PropertyCondition(AutomationElement.NameProperty, "주소창 및 검색창"),
-                    new PropertyCondition(AutomationElement.NameProperty, "Address and search bar"),
-                    new PropertyCondition(AutomationElement.NameProperty, "주소 표시줄"),
-                    new PropertyCondition(AutomationElement.AutomationIdProperty, "urlbar-input"),
-                    new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Edit)
-                );
-
-                var addressBar = element.FindFirst(TreeScope.Descendants, conditions);
-
-                if (addressBar != null && addressBar.TryGetCurrentPattern(ValuePattern.Pattern, out object pattern))
+                // ✨ [수정] UI 자동화 전체 로직을 별도 스레드에서 타임아웃을 갖고 실행
+                var task = Task.Run(() =>
                 {
-                    return ((ValuePattern)pattern).Current.Value as string;
+                    try
+                    {
+                        IntPtr handle = GetForegroundWindow();
+                        if (handle == IntPtr.Zero) return null;
+
+                        AutomationElement element = AutomationElement.FromHandle(handle);
+                        if (element == null) return null;
+
+                        var conditions = new OrCondition(
+                            new PropertyCondition(AutomationElement.NameProperty, "주소창 및 검색창"),
+                            new PropertyCondition(AutomationElement.NameProperty, "Address and search bar"),
+                            new PropertyCondition(AutomationElement.NameProperty, "주소 표시줄"),
+                            new PropertyCondition(AutomationElement.AutomationIdProperty, "urlbar-input"),
+                            new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Edit)
+                        );
+
+                        var addressBar = element.FindFirst(TreeScope.Descendants, conditions);
+
+                        if (addressBar != null && addressBar.TryGetCurrentPattern(ValuePattern.Pattern, out object pattern))
+                        {
+                            return ((ValuePattern)pattern).Current.Value as string;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"[Handled Error in Task] GetActiveBrowserTabUrl: {ex.Message}");
+                    }
+                    return null;
+                });
+
+                // ✨ 지정된 시간 안에 작업이 완료되면 결과 반환, 아니면 null 반환
+                if (task.Wait(TimeSpan.FromMilliseconds(ApiTimeoutMs)))
+                {
+                    url = task.Result;
+                }
+                else
+                {
+                    Debug.WriteLine("[Timeout] GetActiveBrowserTabUrl timed out.");
                 }
             }
             catch (Exception ex)
             {
-                // Figma와 같은 앱에서 호환성 오류가 발생해도 무시하고 넘어가도록 처리
-                Debug.WriteLine($"[Handled Error] GetActiveBrowserTabUrl (Compatibility issue?): {ex.Message}");
+                Debug.WriteLine($"[Error] GetActiveBrowserTabUrl: {ex.Message}");
             }
-            return null; // 오류 발생 시 안전하게 null 반환
+
+            return url;
         }
     }
 }

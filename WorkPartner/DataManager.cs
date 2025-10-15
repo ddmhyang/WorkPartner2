@@ -1,69 +1,71 @@
-﻿using System;
-using System.Diagnostics;
+﻿// 𝙃𝙚𝙧𝙚'𝙨 𝙩𝙝𝙚 𝙘𝙤𝙙𝙚 𝙞𝙣 ddmhyang/workpartner2/WorkPartner2-4/WorkPartner/DataManager.cs
+using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.IO;
+using System.Linq;
+using System.Text.Encodings.Web;
 using System.Text.Json;
-using System.Windows; // MessageBox를 위해 추가
+using System.Text.Unicode;
+using System.Threading;
 
 namespace WorkPartner
 {
     public static class DataManager
     {
-        public static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true, Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
+        private static readonly string AppDataPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "WorkPartner");
+        public static readonly string SettingsFilePath = Path.Combine(AppDataPath, "settings.json");
+        public static readonly string TasksFilePath = Path.Combine(AppDataPath, "tasks.json");
+        public static readonly string TodosFilePath = Path.Combine(AppDataPath, "todos.json");
+        public static readonly string TimeLogFilePath = Path.Combine(AppDataPath, "timelogs.json");
+        public static readonly string MemosFilePath = Path.Combine(AppDataPath, "memos.json");
+        public static readonly string ItemsDbFilePath = Path.Combine(AppDataPath, "items_db.json");
+        // ✨ [오류 수정] PredictionService에서 사용하던 ModelFilePath를 다시 추가했습니다.
+        public static readonly string ModelFilePath = Path.Combine(AppDataPath, "model_input.json");
+
+
+        // ✨ [오류 수정] 다른 클래스에서 접근할 수 있도록 접근 제어자를 internal로 변경했습니다.
+        internal static readonly JsonSerializerOptions JsonOptions = new JsonSerializerOptions
+        {
+            WriteIndented = true,
+            Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
+        };
+
+        private static Timer _saveTimer;
+        private static Action _pendingSaveAction;
+        private const int SaveDelayMilliseconds = 1500;
+
         public static event Action SettingsUpdated;
 
-        // 1. AppData 안에 우리 프로그램 전용 폴더 경로를 만듭니다.
-        private static readonly string AppDataFolder;
-
-        // 2. 각 파일의 전체 경로를 속성으로 만들어 쉽게 가져다 쓸 수 있게 합니다.
-        public static string SettingsFilePath { get; }
-        public static string TimeLogFilePath { get; }
-        public static string TasksFilePath { get; }
-        public static string TodosFilePath { get; }
-        public static string MemosFilePath { get; }
-        public static string ModelFilePath { get; }
-        public static string ItemsDbFilePath { get; }
-
-
-
-        // 프로그램이 시작될 때 단 한 번만 실행되는 생성자
         static DataManager()
         {
-            AppDataFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "WorkPartner");
-            Directory.CreateDirectory(AppDataFolder);
-            SettingsFilePath = Path.Combine(AppDataFolder, "app_settings.json");
-            TimeLogFilePath = Path.Combine(AppDataFolder, "timelogs.json");
-            TasksFilePath = Path.Combine(AppDataFolder, "tasks.json");
-            TodosFilePath = Path.Combine(AppDataFolder, "todos.json");
-            MemosFilePath = Path.Combine(AppDataFolder, "memos.json");
-            ModelFilePath = Path.Combine(AppDataFolder, "FocusPredictionModel.zip");
-            ItemsDbFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "items_db.json");
+            Directory.CreateDirectory(AppDataPath);
         }
-
-        // DataManager.cs 파일의 LoadSettings 메서드를 아래 코드로 교체하세요.
 
         public static AppSettings LoadSettings()
         {
             if (!File.Exists(SettingsFilePath))
             {
-                return new AppSettings(); // 파일이 없으면, 1단계에서 만든 안전한 새 설정을 반환
+                var defaultSettings = new AppSettings();
+                SaveSettings(defaultSettings);
+                return defaultSettings;
             }
             try
             {
                 var json = File.ReadAllText(SettingsFilePath);
-                // 파일이 비어있거나 손상된 경우를 대비해, 문제가 생기면 안전한 새 설정을 반환
-                return JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
+                return JsonSerializer.Deserialize<AppSettings>(json, JsonOptions);
             }
-            catch (Exception ex)
+            catch
             {
-                Debug.WriteLine($"Error loading settings, creating new ones: {ex.Message}");
-                return new AppSettings(); // 어떤 오류가 발생해도 안전한 새 설정을 반환
+                var backupSettings = new AppSettings();
+                SaveSettings(backupSettings);
+                return backupSettings;
             }
         }
 
         public static void SaveSettings(AppSettings settings)
         {
-            var options = new JsonSerializerOptions { WriteIndented = true, Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
-            var json = JsonSerializer.Serialize(settings, options);
+            var json = JsonSerializer.Serialize(settings, JsonOptions);
             File.WriteAllText(SettingsFilePath, json);
         }
 
@@ -73,25 +75,45 @@ namespace WorkPartner
             SettingsUpdated?.Invoke();
         }
 
-        // AI 모델 파일과 같이, 처음에는 프로그램 폴더에 있다가
-        // 수정이 필요할 때 AppData로 복사해야 하는 파일을 준비하는 메서드
-        public static void PrepareFileForEditing(string sourceFileName)
+        private static void DebounceSave<T>(string filePath, T data)
         {
-            try
+            _pendingSaveAction = () =>
             {
-                string sourcePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, sourceFileName);
-                string destinationPath = Path.Combine(AppDataFolder, sourceFileName);
-
-                // AppData에 파일이 없고, 원본 파일은 있을 때만 복사
-                if (!File.Exists(destinationPath) && File.Exists(sourcePath))
+                try
                 {
-                    File.Copy(sourcePath, destinationPath);
+                    string json = JsonSerializer.Serialize(data, JsonOptions);
+                    File.WriteAllText(filePath, json);
                 }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"파일 준비 중 오류 발생: {sourceFileName}\n{ex.Message}");
-            }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Error saving {Path.GetFileName(filePath)}: {ex.Message}");
+                }
+            };
+
+            _saveTimer?.Dispose();
+            _saveTimer = new Timer(DoSave, null, SaveDelayMilliseconds, Timeout.Infinite);
+        }
+
+        private static void DoSave(object state)
+        {
+            _pendingSaveAction?.Invoke();
+            _pendingSaveAction = null;
+        }
+
+        public static void SaveTasks(IEnumerable<TaskItem> tasks)
+        {
+            DebounceSave(TasksFilePath, tasks);
+        }
+
+        public static void SaveTodos(IEnumerable<TodoItem> todos)
+        {
+            DebounceSave(TodosFilePath, todos);
+        }
+
+        // ✨ [오류 수정] TimeLogService와의 호환성을 위해 ObservableCollection 타입을 받도록 수정했습니다.
+        public static void SaveTimeLogs(ObservableCollection<TimeLogEntry> logs)
+        {
+            DebounceSave(TimeLogFilePath, logs);
         }
     }
 }
