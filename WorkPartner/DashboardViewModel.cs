@@ -5,7 +5,8 @@ using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
-using System.Windows.Media.Animation;
+using System.Windows.Input;
+using WorkPartner.Commands;
 using WorkPartner.Services;
 
 namespace WorkPartner.ViewModels
@@ -33,7 +34,6 @@ namespace WorkPartner.ViewModels
         public ObservableCollection<TimeLogEntry> TimeLogEntries { get; private set; }
         public event Action<string> TimeUpdated;
 
-
         #endregion
 
         #region --- UI와 바인딩될 속성 ---
@@ -45,50 +45,101 @@ namespace WorkPartner.ViewModels
             set => SetProperty(ref _mainTimeDisplayText, value);
         }
 
-        public ObservableCollection<TaskItem> TaskItems { get; private set; }
-
-        private TaskItem _selectedTaskItem;
-        public TaskItem SelectedTaskItem
+        private TaskItem _selectedTask;
+        public TaskItem SelectedTask
         {
-            get => _selectedTaskItem;
+            get => _selectedTask;
             set
             {
-                if (SetProperty(ref _selectedTaskItem, value))
+                if (SetProperty(ref _selectedTask, value))
                 {
-                    OnSelectedTaskChanged(value);
+                    SelectTask(_selectedTask);
                 }
             }
         }
 
         #endregion
 
-        public DashboardViewModel(ITaskService taskService, IDialogService dialogService, ISettingsService settingsService, ITimerService timerService, ITimeLogService timeLogService)
+        #region --- 명령어(Commands) 선언 ---
+
+        public ICommand StopTimerCommand { get; }
+
+        #endregion
+
+        public DashboardViewModel(ITimerService timerService, ITimeLogService timeLogService, ITaskService taskService, ISettingsService settingsService)
         {
-            _taskService = taskService;
-            _settingsService = settingsService;
             _timerService = timerService;
             _timeLogService = timeLogService;
+            _taskService = taskService;
+            _settingsService = settingsService;
 
             _stopwatch = new Stopwatch();
-            TaskItems = new ObservableCollection<TaskItem>();
             TimeLogEntries = new ObservableCollection<TimeLogEntry>();
 
-            _timerService.Tick += OnTimerTick;
-            LoadInitialDataAsync();
+            StopTimerCommand = new RelayCommand(PauseTimer);
+
+            _timerService.Tick += _ => UpdateLiveTimeDisplays();
         }
 
-        private async void LoadInitialDataAsync()
+        public async Task InitializeAsync()
         {
-            _settings = _settingsService.LoadSettings();
-
-            var loadedTasks = await _taskService.LoadTasksAsync();
-            foreach (var task in loadedTasks) TaskItems.Add(task);
-
-            var loadedLogs = await _timeLogService.LoadTimeLogsAsync();
-            foreach (var log in loadedLogs) TimeLogEntries.Add(log);
-
+            _settings = await _settingsService.LoadSettingsAsync();
+            var logs = await _timeLogService.LoadTimeLogsAsync();
+            // ✨ 오타 수정: ObservableObservableCollection -> ObservableCollection
+            TimeLogEntries = new ObservableCollection<TimeLogEntry>(logs);
             RecalculateTotalTimeToday();
-            _timerService.Start();
+            UpdateLiveTimeDisplays();
+        }
+
+        public void SelectTask(TaskItem task)
+        {
+            if (task == _currentWorkingTask)
+            {
+                PauseTimer(null);
+                _currentWorkingTask = null;
+                SelectedTask = null;
+                return;
+            }
+
+            if (_stopwatch.IsRunning)
+            {
+                SaveCurrentSession();
+            }
+
+            _currentWorkingTask = task;
+
+            if (_currentWorkingTask != null)
+            {
+                _sessionStartTime = DateTime.Now;
+                _stopwatch.Restart();
+                _timerService.Start();
+            }
+            else
+            {
+                PauseTimer(null);
+            }
+        }
+
+        public void PauseTimer(object param)
+        {
+            if (_stopwatch.IsRunning)
+            {
+                _timerService.Stop();
+                _stopwatch.Stop();
+                SaveCurrentSession();
+                _currentWorkingTask = null;
+                UpdateLiveTimeDisplays();
+            }
+        }
+
+        public void ResumeTimer()
+        {
+            if (!_stopwatch.IsRunning && _currentWorkingTask != null)
+            {
+                _sessionStartTime = DateTime.Now - _stopwatch.Elapsed;
+                _timerService.Start();
+                _stopwatch.Start();
+            }
         }
 
         private void RecalculateTotalTimeToday()
@@ -98,109 +149,7 @@ namespace WorkPartner.ViewModels
                 .Sum(log => log.Duration.Ticks));
         }
 
-        private void OnSelectedTaskChanged(TaskItem newSelectedTask)
-        {
-            if (_currentWorkingTask != newSelectedTask)
-            {
-                if (_stopwatch.IsRunning)
-                {
-                    LogWorkSession();
-                    _stopwatch.Reset();
-                }
-                _currentWorkingTask = newSelectedTask;
-            }
-        }
-
-        private void OnTimerTick(TimeSpan ignored)
-        {
-            string activeProcess = ActiveWindowHelper.GetActiveProcessName();
-
-            if (activeProcess == _lastActiveProcessName && !string.IsNullOrEmpty(activeProcess))
-            {
-                UpdateLiveTimeDisplays();
-                return;
-            }
-
-            _lastActiveProcessName = activeProcess;
-            HandleStopwatchMode();
-        }
-
-        private void HandleStopwatchMode()
-        {
-            if (_settings == null) return;
-
-            string activeProcess = ActiveWindowHelper.GetActiveProcessName().ToLower();
-            string activeUrl = ActiveWindowHelper.GetActiveBrowserTabUrl()?.ToLower() ?? string.Empty;
-
-            Action stopAndLogAction = () =>
-            {
-                if (_stopwatch.IsRunning || _isPausedForIdle)
-                {
-                    LogWorkSession(_isPausedForIdle ? _sessionStartTime.Add(_stopwatch.Elapsed) : null);
-                    _stopwatch.Reset();
-                }
-                _isPausedForIdle = false;
-            };
-
-            if (_settings.DistractionProcesses.Any(p => activeProcess.Contains(p) || (!string.IsNullOrEmpty(activeUrl) && activeUrl.Contains(p))))
-            {
-                stopAndLogAction();
-                return;
-            }
-
-            if (_settings.WorkProcesses.Any(p => activeProcess.Contains(p) || (!string.IsNullOrEmpty(activeUrl) && activeUrl.Contains(p))))
-            {
-                bool isPassive = _settings.PassiveProcesses.Any(p => activeProcess.Contains(p));
-                bool isCurrentlyIdle = _settings.IsIdleDetectionEnabled && !isPassive && ActiveWindowHelper.GetIdleTime().TotalSeconds > _settings.IdleTimeoutSeconds;
-
-                if (isCurrentlyIdle)
-                {
-                    if (_stopwatch.IsRunning)
-                    {
-                        _stopwatch.Stop();
-                        _isPausedForIdle = true;
-                        _idleStartTime = DateTime.Now;
-                    }
-                    else if (_isPausedForIdle && (DateTime.Now - _idleStartTime).TotalSeconds > IdleGraceSeconds)
-                    {
-                        LogWorkSession(_sessionStartTime.Add(_stopwatch.Elapsed));
-                        _stopwatch.Reset();
-                        _isPausedForIdle = false;
-                    }
-                }
-                else
-                {
-                    if (_isPausedForIdle)
-                    {
-                        _isPausedForIdle = false;
-                        _stopwatch.Start();
-                    }
-                    else if (!_stopwatch.IsRunning)
-                    {
-                        _currentWorkingTask = SelectedTaskItem;
-                        if (_currentWorkingTask == null && TaskItems.Any())
-                        {
-                            SelectedTaskItem = TaskItems.First();
-                            _currentWorkingTask = SelectedTaskItem;
-                        }
-
-                        if (_currentWorkingTask != null)
-                        {
-                            _sessionStartTime = DateTime.Now;
-                            _stopwatch.Start();
-                        }
-                    }
-                }
-            }
-            else
-            {
-                stopAndLogAction();
-            }
-
-            UpdateLiveTimeDisplays();
-        }
-
-        private void LogWorkSession(DateTime? endTime = null)
+        private void SaveCurrentSession(DateTime? endTime = null)
         {
             if (_currentWorkingTask == null || _stopwatch.Elapsed.TotalSeconds < 1)
             {
@@ -230,7 +179,6 @@ namespace WorkPartner.ViewModels
             string newTime = timeToDisplay.ToString(@"hh\:mm\:ss");
             MainTimeDisplayText = newTime;
 
-            // ▼▼▼ 계산이 끝난 후, "시간 바뀌었어!"라고 신호를 보냅니다. ▼▼▼
             TimeUpdated?.Invoke(newTime);
         }
 
