@@ -106,6 +106,9 @@
 	</ItemGroup>
 
 	<ItemGroup>
+	  <Resource Update="images\character\body.png">
+	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+	  </Resource>
 	  <Resource Update="images\warning.svg">
 	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 	  </Resource>

@@ -1,265 +1,141 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
+﻿using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Media.Imaging; // Added for BitmapImage
-using Newtonsoft.Json;
-using Newtonsoft.Json.Converters;
 
 namespace WorkPartner
 {
-    public partial class AvatarPage : UserControl
+    public partial class AvatarPage : Page
     {
-        private AppSettings _settings;
-        private List<ShopItem> _allItems;
-        private ItemType _selectedCategory = ItemType.HairStyle;
-        private Button _selectedCategoryButton = null;
+        // 저장된 캐릭터 외형 정보
+        private CharacterAppearance savedAppearance;
+        // 현재 꾸미고 있는 (미리보기) 외형 정보
+        private CharacterAppearance previewAppearance;
+
+        // 상점의 모든 아이템 리스트
+        private List<ShopItem> allItems;
 
         public AvatarPage()
         {
             InitializeComponent();
-            LoadData();
+            this.Loaded += AvatarPage_Loaded;
         }
 
-        public void LoadData()
+        private void AvatarPage_Loaded(object sender, RoutedEventArgs e)
         {
-            _settings = DataManager.LoadSettings();
-            CoinDisplay.Text = _settings.Coins.ToString("N0");
+            // 1. 데이터 초기화
+            savedAppearance = DataManager.Instance.Settings.Appearance;
+            previewAppearance = savedAppearance.Clone(); // 깊은 복사로 미리보기 객체 생성
 
-            try
-            {
-                var json = File.ReadAllText(DataManager.ItemsDbFilePath);
-                _allItems = JsonConvert.DeserializeObject<List<ShopItem>>(json, new StringEnumConverter()) ?? new List<ShopItem>();
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"아이템 DB 로딩 실패: {ex.Message}");
-                _allItems = new List<ShopItem>();
-            }
+            // 2. 상점 아이템 로드 및 UI 생성
+            LoadShopItems();
 
-            CharacterPreview.UpdateCharacter();
-            PopulateCategories();
-            UpdateItemList();
+            // 3. 초기 캐릭터 모습 업데이트
+            characterDisplay.UpdateCharacter(previewAppearance);
+
+            // 4. 코인 정보 업데이트
+            UpdateCoinDisplay();
         }
 
-        private void PopulateCategories()
+        private void UpdateCoinDisplay()
         {
-            CategoryPanel.Children.Clear();
-            var categories = _allItems.Select(i => i.Type).Distinct().OrderBy(t => t.ToString());
-
-            foreach (var category in categories)
-            {
-                var button = new Button
-                {
-                    Content = GetCategoryDisplayName(category),
-                    Tag = category,
-                    Style = (Style)FindResource("CategoryButtonStyle")
-                };
-                button.Click += CategoryButton_Click;
-                CategoryPanel.Children.Add(button);
-
-                if (category == _selectedCategory)
-                {
-                    button.Style = (Style)FindResource("SelectedCategoryButtonStyle");
-                    _selectedCategoryButton = button;
-                }
-            }
+            CoinText.Text = $"{DataManager.Instance.Settings.Coins} C";
         }
 
-        private void CategoryButton_Click(object sender, RoutedEventArgs e)
+        private void LoadShopItems()
         {
-            if (sender is Button button && button.Tag is ItemType category)
+            allItems = DataManager.Instance.GetAllShopItems();
+
+            // 카테고리별로 그룹화
+            var groupedItems = allItems.GroupBy(item => item.Category).ToList();
+
+            // 각 카테고리에 맞는 ItemsControl에 아이템 목록을 바인딩
+            // XAML에 각 ItemsControl이 정의되어 있다고 가정합니다. (예: HairFrontItemsControl)
+            BindItemsToCategory("hairFront", HairFrontItemsControl);
+            BindItemsToCategory("hairBack", HairBackItemsControl);
+            BindItemsToCategory("eye", EyeItemsControl);
+            BindItemsToCategory("mouth", MouthItemsControl);
+            BindItemsToCategory("clothes", ClothesItemsControl);
+            BindItemsToCategory("cushion", CushionItemsControl);
+            BindItemsToCategory("accessories", AccessoriesItemsControl);
+            BindItemsToCategory("background", BackgroundsItemsControl);
+        }
+
+        private void BindItemsToCategory(string category, ItemsControl itemsControl)
+        {
+            if (itemsControl != null)
             {
-                _selectedCategory = category;
-
-                if (_selectedCategoryButton != null)
-                {
-                    _selectedCategoryButton.Style = (Style)FindResource("CategoryButtonStyle");
-                }
-                button.Style = (Style)FindResource("SelectedCategoryButtonStyle");
-                _selectedCategoryButton = button;
-
-                UpdateItemList();
+                itemsControl.ItemsSource = allItems.Where(item => item.Category == category).ToList();
             }
         }
 
-        private void UpdateItemList()
+        // 상점 아이템 버튼 클릭 이벤트
+        private void ItemButton_Click(object sender, RoutedEventArgs e)
         {
-            ItemPanel.Children.Clear();
-            var itemsInCategory = _allItems.Where(i => i.Type == _selectedCategory);
+            if (!(sender is Button button) || !(button.DataContext is ShopItem selectedItem)) return;
 
-            foreach (var item in itemsInCategory)
+            // 선택된 아이템의 카테고리에 따라 previewAppearance 객체를 업데이트합니다.
+            switch (selectedItem.Category)
             {
-                var itemView = CreateItemView(item);
-                ItemPanel.Children.Add(itemView);
+                case "hairFront": previewAppearance.HairFront = selectedItem.Id; break;
+                case "hairBack": previewAppearance.HairBack = selectedItem.Id; break;
+                case "eye": previewAppearance.Eye = selectedItem.Id; break;
+                case "mouth": previewAppearance.Mouth = selectedItem.Id; break;
+                case "clothes": previewAppearance.Clothes = selectedItem.Id; break;
+                case "cushion": previewAppearance.Cushion = selectedItem.Id; break;
+                case "background": previewAppearance.Background = selectedItem.Id; break;
+                case "accessories": UpdatePreviewAccessories(selectedItem); break;
             }
+
+            // 변경된 previewAppearance로 캐릭터 모습을 즉시 업데이트합니다.
+            characterDisplay.UpdateCharacter(previewAppearance);
         }
 
-        private Border CreateItemView(ShopItem item)
+        // 장신구 미리보기 업데이트 로직
+        private void UpdatePreviewAccessories(ShopItem accessoryItem)
         {
-            bool isOwned = _settings.OwnedItemIds.Contains(item.Id);
-            bool isEquipped = IsItemEquipped(item);
+            int existingIndex = previewAppearance.Accessories.IndexOf(accessoryItem.Id);
 
-            var border = new Border
+            if (existingIndex != -1) // 이미 착용중이면 해제
             {
-                Width = 60,
-                Height = 80,
-                Margin = new Thickness(5),
-                CornerRadius = new CornerRadius(5),
-                BorderBrush = isEquipped ? (Brush)FindResource("AccentColorBrush") : Brushes.LightGray,
-                BorderThickness = new Thickness(isEquipped ? 2 : 1),
-                Background = (Brush)FindResource("SecondaryBackgroundBrush"),
-                Cursor = Cursors.Hand,
-                Tag = item
-            };
-
-            var grid = new Grid();
-
-            // ✨ This is the corrected image loading logic
-            var image = new Image
-            {
-                Width = 40,
-                Height = 40,
-                VerticalAlignment = VerticalAlignment.Top,
-                Margin = new Thickness(0, 5, 0, 0)
-            };
-            if (!string.IsNullOrEmpty(item.IconPath))
-            {
-                try
-                {
-                    image.Source = new BitmapImage(new Uri(item.IconPath, UriKind.Relative));
-                }
-                catch (Exception) { /* Image not found, leave it blank */ }
+                previewAppearance.Accessories.RemoveAt(existingIndex);
+                previewAppearance.AccessoryColors.RemoveAt(existingIndex);
             }
-
-
-            var nameLabel = new TextBlock
+            else if (previewAppearance.Accessories.Count < 3) // 3개 미만일 경우에만 추가
             {
-                Text = item.Name,
-                FontSize = 8,
-                HorizontalAlignment = HorizontalAlignment.Center,
-                VerticalAlignment = VerticalAlignment.Bottom,
-                Margin = new Thickness(0, 0, 0, 18),
-                Foreground = (Brush)FindResource("PrimaryTextBrush")
-            };
-
-            var pricePanel = new StackPanel
-            {
-                Orientation = Orientation.Horizontal,
-                HorizontalAlignment = HorizontalAlignment.Center,
-                VerticalAlignment = VerticalAlignment.Bottom,
-                Margin = new Thickness(0, 0, 0, 5)
-            };
-
-            if (isOwned)
-            {
-                var ownedLabel = new TextBlock { Text = "보유 중", FontSize = 9, FontWeight = FontWeights.Bold, Foreground = Brushes.Green };
-                pricePanel.Children.Add(ownedLabel);
+                previewAppearance.Accessories.Add(accessoryItem.Id);
+                previewAppearance.AccessoryColors.Add("#FFFFFF"); // 기본 색상(흰색)으로 추가
             }
             else
             {
-                var coinIcon = new Image { Source = new BitmapImage(new Uri("/images/coin.png", UriKind.Relative)), Width = 10, Height = 10 };
-                var priceLabel = new TextBlock { Text = item.Price.ToString("N0"), FontSize = 9, Margin = new Thickness(3, 0, 0, 0), Foreground = (Brush)FindResource("PrimaryTextBrush") };
-                pricePanel.Children.Add(coinIcon);
-                pricePanel.Children.Add(priceLabel);
-            }
-
-            grid.Children.Add(image);
-            grid.Children.Add(nameLabel);
-            grid.Children.Add(pricePanel);
-            border.Child = grid;
-
-            border.MouseLeftButtonDown += Item_Click;
-
-            return border;
-        }
-
-        private void Item_Click(object sender, MouseButtonEventArgs e)
-        {
-            if (sender is FrameworkElement element && element.Tag is ShopItem selectedItem)
-            {
-                bool isOwned = _settings.OwnedItemIds.Contains(selectedItem.Id);
-
-                if (isOwned)
-                {
-                    EquipItem(selectedItem);
-                }
-                else
-                {
-                    BuyItem(selectedItem);
-                }
+                MessageBox.Show("장신구는 최대 3개까지 착용할 수 있습니다.", "알림", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
 
-        private void BuyItem(ShopItem item)
+        // 되돌리기 버튼 클릭
+        private void RevertButton_Click(object sender, RoutedEventArgs e)
         {
-            if (_settings.Coins >= item.Price)
-            {
-                if (MessageBox.Show($"{item.Name}을(를) {item.Price}코인에 구매하시겠습니까?", "구매 확인", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
-                {
-                    _settings.Coins -= item.Price;
-                    _settings.OwnedItemIds.Add(item.Id);
-                    DataManager.SaveSettingsAndNotify(_settings);
-                    CoinDisplay.Text = _settings.Coins.ToString("N0");
-                    EquipItem(item);
-                }
-            }
-            else
-            {
-                MessageBox.Show("코인이 부족합니다.");
-            }
+            previewAppearance = savedAppearance.Clone();
+            characterDisplay.UpdateCharacter(previewAppearance);
         }
 
-        private void EquipItem(ShopItem item)
+        // 저장하기 버튼 클릭
+        private void SaveButton_Click(object sender, RoutedEventArgs e)
         {
-            if (item.IsColor)
-            {
-                _settings.CustomColors[item.Type] = item.ColorValue;
-            }
-            else
-            {
-                if (_settings.EquippedItems.ContainsKey(item.Type))
-                {
-                    _settings.EquippedItems.Remove(item.Type);
-                }
-                _settings.EquippedItems[item.Type] = item.Id;
-            }
+            // TODO: 다음 단계에서 아이템 구매 로직을 여기에 구현합니다.
 
-            DataManager.SaveSettingsAndNotify(_settings);
-            CharacterPreview.UpdateCharacter();
-            UpdateItemList();
+            // 현재는 구매 로직 없이 바로 저장합니다.
+            savedAppearance = previewAppearance.Clone();
+            DataManager.Instance.Settings.Appearance = savedAppearance;
+            DataManager.Instance.SaveSettings();
+
+            MessageBox.Show("캐릭터 외형이 저장되었습니다.", "저장 완료", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
-        private bool IsItemEquipped(ShopItem item)
+        private void ColorButton_Click(object sender, RoutedEventArgs e)
         {
-            if (item.IsColor)
-            {
-                return _settings.CustomColors.TryGetValue(item.Type, out var color) && color == item.ColorValue;
-            }
-            else
-            {
-                return _settings.EquippedItems.TryGetValue(item.Type, out var equippedId) && equippedId == item.Id;
-            }
-        }
-
-        private string GetCategoryDisplayName(ItemType itemType)
-        {
-            return itemType switch
-            {
-                ItemType.HairStyle => "머리",
-                ItemType.HairColor => "머리색",
-                ItemType.EyeShape => "눈",
-                ItemType.EyeColor => "눈색",
-                ItemType.MouthShape => "입",
-                ItemType.Clothes => "옷",
-                ItemType.Background => "배경",
-                ItemType.Body => "몸",
-                _ => itemType.ToString(),
-            };
+            // TODO: 다음 단계에서 색상 변경 로직을 여기에 구현합니다.
         }
     }
 }

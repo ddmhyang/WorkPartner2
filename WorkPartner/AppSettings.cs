@@ -1,114 +1,94 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Converters;
-using System.IO;
 using System.Linq;
+using System.Windows;
+using System.Windows.Media;
 
 namespace WorkPartner
 {
+    // 캐릭터 외형 정보를 담는 클래스입니다.
+    // 각 파츠의 ID와 색상 값을 저장합니다.
+    public class CharacterAppearance
+    {
+        public string HairBack { get; set; } = "hairBack1";
+        public string HairBackColor { get; set; } = "#FFC0CB"; // Default Pink
+
+        public string HairFront { get; set; } = "hairFront1";
+        public string HairFrontColor { get; set; } = "#FFC0CB"; // Default Pink
+
+        public string Eye { get; set; } = "eye1";
+        public string EyeColor { get; set; } = "#000000"; // Default Black
+
+        public string Mouth { get; set; } = "mouth1";
+        // 입은 현재 색상 변경 기능이 없으므로 색상 속성은 제외합니다.
+
+        public string Clothes { get; set; } = "clothes1";
+        public string ClothesColor { get; set; } = "#ADD8E6"; // Default Light Blue
+
+        public string Cushion { get; set; } = "cushion1";
+        public string CushionColor { get; set; } = "#90EE90"; // Default Light Green
+
+        public string Background { get; set; } = "background1";
+
+        // 장신구는 여러 개 착용 가능하므로 List로 관리합니다.
+        public List<string> Accessories { get; set; } = new List<string>();
+        public List<string> AccessoryColors { get; set; } = new List<string>();
+
+        // 이 객체를 깊은 복사(Deep Copy)하는 메서드입니다.
+        // '미리보기' 기능을 위해 원본과 복사본이 서로 영향을 주지 않도록 합니다.
+        public CharacterAppearance Clone()
+        {
+            return new CharacterAppearance
+            {
+                HairBack = this.HairBack,
+                HairBackColor = this.HairBackColor,
+                HairFront = this.HairFront,
+                HairFrontColor = this.HairFrontColor,
+                Eye = this.Eye,
+                EyeColor = this.EyeColor,
+                Mouth = this.Mouth,
+                Clothes = this.Clothes,
+                ClothesColor = this.ClothesColor,
+                Cushion = this.Cushion,
+                CushionColor = this.CushionColor,
+                Background = this.Background,
+                // List는 ToList()를 사용하여 새로운 리스트로 복사합니다.
+                Accessories = this.Accessories.ToList(),
+                AccessoryColors = this.AccessoryColors.ToList()
+            };
+        }
+    }
+
+
     public class AppSettings
     {
-        public int Coins { get; set; }
-        public string Username { get; set; } = "사용자";
-        public int Level { get; set; } = 1; // ✨ 레벨 추가
-        public int Experience { get; set; } = 0; // ✨ 경험치 추가
-        public string CurrentTask { get; set; } = "없음"; // ✨ 현재 작업 추가
-        public Dictionary<ItemType, Guid> EquippedItems { get; set; }
-        public List<Guid> OwnedItemIds { get; set; }
-        public Dictionary<ItemType, string> CustomColors { get; set; }
+        public int TotalFocusTime { get; set; } = 0;
+        public List<TimeLogEntry> TimeLog { get; set; } = new List<TimeLogEntry>();
+        public List<string> AllowedApps { get; set; } = new List<string>();
+        public int FocusTime { get; set; } = 25;
+        public int BreakTime { get; set; } = 5;
+        public int LongBreakTime { get; set; } = 15;
+        public int LongBreakInterval { get; set; } = 4;
+        public bool AutoStartBreak { get; set; } = false;
+        public bool AutoStartFocus { get; set; } = false;
+        public string SelectedSound { get; set; }
+        public double SoundVolume { get; set; } = 0.5;
+        public string Theme { get; set; } = "Light";
+        public int Coins { get; set; } = 0;
+        public List<string> OwnedItems { get; set; } = new List<string>();
+        public bool IsPomodoro { get; set; } = true;
+        public int DailyGoal { get; set; } = 2;
+        public List<TaskItem> Tasks { get; set; } = new List<TaskItem>();
+        public List<MemoItem> Memos { get; set; } = new List<MemoItem>();
+        public bool Topmost { get; set; }
+        public double Left { get; set; } = 100;
+        public double Top { get; set; } = 100;
+        public double Width { get; set; } = 800;
+        public double Height { get; set; } = 600;
+        public WindowState WindowState { get; set; } = WindowState.Normal;
+        public bool ShowMiniTimerOnBreak { get; set; } = false;
 
-
-        // --- 새로 추가된 개인 설정 ---
-        public string Theme { get; set; } = "Light"; // "Light" or "Dark"
-        public string AccentColor { get; set; } = "#2195F2"; // ✨ 기본 파란색 (요청에 따라 변경)
-
-        // --- 미니 타이머 세부 설정 ---
-        public bool MiniTimerShowInfo { get; set; } = true;
-        public bool MiniTimerShowCharacter { get; set; } = true;
-        public bool MiniTimerShowBackground { get; set; } = true;
-        // --------------------------
-
-        public bool IsIdleDetectionEnabled { get; set; } = true;
-        public int IdleTimeoutSeconds { get; set; } = 300;
-        public bool IsMiniTimerEnabled { get; set; } = false;
-        public string FocusModeNagMessage { get; set; } = "집중 모드 중입니다!";
-        public int FocusModeNagIntervalSeconds { get; set; } = 60;
-        public Dictionary<string, string> TagRules { get; set; } = new Dictionary<string, string>();
-        public ObservableCollection<string> WorkProcesses { get; set; } = new ObservableCollection<string>();
-        public ObservableCollection<string> DistractionProcesses { get; set; } = new ObservableCollection<string>();
-        public ObservableCollection<string> PassiveProcesses { get; set; } = new ObservableCollection<string>();
-
-        public Dictionary<string, string> TaskColors { get; set; } = new Dictionary<string, string>();
-
-
-        public AppSettings()
-        {
-            EquippedItems = new Dictionary<ItemType, Guid>();
-            OwnedItemIds = new List<Guid>();
-            CustomColors = new Dictionary<ItemType, string>();
-            Coins = 100;
-            Username = "User";
-            EquippedItems = new Dictionary<ItemType, Guid>();
-            IsIdleDetectionEnabled = true;
-            IdleTimeoutSeconds = 300;
-            FocusModeNagMessage = "작업에 집중할 시간입니다!";
-            FocusModeNagIntervalSeconds = 60;
-
-            // 사용자가 장착한 아이템이 없을 때만 기본 아이템 장착
-            if (EquippedItems == null || EquippedItems.Count == 0)
-            {
-                EquipDefaultItems();
-            }
-        }
-
-        private void EquipDefaultItems()
-        {
-            if (!File.Exists(DataManager.ItemsDbFilePath)) return;
-
-            try
-            {
-                var json = File.ReadAllText(DataManager.ItemsDbFilePath);
-                var allItems = JsonConvert.DeserializeObject<List<ShopItem>>(json, new StringEnumConverter()) ?? new List<ShopItem>();
-
-                var defaultItemNames = new Dictionary<ItemType, string>
-                {
-                    { ItemType.HairStyle, "기본 머리" },
-                    { ItemType.Clothes, "기본 옷" },
-                    { ItemType.EyeShape, "기본 눈" },
-                    { ItemType.MouthShape, "기본 입" },
-                    { ItemType.Background, "기본 방석" },
-                    { ItemType.Body, "기본 몸" },
-                    { ItemType.HairColor, "검은색" },
-                    { ItemType.EyeColor, "검은색 눈" },
-                };
-
-                foreach (var defaultItem in defaultItemNames)
-                {
-                    var item = allItems.FirstOrDefault(i => i.Type == defaultItem.Key && i.Name == defaultItem.Value);
-                    if (item != null)
-                    {
-                        if (!string.IsNullOrEmpty(item.ColorValue))
-                        {
-                            CustomColors[item.Type] = item.ColorValue;
-                        }
-                        else
-                        {
-                            EquippedItems[item.Type] = item.Id;
-                        }
-
-                        if (!OwnedItemIds.Contains(item.Id))
-                        {
-                            OwnedItemIds.Add(item.Id);
-                        }
-                    }
-                }
-            }
-            catch
-            {
-                // 파일 읽기 실패 시 조용히 넘어감
-            }
-        }
+        // 새로 추가된 캐릭터 외형 정보 속성입니다.
+        public CharacterAppearance Appearance { get; set; } = new CharacterAppearance();
     }
 }
