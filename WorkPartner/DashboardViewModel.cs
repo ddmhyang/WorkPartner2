@@ -38,7 +38,6 @@ namespace WorkPartner.ViewModels
 
         #region --- Command ---
         public ICommand StartStopTimerCommand { get; }
-        // ★ 추가: XAML에서 사용하는 StopTimerCommand를 정의합니다.
         public ICommand StopTimerCommand { get; }
         #endregion
 
@@ -52,11 +51,10 @@ namespace WorkPartner.ViewModels
             _stopwatch = new Stopwatch();
             TimeLogEntries = new ObservableCollection<TimeLogEntry>();
 
-            // ★ 수정: RelayCommand를 람다식으로 명확하게 생성합니다.
-            StartStopTimerCommand = new RelayCommand(() => ToggleTimer());
-            StopTimerCommand = new RelayCommand(() => StopTimer());
+            StartStopTimerCommand = new RelayCommand(p => ToggleTimer());
+            StopTimerCommand = new RelayCommand(p => StopTimer());
 
-            // ★ 수정: ITimerService의 TimeUpdated 이벤트를 구독합니다.
+            // ★★★ 핵심 수정: 이제 ITimerService의 TimeUpdated 이벤트를 직접 구독합니다. (형변환 필요 없음) ★★★
             _timerService.TimeUpdated += UpdateLiveTimeDisplays;
         }
         #endregion
@@ -64,7 +62,6 @@ namespace WorkPartner.ViewModels
         #region --- 핵심 로직 ---
         public async Task LoadAllDataAsync()
         {
-            // ★ 수정: 인터페이스와 일치하는 LoadSettings() 동기 메소드 호출
             _settings = _settingsService.LoadSettings();
             var logs = await _timeLogService.LoadTimeLogsAsync();
             TimeLogEntries.Clear();
@@ -74,23 +71,23 @@ namespace WorkPartner.ViewModels
 
         private void ToggleTimer()
         {
-            if (_stopwatch.IsRunning) StopTimer();
+            if (_timerService.IsRunning) StopTimer();
             else StartTimer();
         }
 
         private void StartTimer()
         {
             _sessionStartTime = DateTime.Now;
-            _stopwatch.Start();
+            _stopwatch.Start(); // Stopwatch도 ViewModel이 직접 관리
             _timerService.Start();
             IsTimerRunning = true;
         }
 
         private void StopTimer(DateTime? endTime = null)
         {
-            if (!_stopwatch.IsRunning) return; // 이미 중지된 경우 무시
+            if (!_timerService.IsRunning) return;
             _timerService.Stop();
-            _stopwatch.Stop();
+            _stopwatch.Stop(); // Stopwatch도 ViewModel이 직접 관리
             IsTimerRunning = false;
             SaveTimeLog(endTime);
         }
@@ -106,6 +103,7 @@ namespace WorkPartner.ViewModels
             };
             TimeLogEntries.Insert(0, entry);
             _timeLogService.SaveTimeLogsAsync(TimeLogEntries);
+            _stopwatch.Reset(); // 로그 저장 후 리셋
             RecalculateTotalTimeToday();
         }
 
@@ -117,12 +115,14 @@ namespace WorkPartner.ViewModels
             UpdateLiveTimeDisplays(_stopwatch.Elapsed); // 초기 시간 표시
         }
 
-        // ★ 수정: ITimerService의 Action<TimeSpan> 델리게이트와 일치하도록 시그니처 변경
+        // ★★★ 핵심 수정: TimeUpdated 이벤트(Action<TimeSpan>)에 맞는 형식으로 변경 ★★★
         private void UpdateLiveTimeDisplays(TimeSpan elapsed)
         {
             var timeToDisplay = _totalTimeTodayFromLogs + elapsed;
             string newTime = timeToDisplay.ToString(@"hh\:mm\:ss");
             MainTimeDisplayText = newTime;
+
+            // 미니 타이머 등을 위한 신호
             TimeUpdated?.Invoke(newTime);
         }
         #endregion

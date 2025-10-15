@@ -1,9 +1,7 @@
-﻿// 파일: WorkPartner/Services/Implementations/TimerService.cs
+﻿// 파일: Services/Implementations/TimerService.cs (수정 후)
 
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 using System.Windows.Threading;
 
 namespace WorkPartner.Services.Implementations
@@ -12,95 +10,37 @@ namespace WorkPartner.Services.Implementations
     {
         private readonly DispatcherTimer _timer;
         private readonly Stopwatch _stopwatch;
-        private AppSettings _settings;
 
-        // ✨ [수정] 인터페이스와 일치하도록 이벤트 이름을 'Tick'으로 변경합니다.
-        public event Action<TimeSpan> Tick;
+        // ▼▼▼ 인터페이스 규칙을 구현하는 이벤트입니다. ▼▼▼
+        public event Action<TimeSpan> TimeUpdated;
+
+        // 기존 Tick 이벤트는 내부적으로만 사용되거나 삭제될 수 있습니다.
+        // public event EventHandler Tick; 
+
+        public bool IsRunning => _timer.IsEnabled;
 
         public TimerService()
         {
             _stopwatch = new Stopwatch();
             _timer = new DispatcherTimer
             {
-                Interval = TimeSpan.FromSeconds(1)
+                Interval = TimeSpan.FromMilliseconds(100)
             };
-            _timer.Tick += Timer_Tick;
 
-            LoadSettings();
-            DataManager.SettingsUpdated += LoadSettings;
+            // ▼▼▼ 타이머가 Tick할 때마다 TimeUpdated 이벤트를 발생시켜 경과 시간을 알립니다. ▼▼▼
+            _timer.Tick += (s, e) => TimeUpdated?.Invoke(_stopwatch.Elapsed);
         }
-
-        private void LoadSettings()
-        {
-            _settings = DataManager.LoadSettings();
-            Debug.WriteLine("TimerService: Settings reloaded.");
-        }
-
-        private void Timer_Tick(object sender, EventArgs e)
-        {
-            // ✨ [수정] 변경된 이벤트 이름 'Tick'을 사용합니다.
-            Tick?.Invoke(_stopwatch.Elapsed);
-            CheckActiveWindow();
-        }
-
-        private void CheckActiveWindow()
-        {
-            if (_settings == null || IsPaused) return;
-
-            string activeProcessName = ActiveWindowHelper.GetActiveProcessName()?.ToLower();
-            if (string.IsNullOrEmpty(activeProcessName)) return;
-
-            if (_settings.DistractionProcesses.Any(p => activeProcessName.Contains(p)))
-            {
-                Pause();
-            }
-            else if (_settings.WorkProcesses.Any(p => activeProcessName.Contains(p)))
-            {
-                if (IsPaused)
-                {
-                    Resume();
-                }
-            }
-        }
-
-        public bool IsRunning => _timer.IsEnabled;
-        public bool IsPaused { get; private set; }
 
         public void Start()
         {
-            if (!IsRunning)
-            {
-                _stopwatch.Start();
-                _timer.Start();
-                IsPaused = false;
-            }
+            _stopwatch.Start();
+            _timer.Start();
         }
 
         public void Stop()
         {
-            _stopwatch.Reset();
+            _stopwatch.Stop();
             _timer.Stop();
-            IsPaused = false;
-            // ✨ [수정] 변경된 이벤트 이름 'Tick'을 사용합니다.
-            Tick?.Invoke(TimeSpan.Zero);
-        }
-
-        public void Pause()
-        {
-            if (IsRunning && !IsPaused)
-            {
-                _stopwatch.Stop();
-                IsPaused = true;
-            }
-        }
-
-        public void Resume()
-        {
-            if (IsRunning && IsPaused)
-            {
-                _stopwatch.Start();
-                IsPaused = false;
-            }
         }
     }
 }
