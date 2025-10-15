@@ -12,6 +12,9 @@ namespace WorkPartner
     {
         public int Coins { get; set; }
         public string Username { get; set; } = "사용자";
+        public int Level { get; set; } = 1; // ✨ 레벨 추가
+        public int Experience { get; set; } = 0; // ✨ 경험치 추가
+        public string CurrentTask { get; set; } = "없음"; // ✨ 현재 작업 추가
         public Dictionary<ItemType, Guid> EquippedItems { get; set; }
         public List<Guid> OwnedItemIds { get; set; }
         public Dictionary<ItemType, string> CustomColors { get; set; }
@@ -19,7 +22,7 @@ namespace WorkPartner
 
         // --- 새로 추가된 개인 설정 ---
         public string Theme { get; set; } = "Light"; // "Light" or "Dark"
-        public string AccentColor { get; set; } = "#007ACC"; // 기본 파란색
+        public string AccentColor { get; set; } = "#2195F2"; // ✨ 기본 파란색 (요청에 따라 변경)
 
         // --- 미니 타이머 세부 설정 ---
         public bool MiniTimerShowInfo { get; set; } = true;
@@ -109,4 +112,3 @@ namespace WorkPartner
         }
     }
 }
-
