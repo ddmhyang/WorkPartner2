@@ -448,6 +448,16 @@ namespace WorkPartner
             }
         }
         #endregion
+
+        private void UsernameTextBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+
+        }
+
+        private void UsernameTextBox_TextChanged_1(object sender, TextChangedEventArgs e)
+        {
+
+        }
     }
 
     public class ProcessViewModel : INotifyPropertyChanged

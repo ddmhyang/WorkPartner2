@@ -41,8 +41,8 @@
         </Style>
 
         <Style x:Key="ColorRadioButtonStyle" TargetType="RadioButton">
-            <Setter Property="Width" Value="14"/>
-            <Setter Property="Height" Value="14"/>
+            <Setter Property="Width" Value="13"/>
+            <Setter Property="Height" Value="13"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Template">
                 <Setter.Value>
@@ -100,9 +100,9 @@
             <TextBlock Canvas.Left="19" Canvas.Top="588" Text="집중모드 설정" FontSize="12" FontFamily="Pretendard" FontWeight="SemiBold" Foreground="{DynamicResource PrimaryTextBrush}"/>
             <TextBlock Canvas.Left="406" Canvas.Top="588" Text="데이터 관리" FontSize="12" FontFamily="Pretendard" FontWeight="SemiBold" Foreground="{DynamicResource PrimaryTextBrush}"/>
 
-            <Border Canvas.Left="19" Canvas.Top="95" Width="247" Height="123" BorderBrush="{DynamicResource AccentColorBrush}" BorderThickness="2" CornerRadius="10">
+            <Border Canvas.Left="19" Canvas.Top="95" Width="247" Height="128" BorderBrush="{DynamicResource AccentColorBrush}" BorderThickness="2" CornerRadius="10">
                 <Grid>
-                    <local:CharacterDisplay x:Name="CharacterPreview"/>
+                    <local:CharacterDisplay x:Name="CharacterPreview" Width="128" Height="128" HorizontalAlignment="Right" Margin="0,-4,0,0"/>
 
                     <StackPanel Orientation="Vertical" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="15,15,0,0">
                         <StackPanel Orientation="Horizontal">
@@ -121,37 +121,48 @@
                     </StackPanel>
 
                     <Button Content="아바타 꾸미기" Canvas.Left="47" Canvas.Top="159" FontSize="8" FontWeight="SemiBold"
-                            HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="80,-5,0,10" Padding="10,2"
+                            HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="13,0,0,31" Padding="10,2"
                             Click="GoToAvatarButton_Click"/>
                 </Grid>
             </Border>
 
-            <Border Canvas.Left="272" Canvas.Top="95" Width="216" Height="123" BorderBrush="{DynamicResource BorderBrush}" Background="{DynamicResource MainBackgroundBrush}" BorderThickness="2" CornerRadius="10">
+            <Border Canvas.Left="272" Canvas.Top="95" Width="216" Height="128" BorderBrush="{DynamicResource BorderBrush}" Background="{DynamicResource MainBackgroundBrush}" BorderThickness="2" CornerRadius="10">
                 <StackPanel Margin="15">
                     <TextBlock Text="별명" FontSize="10" Foreground="{DynamicResource PrimaryTextBrush}"/>
                     <TextBox x:Name="UsernameTextBox" Margin="0,2,0,5" LostFocus="UsernameTextBox_LostFocus"/>
-                    <TextBlock Text="디스플레이 색상" FontSize="10" Margin="0,5,0,2" Foreground="{DynamicResource PrimaryTextBrush}"/>
-                    <WrapPanel>
-                        <RadioButton Style="{StaticResource ColorRadioButtonStyle}" Background="#D50000" Tag="#D50000" Checked="AccentColor_Changed"/>
-                        <RadioButton Style="{StaticResource ColorRadioButtonStyle}" Background="#E65100" Tag="#E65100" Margin="4,0,0,0" Checked="AccentColor_Changed"/>
-                        <RadioButton Style="{StaticResource ColorRadioButtonStyle}" Background="#F9A825" Tag="#F9A825" Margin="4,0,0,0" Checked="AccentColor_Changed"/>
-                        <RadioButton Style="{StaticResource ColorRadioButtonStyle}" Background="#4CAF50" Tag="#4CAF50" Margin="4,0,0,0" Checked="AccentColor_Changed"/>
-                        <RadioButton Style="{StaticResource ColorRadioButtonStyle}" Background="#00B0FF" Tag="#00B0FF" Margin="4,0,0,0" Checked="AccentColor_Changed"/>
-                        <RadioButton Style="{StaticResource ColorRadioButtonStyle}" Background="#2195F2" Tag="#2195F2" Margin="4,0,0,0" Checked="AccentColor_Changed"/>
-                        <RadioButton Style="{StaticResource ColorRadioButtonStyle}" Background="#6200EA" Tag="#6200EA" Margin="4,0,0,0" Checked="AccentColor_Changed"/>
-                        <RadioButton Style="{StaticResource ColorRadioButtonStyle}" Background="#C51162" Tag="#C51162" Margin="4,0,0,0" Checked="AccentColor_Changed"/>
-                        <RadioButton Style="{StaticResource ColorRadioButtonStyle}" Background="#795548" Tag="#795548" Margin="4,0,0,0" Checked="AccentColor_Changed"/>
-                        <RadioButton Style="{StaticResource ColorRadioButtonStyle}" Background="#607D8B" Tag="#607D8B" Margin="4,0,0,0" Checked="AccentColor_Changed"/>
-                    </WrapPanel>
-                    <TextBlock Text="배경" FontSize="10" Margin="0,5,0,2" Foreground="{DynamicResource PrimaryTextBrush}"/>
-                    <StackPanel Orientation="Horizontal">
-                        <RadioButton x:Name="LightModeRadioButton" Content="라이트 모드" FontSize="10" IsChecked="True" Checked="Theme_Changed" Foreground="{DynamicResource PrimaryTextBrush}"/>
-                        <RadioButton x:Name="DarkModeRadioButton" Content="다크 모드" FontSize="10" Margin="10,0,0,0" Checked="Theme_Changed" Foreground="{DynamicResource PrimaryTextBrush}"/>
-                    </StackPanel>
+
+                    <Grid Margin="0,5,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="디스플레이 색상" FontSize="10"  Foreground="{DynamicResource PrimaryTextBrush}"/>
+                            <WrapPanel Width="98" Margin="0,2,0,0">
+                                <RadioButton Style="{StaticResource ColorRadioButtonStyle}" Background="#D50000" Tag="#D50000" Checked="AccentColor_Changed" Margin="0,0,4,4"/>
+                                <RadioButton Style="{StaticResource ColorRadioButtonStyle}" Background="#E65100" Tag="#E65100" Checked="AccentColor_Changed" Margin="0,0,4,4"/>
+                                <RadioButton Style="{StaticResource ColorRadioButtonStyle}" Background="#F9A825" Tag="#F9A825" Checked="AccentColor_Changed" Margin="0,0,4,4"/>
+                                <RadioButton Style="{StaticResource ColorRadioButtonStyle}" Background="#4CAF50" Tag="#4CAF50" Checked="AccentColor_Changed" Margin="0,0,4,4"/>
+                                <RadioButton Style="{StaticResource ColorRadioButtonStyle}" Background="#00B0FF" Tag="#00B0FF" Checked="AccentColor_Changed" Margin="0,0,4,4"/>
+                                <RadioButton Style="{StaticResource ColorRadioButtonStyle}" Background="#2195F2" Tag="#2195F2" Checked="AccentColor_Changed" Margin="0,0,4,4"/>
+                                <RadioButton Style="{StaticResource ColorRadioButtonStyle}" Background="#6200EA" Tag="#6200EA" Checked="AccentColor_Changed" Margin="0,0,4,4"/>
+                                <RadioButton Style="{StaticResource ColorRadioButtonStyle}" Background="#C51162" Tag="#C51162" Checked="AccentColor_Changed" Margin="0,0,4,4"/>
+                                <RadioButton Style="{StaticResource ColorRadioButtonStyle}" Background="#795548" Tag="#795548" Checked="AccentColor_Changed" Margin="0,0,4,4"/>
+                                <RadioButton Style="{StaticResource ColorRadioButtonStyle}" Background="#607D8B" Tag="#607D8B" Checked="AccentColor_Changed" Margin="0,0,4,4"/>
+                            </WrapPanel>
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="1" Margin="10,0,0,0">
+                            <TextBlock Text="배경" FontSize="10" Foreground="{DynamicResource PrimaryTextBrush}"/>
+                            <RadioButton x:Name="LightModeRadioButton" Content="라이트" FontSize="10" IsChecked="True" Checked="Theme_Changed" Foreground="{DynamicResource PrimaryTextBrush}" Margin="0,2,0,0"/>
+                            <RadioButton x:Name="DarkModeRadioButton" Content="다크" FontSize="10" Margin="0,2,0,0" Checked="Theme_Changed" Foreground="{DynamicResource PrimaryTextBrush}"/>
+                        </StackPanel>
+                    </Grid>
                 </StackPanel>
             </Border>
 
-            <Border Canvas.Left="494" Canvas.Top="95" Width="170" Height="123" BorderBrush="{DynamicResource BorderBrush}" Background="{DynamicResource MainBackgroundBrush}" BorderThickness="2" CornerRadius="10">
+            <Border Canvas.Left="494" Canvas.Top="95" Width="170" Height="128" BorderBrush="{DynamicResource BorderBrush}" Background="{DynamicResource MainBackgroundBrush}" BorderThickness="2" CornerRadius="10">
                 <StackPanel Margin="10">
                     <CheckBox x:Name="IdleDetectionCheckBox" Content="자리 비움 감지" FontSize="10" Checked="Setting_Changed" Unchecked="Setting_Changed" Foreground="{DynamicResource PrimaryTextBrush}"/>
                     <StackPanel Orientation="Horizontal" Margin="20,2,0,5">
