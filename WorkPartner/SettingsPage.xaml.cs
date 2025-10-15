@@ -49,6 +49,7 @@ namespace WorkPartner
             _isLoaded = false;
             LoadSettings();
             UpdateUIFromSettings();
+            PopulateTagRules(); // ✨ 이 줄을 추가하세요.
             _isLoaded = true;
         }
 
@@ -159,6 +160,50 @@ namespace WorkPartner
                 _mainWindow?.ToggleMiniTimer();
             }
         }
+        #endregion
+
+        #region AI Tag Rules
+
+        private void PopulateTagRules()
+        {
+            // Dictionary를 ListBox에 바인딩하기 위해 KeyValuePair 리스트로 변환
+            TagRulesListBox.ItemsSource = Settings.TagRules.ToList();
+        }
+
+        private void AddTagRule_Click(object sender, RoutedEventArgs e)
+        {
+            string keyword = TagRuleKeywordTextBox.Text.Trim();
+            string task = TagRuleTaskTextBox.Text.Trim();
+
+            if (string.IsNullOrEmpty(keyword) || string.IsNullOrEmpty(task))
+            {
+                MessageBox.Show("키워드와 과목을 모두 입력해주세요.", "입력 오류", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            // 이미 키워드가 존재하면 덮어쓰기
+            Settings.TagRules[keyword] = task;
+            SaveSettings();
+            PopulateTagRules(); // 목록 새로고침
+
+            // 입력 필드 초기화
+            TagRuleKeywordTextBox.Clear();
+            TagRuleTaskTextBox.Clear();
+        }
+
+        private void DeleteTagRule_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button button && button.CommandParameter is string keyword)
+            {
+                if (Settings.TagRules.ContainsKey(keyword))
+                {
+                    Settings.TagRules.Remove(keyword);
+                    SaveSettings();
+                    PopulateTagRules(); // 목록 새로고침
+                }
+            }
+        }
+
         #endregion
 
         #region Process Settings

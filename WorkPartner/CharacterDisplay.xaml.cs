@@ -19,12 +19,14 @@ namespace WorkPartner
         public CharacterDisplay()
         {
             InitializeComponent();
-            LoadItems();
-            UpdateCharacter();
+            // LoadItems(); // Can be removed to avoid loading on init, will be loaded by UpdateCharacter
+            // UpdateCharacter();
         }
 
         private void LoadItems()
         {
+            // Avoid reloading if already loaded
+            if (_allItems != null && _allItems.Count > 0) return;
             try
             {
                 var json = File.ReadAllText(DataManager.ItemsDbFilePath);
@@ -39,9 +41,9 @@ namespace WorkPartner
         public void UpdateCharacter()
         {
             _settings = DataManager.LoadSettings();
-            if (_allItems == null || _allItems.Count == 0) LoadItems();
+            LoadItems();
 
-            // 모든 이미지 초기화
+            // Clear all images first
             BackgroundImage.Source = null;
             BodyImage.Source = null;
             ClothesImage.Source = null;
@@ -49,7 +51,7 @@ namespace WorkPartner
             MouthShapeImage.Source = null;
             HairStyleImage.Source = null;
 
-            // 장착된 아이템 표시
+            // Apply equipped items
             foreach (var equipped in _settings.EquippedItems)
             {
                 var item = _allItems.FirstOrDefault(i => i.Id == equipped.Value);
@@ -59,7 +61,7 @@ namespace WorkPartner
                 }
             }
 
-            // 커스텀 색상 적용
+            // Apply custom colors
             foreach (var customColor in _settings.CustomColors)
             {
                 ApplyColor(customColor.Key, customColor.Value);
@@ -70,14 +72,20 @@ namespace WorkPartner
         {
             if (string.IsNullOrEmpty(item.ImagePath)) return;
 
-            var imageSource = new BitmapImage(new Uri(item.ImagePath, UriKind.RelativeOrAbsolute));
-            var targetImage = GetImageForType(item.Type);
-
-            if (targetImage != null)
+            // ✨ Corrected image loading with relative path
+            try
             {
-                targetImage.Source = imageSource;
+                var imageSource = new BitmapImage(new Uri(item.ImagePath, UriKind.Relative));
+                var targetImage = GetImageForType(item.Type);
+
+                if (targetImage != null)
+                {
+                    targetImage.Source = imageSource;
+                }
             }
+            catch (Exception) { /* Failed to load image */ }
         }
+
 
         private void ApplyColor(ItemType type, string colorHex)
         {
@@ -100,7 +108,6 @@ namespace WorkPartner
                 {
                     ItemType.HairColor => HairStyleImage,
                     ItemType.EyeColor => EyeShapeImage,
-                    // 옷 색상 등 다른 색상 아이템이 추가될 경우 여기에 추가
                     _ => null,
                 };
             }

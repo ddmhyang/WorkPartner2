@@ -6,6 +6,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Imaging; // Added for BitmapImage
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 
@@ -117,14 +118,24 @@ namespace WorkPartner
             };
 
             var grid = new Grid();
+
+            // ✨ This is the corrected image loading logic
             var image = new Image
             {
-                Source = item.IconPath != null ? new ImageSourceConverter().ConvertFromString(item.IconPath) as ImageSource : null,
                 Width = 40,
                 Height = 40,
                 VerticalAlignment = VerticalAlignment.Top,
                 Margin = new Thickness(0, 5, 0, 0)
             };
+            if (!string.IsNullOrEmpty(item.IconPath))
+            {
+                try
+                {
+                    image.Source = new BitmapImage(new Uri(item.IconPath, UriKind.Relative));
+                }
+                catch (Exception) { /* Image not found, leave it blank */ }
+            }
+
 
             var nameLabel = new TextBlock
             {
@@ -151,7 +162,7 @@ namespace WorkPartner
             }
             else
             {
-                var coinIcon = new Image { Source = new ImageSourceConverter().ConvertFromString("/images/coin.png") as ImageSource, Width = 10, Height = 10 };
+                var coinIcon = new Image { Source = new BitmapImage(new Uri("/images/coin.png", UriKind.Relative)), Width = 10, Height = 10 };
                 var priceLabel = new TextBlock { Text = item.Price.ToString("N0"), FontSize = 9, Margin = new Thickness(3, 0, 0, 0), Foreground = (Brush)FindResource("PrimaryTextBrush") };
                 pricePanel.Children.Add(coinIcon);
                 pricePanel.Children.Add(priceLabel);
