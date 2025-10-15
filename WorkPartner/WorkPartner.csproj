@@ -59,7 +59,7 @@
 		<Content Include="items_db.json">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</Content>
-		<Content Include="shaders\TintColor.ps">
+		<Content Include="shaders\tintColor.ps">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</Content>
 	</ItemGroup>
