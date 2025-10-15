@@ -1,6 +1,7 @@
 using System;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using System.Windows.Media;
 using System.Text.Json.Serialization;
 
 namespace WorkPartner
@@ -64,6 +65,18 @@ namespace WorkPartner
         public override string ToString()
         {
             return Text;
+        }
+
+        private Brush _colorBrush = Brushes.Gray;
+        [JsonIgnore] // 파일에 저장할 필요 없는 UI 전용 속성
+        public Brush ColorBrush
+        {
+            get => _colorBrush;
+            set
+            {
+                _colorBrush = value;
+                OnPropertyChanged(); // 속성이 변경되면 UI에 알립니다.
+            }
         }
     }
 }

@@ -49,6 +49,7 @@ namespace WorkPartner
             _isLoaded = false;
             LoadSettings();
             UpdateUIFromSettings();
+            PopulateTagRules();
             _isLoaded = true;
         }
 
@@ -73,7 +74,12 @@ namespace WorkPartner
         private void UpdateUIFromSettings()
         {
             CharacterPreview.UpdateCharacter();
+
+            // ✨ 미리보기 UI 업데이트
             UsernameTextBlock.Text = Settings.Username;
+            LevelTextBlock.Text = $"Lv.{Settings.Level}";
+            ExperienceBar.Value = Settings.Experience;
+            CurrentTaskTextBlock.Text = $"현재 작업 : {Settings.CurrentTask}";
             CoinTextBlock.Text = Settings.Coins.ToString("N0");
             UsernameTextBox.Text = Settings.Username;
 
@@ -81,6 +87,18 @@ namespace WorkPartner
                 DarkModeRadioButton.IsChecked = true;
             else
                 LightModeRadioButton.IsChecked = true;
+
+            // ✨ 미니 타이머 설정 UI 업데이트
+            MiniTimerShowInfoCheckBox.IsChecked = Settings.MiniTimerShowInfo;
+            MiniTimerShowCharacterCheckBox.IsChecked = Settings.MiniTimerShowCharacter;
+            MiniTimerShowBackgroundCheckBox.IsChecked = Settings.MiniTimerShowBackground;
+
+            // ✨ 테마 색상 라디오버튼 상태 업데이트
+            var colorButton = FindName($"Color{Settings.AccentColor.Replace("#", "")}") as RadioButton;
+            if (colorButton != null)
+            {
+                colorButton.IsChecked = true;
+            }
         }
         #endregion
 
@@ -95,6 +113,16 @@ namespace WorkPartner
             Settings.Username = UsernameTextBox.Text;
             SaveSettings();
             UpdateUIFromSettings();
+        }
+
+        // ✨ 테마 색상 변경 이벤트 핸들러
+        private void AccentColor_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_isLoaded && sender is RadioButton rb && rb.IsChecked == true)
+            {
+                Settings.AccentColor = rb.Tag.ToString();
+                SaveSettings();
+            }
         }
 
         private void Theme_Changed(object sender, RoutedEventArgs e)
@@ -118,12 +146,64 @@ namespace WorkPartner
 
         private void Setting_Changed(object sender, RoutedEventArgs e)
         {
-            if (_isLoaded) SaveSettings();
+            if (!_isLoaded) return;
+
+            // ✨ 미니 타이머 설정 저장
+            Settings.MiniTimerShowInfo = MiniTimerShowInfoCheckBox.IsChecked ?? false;
+            Settings.MiniTimerShowCharacter = MiniTimerShowCharacterCheckBox.IsChecked ?? false;
+            Settings.MiniTimerShowBackground = MiniTimerShowBackgroundCheckBox.IsChecked ?? false;
+
+            SaveSettings();
+
             if (sender == MiniTimerCheckBox)
             {
                 _mainWindow?.ToggleMiniTimer();
             }
         }
+        #endregion
+
+        #region AI Tag Rules
+
+        private void PopulateTagRules()
+        {
+            // Dictionary를 ListBox에 바인딩하기 위해 KeyValuePair 리스트로 변환
+            TagRulesListBox.ItemsSource = Settings.TagRules.ToList();
+        }
+
+        private void AddTagRule_Click(object sender, RoutedEventArgs e)
+        {
+            string keyword = TagRuleKeywordTextBox.Text.Trim();
+            string task = TagRuleTaskTextBox.Text.Trim();
+
+            if (string.IsNullOrEmpty(keyword) || string.IsNullOrEmpty(task))
+            {
+                MessageBox.Show("키워드와 과목을 모두 입력해주세요.", "입력 오류", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            // 이미 키워드가 존재하면 덮어쓰기
+            Settings.TagRules[keyword] = task;
+            SaveSettings();
+            PopulateTagRules(); // 목록 새로고침
+
+            // 입력 필드 초기화
+            TagRuleKeywordTextBox.Clear();
+            TagRuleTaskTextBox.Clear();
+        }
+
+        private void DeleteTagRule_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button button && button.CommandParameter is string keyword)
+            {
+                if (Settings.TagRules.ContainsKey(keyword))
+                {
+                    Settings.TagRules.Remove(keyword);
+                    SaveSettings();
+                    PopulateTagRules(); // 목록 새로고침
+                }
+            }
+        }
+
         #endregion
 
         #region Process Settings
@@ -413,6 +493,16 @@ namespace WorkPartner
             }
         }
         #endregion
+
+        private void UsernameTextBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+
+        }
+
+        private void UsernameTextBox_TextChanged_1(object sender, TextChangedEventArgs e)
+        {
+
+        }
     }
 
     public class ProcessViewModel : INotifyPropertyChanged
