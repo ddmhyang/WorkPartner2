@@ -174,7 +174,7 @@
             <!-- 과목 리스트 영역 -->
             <Border Canvas.Left="417" Canvas.Top="173" Width="247" Height="145" BorderBrush="#E8E8E8" BorderThickness="1" CornerRadius="10" Background="#E8E8E8">
                 <DockPanel>
-                    <TextBlock DockPanel.Dock="Top" Text="과목" VerticalAlignment="Center" Margin="16,8,0,0" FontSize="10" Foreground="#000000"/>
+                    <TextBlock DockPanel.Dock="Top" Text="과목" VerticalAlignment="Center" Margin="16,8,0,0" FontSize="14" Foreground="#000000" FontWeight="Bold"/>
                     <StackPanel DockPanel.Dock="Bottom" Margin="10, 5, 10, 10" Orientation="Horizontal">
                         <Border CornerRadius="10" Background="#ffffff" Width="180">
                             <TextBox x:Name="TaskInput" KeyDown="TaskInput_KeyDown" Background="Transparent" BorderBrush="Transparent" Margin="5"/>
@@ -215,7 +215,7 @@
             <!-- 할 일 리스트 영역 -->
             <Border Canvas.Left="417" Canvas.Top="327" Width="247" Height="177" BorderBrush="#E8E8E8" BorderThickness="1" CornerRadius="10">
                 <DockPanel>
-                    <TextBlock DockPanel.Dock="Top" Text="오늘의 할일" VerticalAlignment="Center" Margin="16,8,0,0" FontSize="10" Foreground="#000000"/>
+                    <TextBlock DockPanel.Dock="Top" Text="ToDo" VerticalAlignment="Center" Margin="16,8,0,0" FontSize="14" Foreground="#000000" FontWeight="Bold"/>
                     <StackPanel DockPanel.Dock="Bottom" Margin="10, 5, 10, 10" Orientation="Horizontal">
                         <Border CornerRadius="10" Background="#FFDDDDDD" Width="180">
                             <TextBox x:Name="TodoInput" KeyDown="TodoInput_KeyDown" Background="Transparent" BorderBrush="Transparent" Margin="5"/>
