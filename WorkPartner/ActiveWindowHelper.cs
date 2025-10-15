@@ -1,9 +1,10 @@
-﻿using System;
+﻿// 𝙃𝙚𝙧𝙚'𝙨 𝙩𝙝𝙚 𝙘𝙤𝙙𝙚 𝙞𝙣 ddmhyang/workpartner2/WorkPartner2-4/WorkPartner/ActiveWindowHelper.cs
+using System;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows.Automation;
-using System.Text.RegularExpressions;
+using System.ComponentModel; // Win32Exception 처리를 위해 추가
 
 namespace WorkPartner
 {
@@ -33,15 +34,24 @@ namespace WorkPartner
 
         public static string GetActiveWindowTitle()
         {
-            const int nChars = 256;
-            StringBuilder Buff = new StringBuilder(nChars);
-            IntPtr handle = GetForegroundWindow();
-
-            if (GetWindowText(handle, Buff, nChars) > 0)
+            // ✨ [수정] 안정성을 위해 예외 처리 추가
+            try
             {
-                return Buff.ToString();
+                const int nChars = 256;
+                StringBuilder Buff = new StringBuilder(nChars);
+                IntPtr handle = GetForegroundWindow();
+
+                if (GetWindowText(handle, Buff, nChars) > 0)
+                {
+                    return Buff.ToString();
+                }
+                return null;
             }
-            return null;
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[Error] GetActiveWindowTitle: {ex.Message}");
+                return null; // 오류 발생 시 안전하게 null 반환
+            }
         }
 
         public static string GetActiveProcessName()
@@ -49,13 +59,24 @@ namespace WorkPartner
             try
             {
                 IntPtr handle = GetForegroundWindow();
+                if (handle == IntPtr.Zero) return string.Empty;
+
                 GetWindowThreadProcessId(handle, out uint processId);
+                if (processId == 0) return string.Empty;
+
                 Process proc = Process.GetProcessById((int)processId);
                 return proc.ProcessName.ToLower();
             }
-            catch
+            // ✨ [수정] 권한 문제로 인한 충돌을 막기 위한 예외 처리 강화
+            catch (Win32Exception ex)
             {
-                return string.Empty;
+                Debug.WriteLine($"[Handled Error] GetActiveProcessName (Permission Denied?): {ex.Message}");
+                return string.Empty; // 권한 오류 발생 시 안전하게 빈 문자열 반환
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[Error] GetActiveProcessName: {ex.Message}");
+                return string.Empty; // 기타 오류 발생 시에도 안전하게 반환
             }
         }
 
@@ -74,6 +95,7 @@ namespace WorkPartner
 
         public static string GetActiveBrowserTabUrl()
         {
+            // ✨ [수정] UI 자동화 오류로 인한 프로그램 멈춤을 방지하기 위해 전체를 try-catch로 감쌈
             try
             {
                 IntPtr handle = GetForegroundWindow();
@@ -82,14 +104,12 @@ namespace WorkPartner
                 AutomationElement element = AutomationElement.FromHandle(handle);
                 if (element == null) return null;
 
-                // 주요 브라우저의 주소창 조건을 정의합니다.
-                // 한국어 및 영어 버전을 모두 포함하여 호환성을 높입니다.
                 var conditions = new OrCondition(
-                    new PropertyCondition(AutomationElement.NameProperty, "주소창 및 검색창"), // Chrome, Edge (Korean)
-                    new PropertyCondition(AutomationElement.NameProperty, "Address and search bar"), // Chrome, Edge (English)
-                    new PropertyCondition(AutomationElement.NameProperty, "주소 표시줄"), // Whale (Korean)
-                    new PropertyCondition(AutomationElement.AutomationIdProperty, "urlbar-input"), // Firefox
-                    new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Edit) // General fallback
+                    new PropertyCondition(AutomationElement.NameProperty, "주소창 및 검색창"),
+                    new PropertyCondition(AutomationElement.NameProperty, "Address and search bar"),
+                    new PropertyCondition(AutomationElement.NameProperty, "주소 표시줄"),
+                    new PropertyCondition(AutomationElement.AutomationIdProperty, "urlbar-input"),
+                    new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Edit)
                 );
 
                 var addressBar = element.FindFirst(TreeScope.Descendants, conditions);
@@ -99,8 +119,12 @@ namespace WorkPartner
                     return ((ValuePattern)pattern).Current.Value as string;
                 }
             }
-            catch { /* 접근성 오류는 무시합니다. */ }
-            return null;
+            catch (Exception ex)
+            {
+                // Figma와 같은 앱에서 호환성 오류가 발생해도 무시하고 넘어가도록 처리
+                Debug.WriteLine($"[Handled Error] GetActiveBrowserTabUrl (Compatibility issue?): {ex.Message}");
+            }
+            return null; // 오류 발생 시 안전하게 null 반환
         }
     }
 }

@@ -1,4 +1,5 @@
-﻿using System;
+﻿// 𝙃𝙚𝙧𝙚'𝙨 𝙩𝙝𝙚 𝙘𝙤𝙙𝙚 𝙞𝙣 ddmhyang/workpartner2/WorkPartner2-4/WorkPartner/DashboardViewModel.cs
+using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -21,7 +22,6 @@ namespace WorkPartner.ViewModels
 
         private readonly Stopwatch _stopwatch;
         private AppSettings _settings;
-        private string _lastActiveProcessName = string.Empty;
 
         private TaskItem _currentWorkingTask;
         private DateTime _sessionStartTime;
@@ -31,18 +31,36 @@ namespace WorkPartner.ViewModels
         private const int IdleGraceSeconds = 10;
 
         public ObservableCollection<TimeLogEntry> TimeLogEntries { get; private set; }
-        public event Action<string> TimeUpdated;
 
+        public event Action<string> TimeUpdated;
+        public event Action<string> CurrentTaskChanged;
+        public event Action<bool> IsRunningChanged;
 
         #endregion
 
         #region --- UI와 바인딩될 속성 ---
 
+        // ✨ [수정] 이제 '선택된 과목'의 시간을 표시합니다.
         private string _mainTimeDisplayText = "00:00:00";
         public string MainTimeDisplayText
         {
             get => _mainTimeDisplayText;
             set => SetProperty(ref _mainTimeDisplayText, value);
+        }
+
+        private string _currentTaskDisplayText = "없음";
+        public string CurrentTaskDisplayText
+        {
+            get => _currentTaskDisplayText;
+            set => SetProperty(ref _currentTaskDisplayText, value);
+        }
+
+        // ✨ [추가] '오늘의 총 작업 시간'을 표시하기 위한 새 속성
+        private string _totalTimeTodayDisplayText = "오늘의 작업 시간 | 00:00:00";
+        public string TotalTimeTodayDisplayText
+        {
+            get => _totalTimeTodayDisplayText;
+            set => SetProperty(ref _totalTimeTodayDisplayText, value);
         }
 
         public ObservableCollection<TaskItem> TaskItems { get; private set; }
@@ -88,6 +106,7 @@ namespace WorkPartner.ViewModels
             foreach (var log in loadedLogs) TimeLogEntries.Add(log);
 
             RecalculateTotalTimeToday();
+            UpdateLiveTimeDisplays(); // 초기 UI 업데이트
             _timerService.Start();
         }
 
@@ -100,6 +119,10 @@ namespace WorkPartner.ViewModels
 
         private void OnSelectedTaskChanged(TaskItem newSelectedTask)
         {
+            CurrentTaskDisplayText = newSelectedTask?.Text ?? "없음";
+            CurrentTaskChanged?.Invoke(CurrentTaskDisplayText);
+            UpdateLiveTimeDisplays(); // ✨ [추가] 과목 선택 시 즉시 시간 표시 업데이트
+
             if (_currentWorkingTask != newSelectedTask)
             {
                 if (_stopwatch.IsRunning)
@@ -113,16 +136,8 @@ namespace WorkPartner.ViewModels
 
         private void OnTimerTick(TimeSpan ignored)
         {
-            string activeProcess = ActiveWindowHelper.GetActiveProcessName();
-
-            if (activeProcess == _lastActiveProcessName && !string.IsNullOrEmpty(activeProcess))
-            {
-                UpdateLiveTimeDisplays();
-                return;
-            }
-
-            _lastActiveProcessName = activeProcess;
             HandleStopwatchMode();
+            UpdateLiveTimeDisplays();
         }
 
         private void HandleStopwatchMode()
@@ -138,6 +153,9 @@ namespace WorkPartner.ViewModels
                 {
                     LogWorkSession(_isPausedForIdle ? _sessionStartTime.Add(_stopwatch.Elapsed) : null);
                     _stopwatch.Reset();
+                    IsRunningChanged?.Invoke(false);
+                    CurrentTaskDisplayText = "없음";
+                    CurrentTaskChanged?.Invoke(CurrentTaskDisplayText);
                 }
                 _isPausedForIdle = false;
             };
@@ -188,6 +206,9 @@ namespace WorkPartner.ViewModels
                         {
                             _sessionStartTime = DateTime.Now;
                             _stopwatch.Start();
+                            IsRunningChanged?.Invoke(true);
+                            CurrentTaskDisplayText = _currentWorkingTask.Text;
+                            CurrentTaskChanged?.Invoke(CurrentTaskDisplayText);
                         }
                     }
                 }
@@ -196,8 +217,6 @@ namespace WorkPartner.ViewModels
             {
                 stopAndLogAction();
             }
-
-            UpdateLiveTimeDisplays();
         }
 
         private void LogWorkSession(DateTime? endTime = null)
@@ -220,18 +239,35 @@ namespace WorkPartner.ViewModels
             RecalculateTotalTimeToday();
         }
 
+        // ✨ [수정] 두 개의 시간 표시를 모두 업데이트하도록 로직 변경
         private void UpdateLiveTimeDisplays()
         {
-            var timeToDisplay = _totalTimeTodayFromLogs;
+            // 1. 오늘의 '총' 작업 시간 계산 (작은 TextBlock용)
+            var totalTimeToday = _totalTimeTodayFromLogs;
             if (_stopwatch.IsRunning)
             {
-                timeToDisplay += _stopwatch.Elapsed;
+                totalTimeToday += _stopwatch.Elapsed;
             }
-            string newTime = timeToDisplay.ToString(@"hh\:mm\:ss");
-            MainTimeDisplayText = newTime;
+            TotalTimeTodayDisplayText = $"오늘의 작업 시간 | {totalTimeToday:hh\\:mm\\:ss}";
 
-            // ▼▼▼ 계산이 끝난 후, "시간 바뀌었어!"라고 신호를 보냅니다. ▼▼▼
-            TimeUpdated?.Invoke(newTime);
+            // 2. '선택된 과목'의 작업 시간 계산 (큰 TextBlock용)
+            var timeForSelectedTask = TimeSpan.Zero;
+            if (SelectedTaskItem != null)
+            {
+                var selectedTaskLogs = TimeLogEntries
+                    .Where(log => log.TaskText == SelectedTaskItem.Text && log.StartTime.Date == DateTime.Today);
+                timeForSelectedTask = new TimeSpan(selectedTaskLogs.Sum(log => log.Duration.Ticks));
+
+                // 선택된 과목이 현재 작업중인 과목과 같을 때만 실시간 시간 추가
+                if (_stopwatch.IsRunning && _currentWorkingTask == SelectedTaskItem)
+                {
+                    timeForSelectedTask += _stopwatch.Elapsed;
+                }
+            }
+            MainTimeDisplayText = timeForSelectedTask.ToString(@"hh\:mm\:ss");
+
+            // 3. 미니 타이머에는 '선택된 과목'의 시간을 전송
+            TimeUpdated?.Invoke(MainTimeDisplayText);
         }
 
         #region --- INotifyPropertyChanged 구현 ---

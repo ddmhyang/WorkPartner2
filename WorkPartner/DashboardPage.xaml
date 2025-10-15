@@ -94,9 +94,9 @@
             </Button>
 
             <!-- 메인 타이머 및 상태 표시 -->
-            <TextBlock x:Name="CurrentTaskDisplay" Canvas.Left="186" Canvas.Top="74" Text="현재 과목" TextAlignment="Center" Foreground="#FF005B8B" FontFamily="Pretendard" FontSize="14" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            <TextBlock x:Name="CurrentTaskDisplay" Width="250" Canvas.Left="80" Canvas.Top="74" Text="{Binding CurrentTaskDisplayText}" TextAlignment="Center" Foreground="#FF005B8B" FontFamily="Pretendard" FontSize="14" FontWeight="SemiBold" HorizontalAlignment="Left" VerticalAlignment="Center"/>
             <TextBlock x:Name="MainTimeDisplay" Canvas.Left="123" Canvas.Top="92" Width="180" Text="{Binding MainTimeDisplayText}" TextAlignment="Center" FontFamily="Pretendard" FontSize="40" FontWeight="SemiBold"/>
-            <TextBlock x:Name="SelectedTaskTotalTimeDisplay" Canvas.Left="159" Canvas.Top="145" Text="오늘의 작업 시간 | 00:00:00" TextAlignment="Center" FontFamily="Pretendard" FontSize="8" FontWeight="Medium"/>
+            <TextBlock x:Name="SelectedTaskTotalTimeDisplay" Width="220" Canvas.Left="95" Canvas.Top="145" Text="{Binding TotalTimeTodayDisplayText}" TextAlignment="Center" FontFamily="Pretendard" FontSize="8" FontWeight="Medium" HorizontalAlignment="Left" VerticalAlignment="Center"/>
 
             <!-- 타임라인 영역 -->
             <Border Canvas.Left="19" Canvas.Top="173" Width="388" Height="331" BorderBrush="#f0f0f0" BorderThickness="2" CornerRadius="10">
