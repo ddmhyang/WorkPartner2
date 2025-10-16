@@ -1,5 +1,4 @@
-﻿// 𝙃𝙚𝙧𝙚'𝙨 𝙩𝙝𝙚 𝙘𝙤𝙙𝙚 𝙞𝙣 ddmhyang/workpartner2/WorkPartner2-4/WorkPartner/DashboardPage.xaml.cs
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
@@ -487,16 +486,62 @@ namespace WorkPartner
 
         #region 화면 렌더링 및 UI 업데이트
 
+        /// <summary>
+        /// ✨ [REVISED] 메인 타이머와 과목 이름, 하단 총 시간을 모두 업데이트합니다.
+        /// </summary>
+        private void UpdateMainTimeDisplay()
+        {
+            TaskItem selectedTask = TaskListBox.SelectedItem as TaskItem;
+            if (selectedTask == null && TaskItems.Any())
+            {
+                selectedTask = TaskItems.FirstOrDefault();
+                TaskListBox.SelectedItem = selectedTask;
+            }
+
+            TimeSpan timeToShow = TimeSpan.Zero;
+            if (selectedTask != null)
+            {
+                var logsForSelectedDateAndTask = TimeLogEntries
+                    .Where(log => log.StartTime.Date == _currentDateForTimeline.Date && log.TaskText == selectedTask.Text);
+                timeToShow = new TimeSpan(logsForSelectedDateAndTask.Sum(log => log.Duration.Ticks));
+            }
+
+            // 메인 타이머 업데이트
+            MainTimeDisplay.Text = timeToShow.ToString(@"hh\:mm\:ss");
+
+            // 현재 과목 이름 업데이트
+            CurrentTaskDisplay.Text = selectedTask != null ? selectedTask.Text : "과목을 선택하세요";
+
+            // 하단 총 학습 시간 업데이트
+            var todayLogs = TimeLogEntries.Where(log => log.StartTime.Date == _currentDateForTimeline.Date).ToList();
+            var totalTimeToday = new TimeSpan(todayLogs.Sum(log => log.Duration.Ticks));
+            SelectedTaskTotalTimeDisplay.Text = $"이날의 총 학습 시간: {(int)totalTimeToday.TotalHours}시간 {totalTimeToday.Minutes}분";
+        }
+
+        /// <summary>
+        /// ✨ [REVISED] 과목별 시간만 계산하고, UI 업데이트는 UpdateMainTimeDisplay에 맡깁니다.
+        /// </summary>
         private void RecalculateAllTotals()
         {
-            var todayLogs = TimeLogEntries.Where(log => log.StartTime.Date == _currentDateForTimeline.Date);
-            var totalTimeTodayFromLogs = new TimeSpan(todayLogs.Sum(log => log.Duration.Ticks));
+            var todayLogs = TimeLogEntries.Where(log => log.StartTime.Date == _currentDateForTimeline.Date).ToList();
 
             foreach (var task in TaskItems)
             {
-                var taskLogs = TimeLogEntries.Where(log => log.TaskText == task.Text && log.StartTime.Date == _currentDateForTimeline.Date);
+                var taskLogs = todayLogs.Where(log => log.TaskText == task.Text);
                 task.TotalTime = new TimeSpan(taskLogs.Sum(log => log.Duration.Ticks));
             }
+
+            UpdateMainTimeDisplay();
+
+            if (TaskListBox != null)
+            {
+                TaskListBox.Items.Refresh();
+            }
+        }
+
+        private void TaskListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            UpdateMainTimeDisplay();
         }
 
         private SolidColorBrush GetColorForTask(string taskName)
@@ -523,7 +568,6 @@ namespace WorkPartner
 
         private void RenderTimeTable()
         {
-            // ✨ [오류 수정] 타임라인에 그려진 이전 로그 기록들을 모두 삭제합니다.
             var bordersToRemove = SelectionCanvas.Children.OfType<Border>()
                                              .Where(b => b.Tag is TimeLogEntry)
                                              .ToList();
@@ -534,7 +578,6 @@ namespace WorkPartner
 
             TimeTableContainer.Children.Clear();
 
-            // ✨ [오류 수정] 로그 기록이 없는 날에도 타임 테이블 배경은 항상 표시되도록 수정했습니다.
             double blockWidth = 35, blockHeight = 17, hourLabelWidth = 30;
 
             for (int hour = 0; hour < 24; hour++)
@@ -790,7 +833,6 @@ namespace WorkPartner
             }
         }
 
-        // ✨ [오류 수정] 이벤트 핸들러의 두 번째 매개변수 타입을 MouseButtonEventArgs로 수정했습니다.
         private void ChangeTaskColor_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             if (sender is not Border { Tag: TaskItem selectedTask }) return;
@@ -825,7 +867,10 @@ namespace WorkPartner
 
         private void OnViewModelTimeUpdated(string newTime)
         {
-            _miniTimer?.UpdateTime(newTime);
+            // 이 기능은 이제 ViewModel이 아닌 코드 비하인드에서 직접 관리하므로,
+            // 실시간 타이머가 필요할 경우 MainTimeDisplay.Text를 여기서 업데이트 할 수도 있습니다.
+            // 하지만 현재는 날짜별 기록 표시에 집중하므로 비워둡니다.
+            // _miniTimer?.UpdateTime(newTime);
         }
         #endregion
     }
