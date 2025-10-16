@@ -15,7 +15,6 @@ namespace WorkPartner
         private MainWindow _parentWindow;
         private readonly DashboardViewModel _viewModel;
 
-        // ... (다른 UI 관련 필드들은 변경 없이 그대로 유지) ...
         private readonly Dictionary<string, BackgroundSoundPlayer> _soundPlayers = new();
         private readonly Dictionary<string, SolidColorBrush> _taskBrushCache = new();
         private static readonly SolidColorBrush DefaultGrayBrush = new SolidColorBrush(Colors.Gray);
@@ -25,7 +24,6 @@ namespace WorkPartner
         private Rectangle _selectionBox;
         private bool _isDragging = false;
         private MemoWindow _memoWindow;
-
 
         public DashboardPage()
         {
@@ -64,7 +62,7 @@ namespace WorkPartner
         {
             await _viewModel.LoadAllDataAsync();
             RenderTimeTable();
-            UpdatePinnedMemoView(); // ✨ 로드 시 핀 메모 업데이트
+            UpdatePinnedMemoView();
         }
 
         private async void DashboardPage_IsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
@@ -78,12 +76,10 @@ namespace WorkPartner
             }
         }
 
-        // ✨ TimeLogRect_MouseLeftButtonDown 메서드 수정
         private void TimeLogRect_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             if ((sender as FrameworkElement)?.Tag is not TimeLogEntry log) return;
 
-            // ✨ 수정된 AddLogWindow 생성자 호출
             var win = new AddLogWindow(_viewModel.TaskItems, log) { Owner = Window.GetWindow(this) };
             if (win.ShowDialog() != true) return;
 
@@ -93,29 +89,22 @@ namespace WorkPartner
             }
             else
             {
-                // ✨ NewLogEntry 속성을 통해 업데이트된 내용을 반영
                 log.StartTime = win.NewLogEntry.StartTime;
                 log.EndTime = win.NewLogEntry.EndTime;
                 log.TaskText = win.NewLogEntry.TaskText;
                 log.FocusScore = win.NewLogEntry.FocusScore;
             }
 
-            // ViewModel의 데이터를 직접 저장하는 것은 이상적이지 않지만, 일단 현재 구조 유지
             DataManager.SaveTimeLogs(_viewModel.TimeLogEntries);
             _viewModel.RecalculateAllTotals();
             RenderTimeTable();
         }
 
-        // ... (다른 메서드들은 이전과 동일하게 유지) ...
-
-        // ✨ 핀 메모 닫기 버튼 이벤트 핸들러 추가
         private void ClosePinnedMemo_Click(object sender, RoutedEventArgs e)
         {
             PinnedMemoPanel.Visibility = Visibility.Collapsed;
         }
 
-        // ... (파일의 나머지 부분은 이전 답변과 동일) ...
-        #region Other Methods from previous answer
         private void OnSettingsUpdated()
         {
             _taskBrushCache.Clear();
@@ -141,8 +130,7 @@ namespace WorkPartner
 
         private void InitializeSoundPlayers()
         {
-            // This is a placeholder. You should have your actual sound initialization here.
-            // For example: _soundPlayers["rain"] = new BackgroundSoundPlayer("rain.mp3");
+            // Placeholder
         }
 
         private SolidColorBrush GetColorForTask(string taskName)
@@ -241,6 +229,5 @@ namespace WorkPartner
         }
 
         public void SetParentWindow(MainWindow window) => _parentWindow = window;
-        #endregion
     }
 }

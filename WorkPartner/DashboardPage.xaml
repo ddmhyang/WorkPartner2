@@ -4,19 +4,14 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://expression.blend/2008" 
              xmlns:local="clr-namespace:WorkPartner"
-             xmlns:svgc="http://sharpvectors.codeplex.com/svgc/"
-             mc:Ignorable="d" 
              xmlns:viewModels="clr-namespace:WorkPartner.ViewModels"
+             mc:Ignorable="d" 
              d:DesignHeight="526" d:DesignWidth="682"
              IsVisibleChanged="DashboardPage_IsVisibleChanged"
              FontFamily="Pretendard">
 
-    <UserControl.DataContext>
-        <viewModels:DashboardViewModel/>
-    </UserControl.DataContext>
-
-    <Viewbox Stretch="Uniform">
-        <Canvas Width="682" Height="526">
+    <Grid>
+        <Canvas x:Name="MainCanvas">
             <Border x:Name="PinnedMemoPanel" Canvas.Left="470" Canvas.Top="401" Width="181" Height="96" Background="#FFF9E3" CornerRadius="5" Visibility="Collapsed">
                 <Grid>
                     <TextBlock Text="📌 고정된 메모" FontWeight="Bold" Margin="10,5,0,0" VerticalAlignment="Top" HorizontalAlignment="Left"/>
@@ -25,6 +20,22 @@
                 </Grid>
             </Border>
 
+            <Grid Canvas.Left="239" Canvas.Top="60">
+                <ScrollViewer Height="450" VerticalScrollBarVisibility="Auto">
+                    <StackPanel x:Name="TimeTableContainer"/>
+                </ScrollViewer>
+                <Canvas x:Name="SelectionCanvas" Background="Transparent"/>
+            </Grid>
+
+            <Grid Canvas.Left="20" Canvas.Top="20">
+                <TextBlock x:Name="UsernameDisplay" Text="Username" FontWeight="Bold"/>
+                <StackPanel Orientation="Horizontal" Margin="0,20,0,0">
+                    <Image Source="/images/coin.png" Width="16" Height="16"/>
+                    <TextBlock x:Name="CoinDisplay" Text="0" Margin="5,0,0,0"/>
+                </StackPanel>
+                <local:CharacterDisplay x:Name="CharacterPreview" Margin="0, 50, 0, 0" />
+            </Grid>
+
         </Canvas>
-    </Viewbox>
+    </Grid>
 </UserControl>
