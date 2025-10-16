@@ -11,6 +11,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Shapes;
+using System.Windows.Threading;
 using WorkPartner.AI;
 
 namespace WorkPartner
@@ -46,6 +47,8 @@ namespace WorkPartner
         private static readonly SolidColorBrush DefaultGrayBrush = new SolidColorBrush(Colors.Gray);
         private static readonly SolidColorBrush BlockBackgroundBrush = new SolidColorBrush(Color.FromRgb(0xF5, 0xF5, 0xF5));
         private static readonly SolidColorBrush BlockBorderBrush = Brushes.White;
+
+        private DispatcherTimer _liveTimer; // 실시간 타이머 변수 추가
         #endregion
 
         public DashboardPage()
@@ -53,6 +56,7 @@ namespace WorkPartner
             InitializeComponent();
             InitializeData();
             InitializeSoundPlayers();
+            InitializeLiveTimer(); // 타이머 초기화 메서드 호출 추가
 
             waveSlider.ValueChanged += SoundSlider_ValueChanged;
             forestSlider.ValueChanged += SoundSlider_ValueChanged;
@@ -77,6 +81,16 @@ namespace WorkPartner
 
             RenderOptions.SetBitmapScalingMode(this, BitmapScalingMode.LowQuality);
             RenderOptions.SetEdgeMode(this, EdgeMode.Aliased);
+        }
+
+        private void InitializeLiveTimer()
+        {
+            _liveTimer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromSeconds(1)
+            };
+            _liveTimer.Tick += (sender, e) => UpdateMainTimeDisplay();
+            _liveTimer.Start();
         }
 
         private void OnSettingsUpdated()
@@ -489,18 +503,26 @@ namespace WorkPartner
         /// <summary>
         /// ✨ [REVISED] 메인 타이머와 과목 이름, 하단 총 시간을 모두 업데이트합니다.
         /// </summary>
+        /// <summary>
+        /// ✨ [REVISED] 메인 타이머와 과목 이름, 하단 총 시간을 모두 업데이트합니다.
+        /// </summary>
         private void UpdateMainTimeDisplay()
         {
             TaskItem selectedTask = TaskListBox.SelectedItem as TaskItem;
             if (selectedTask == null && TaskItems.Any())
             {
                 selectedTask = TaskItems.FirstOrDefault();
-                TaskListBox.SelectedItem = selectedTask;
+                // ViewModel을 사용하지 않으므로 직접 선택 항목을 설정합니다.
+                if (TaskListBox.SelectedItem == null)
+                {
+                    TaskListBox.SelectedItem = selectedTask;
+                }
             }
 
             TimeSpan timeToShow = TimeSpan.Zero;
             if (selectedTask != null)
             {
+                // 오늘 날짜의 해당 과목 로그 시간을 합산합니다.
                 var logsForSelectedDateAndTask = TimeLogEntries
                     .Where(log => log.StartTime.Date == _currentDateForTimeline.Date && log.TaskText == selectedTask.Text);
                 timeToShow = new TimeSpan(logsForSelectedDateAndTask.Sum(log => log.Duration.Ticks));
@@ -578,6 +600,7 @@ namespace WorkPartner
 
             TimeTableContainer.Children.Clear();
 
+            // 변수는 여기서 한 번만 선언합니다.
             double blockWidth = 35, blockHeight = 17, hourLabelWidth = 30;
 
             for (int hour = 0; hour < 24; hour++)
@@ -618,6 +641,7 @@ namespace WorkPartner
                 var duration = logEnd - logStart;
                 if (duration.TotalSeconds <= 1) continue;
 
+                // ✨ [REVISED] top, left 계산 시 시간당 높이와 분당 너비를 정확히 계산
                 var topOffset = logStart.TotalHours * (blockHeight + 2);
                 var leftOffset = hourLabelWidth + (logStart.Minutes / 10.0) * (blockWidth + 2);
                 var barWidth = (duration.TotalMinutes / 10.0) * (blockWidth + 2);
@@ -628,14 +652,15 @@ namespace WorkPartner
                     Height = blockHeight,
                     Background = GetColorForTask(logEntry.TaskText),
                     CornerRadius = new CornerRadius(2),
-                    HorizontalAlignment = HorizontalAlignment.Left,
-                    VerticalAlignment = VerticalAlignment.Top,
-                    Margin = new Thickness(leftOffset, topOffset, 0, 0),
                     ToolTip = new ToolTip { Content = $"{logEntry.TaskText}\n{logEntry.StartTime:HH:mm} ~ {logEntry.EndTime:HH:mm}\n\n클릭하여 수정 또는 삭제" },
                     Tag = logEntry,
                     Cursor = Cursors.Hand
                 };
                 coloredBar.MouseLeftButtonDown += TimeLogRect_MouseLeftButtonDown;
+
+                // ✨ [REVISED] Margin 대신 Canvas.SetLeft/Top 사용하여 정확한 위치 지정
+                Canvas.SetLeft(coloredBar, leftOffset);
+                Canvas.SetTop(coloredBar, topOffset);
 
                 SelectionCanvas.Children.Add(coloredBar);
             }
