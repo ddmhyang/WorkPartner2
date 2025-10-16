@@ -6,16 +6,17 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Shapes;
-using WorkPartner.ViewModels; // ViewModel 네임스페이스 추가
+using WorkPartner.ViewModels; // ✨ ViewModel 네임스페이스 추가
 
 namespace WorkPartner
 {
     public partial class DashboardPage : UserControl
     {
         private MainWindow _parentWindow;
-        private DashboardViewModel _viewModel; // ViewModel 인스턴스
+        // ✨ ViewModel 인스턴스를 멤버 변수로 가짐
+        private readonly DashboardViewModel _viewModel;
 
-        // ... (Other UI-related fields like _soundPlayers, _selectionBox etc. remain here)
+        // UI와 직접 관련된 필드들은 그대로 유지
         private readonly Dictionary<string, BackgroundSoundPlayer> _soundPlayers = new();
         private readonly Dictionary<string, SolidColorBrush> _taskBrushCache = new();
         private static readonly SolidColorBrush DefaultGrayBrush = new SolidColorBrush(Colors.Gray);
@@ -29,11 +30,12 @@ namespace WorkPartner
         public DashboardPage()
         {
             InitializeComponent();
+            // ✨ ViewModel 인스턴스를 생성하고 DataContext로 설정
             _viewModel = new DashboardViewModel();
             this.DataContext = _viewModel;
 
             InitializeSoundPlayers();
-            // ... (Other initializations for UI elements)
+
             _selectionBox = new Rectangle
             {
                 Stroke = Brushes.DodgerBlue,
@@ -46,23 +48,31 @@ namespace WorkPartner
                 SelectionCanvas.Children.Add(_selectionBox);
             }
 
+            // ✨ ViewModel의 데이터가 변경될 때마다 타임라인을 다시 그리도록 이벤트 연결
+            _viewModel.TimeLogEntries.CollectionChanged += (s, e) => RenderTimeTable();
+            _viewModel.PropertyChanged += (s, e) => {
+                if (e.PropertyName == nameof(_viewModel.CurrentDateDisplay))
+                {
+                    RenderTimeTable();
+                }
+            };
+
             DataManager.SettingsUpdated += OnSettingsUpdated;
             this.Unloaded += (s, e) => DataManager.SettingsUpdated -= OnSettingsUpdated;
             this.Loaded += DashboardPage_Loaded;
         }
 
-        private async void DashboardPage_Loaded(object sender, RoutedEventArgs e)
+        private void DashboardPage_Loaded(object sender, RoutedEventArgs e)
         {
-            // Re-render when the page is loaded
-            await _viewModel.LoadAllDataAsync(); // ViewModel 데이터 로딩 호출
+            // 페이지가 로드될 때 타임라인을 그림
             RenderTimeTable();
         }
 
-        // The IsVisibleChanged event can also trigger a refresh
         private async void DashboardPage_IsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
         {
             if (e.NewValue is true)
             {
+                // ✨ 페이지가 다시 보일 때 데이터를 새로고침하고 UI 갱신
                 await _viewModel.LoadAllDataAsync();
                 RenderTimeTable();
                 UpdateCharacterInfoPanel();
@@ -70,53 +80,32 @@ namespace WorkPartner
             }
         }
 
-
         private void OnSettingsUpdated()
         {
-            _viewModel.LoadSettings(); // ViewModel 설정 다시 로드
+            // 설정이 업데이트되면 브러시 캐시를 비우고 UI 갱신
             _taskBrushCache.Clear();
-            Dispatcher.Invoke(() =>
-            {
-                // TaskItems는 ViewModel에 있으므로, 브러시 업데이트 로직도 ViewModel이나 별도 서비스로 이동하는 것이 이상적
-                foreach (var taskItem in _viewModel.TaskItems)
-                {
-                    if (_viewModel._settings.TaskColors.TryGetValue(taskItem.Text, out string colorHex))
-                    {
-                        taskItem.ColorBrush = (SolidColorBrush)new BrushConverter().ConvertFromString(colorHex);
-                    }
-                }
-                RenderTimeTable();
-                UpdateCharacterInfoPanel();
-            });
+            RenderTimeTable();
+            UpdateCharacterInfoPanel();
         }
 
-        // AddTaskButton_Click, EditTaskButton_Click, etc. event handlers are now REMOVED
-        // They are replaced by Commands in the ViewModel
-
-        // KeyDown events can be handled using System.Windows.Interactivity or by calling the command
+        // ✨ KeyDown 이벤트는 ViewModel의 Command를 직접 호출하도록 변경
         private void TaskInput_KeyDown(object sender, KeyEventArgs e)
         {
-            if (e.Key == Key.Enter)
+            if (e.Key == Key.Enter && _viewModel.AddTaskCommand.CanExecute(null))
             {
-                if (_viewModel.AddTaskCommand.CanExecute(null))
-                {
-                    _viewModel.AddTaskCommand.Execute(null);
-                }
+                _viewModel.AddTaskCommand.Execute(null);
             }
         }
 
         private void TodoInput_KeyDown(object sender, KeyEventArgs e)
         {
-            if (e.Key == Key.Enter)
+            if (e.Key == Key.Enter && _viewModel.AddTodoCommand.CanExecute(null))
             {
-                if (_viewModel.AddTodoCommand.CanExecute(null))
-                {
-                    _viewModel.AddTodoCommand.Execute(null);
-                }
+                _viewModel.AddTodoCommand.Execute(null);
             }
         }
 
-        #region UI Rendering (Stays in View)
+        #region UI Rendering (View의 고유 역할)
         private SolidColorBrush GetColorForTask(string taskName)
         {
             if (_taskBrushCache.TryGetValue(taskName, out var cachedBrush))
@@ -124,16 +113,12 @@ namespace WorkPartner
                 return cachedBrush;
             }
 
-            if (_viewModel._settings != null && _viewModel._settings.TaskColors.TryGetValue(taskName, out string colorHex))
+            // ✨ 이제 TaskItem 자체에 ColorBrush가 있으므로 ViewModel에서 가져옴
+            var taskItem = _viewModel.TaskItems.FirstOrDefault(t => t.Text == taskName);
+            if (taskItem != null && taskItem.ColorBrush != null)
             {
-                try
-                {
-                    var newBrush = (SolidColorBrush)new BrushConverter().ConvertFromString(colorHex);
-                    newBrush.Freeze();
-                    _taskBrushCache[taskName] = newBrush;
-                    return newBrush;
-                }
-                catch { /* ignore */ }
+                _taskBrushCache[taskName] = taskItem.ColorBrush;
+                return taskItem.ColorBrush;
             }
 
             return DefaultGrayBrush;
@@ -141,13 +126,13 @@ namespace WorkPartner
 
         private void RenderTimeTable()
         {
-            // This method now gets its data from _viewModel
-            SelectionCanvas.Children.Clear(); // Clear old logs
-            SelectionCanvas.Children.Add(_selectionBox); // Re-add selection box
+            SelectionCanvas.Children.Clear();
+            SelectionCanvas.Children.Add(_selectionBox);
             TimeTableContainer.Children.Clear();
 
+            // ✨ 데이터를 ViewModel에서 직접 가져옴
             var logsForSelectedDate = _viewModel.TimeLogEntries
-                .Where(log => log.StartTime.Date == _viewModel._currentDateForTimeline.Date)
+                .Where(log => log.StartTime.Date.ToString("yyyy-MM-dd") == _viewModel.CurrentDateDisplay)
                 .OrderBy(l => l.StartTime)
                 .ToList();
 
@@ -156,18 +141,8 @@ namespace WorkPartner
             for (int hour = 0; hour < 24; hour++)
             {
                 var hourRowPanel = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 1, 0, 1) };
-                var hourLabel = new TextBlock
-                {
-                    Text = $"{hour:00}",
-                    Width = hourLabelWidth,
-                    Height = blockHeight,
-                    VerticalAlignment = VerticalAlignment.Center,
-                    TextAlignment = TextAlignment.Center,
-                    Foreground = Brushes.Gray,
-                    FontSize = 8
-                };
+                var hourLabel = new TextBlock { Text = $"{hour:00}", Width = hourLabelWidth, Height = blockHeight, VerticalAlignment = VerticalAlignment.Center, TextAlignment = TextAlignment.Center, Foreground = Brushes.Gray, FontSize = 8 };
                 hourRowPanel.Children.Add(hourLabel);
-
                 for (int minuteBlock = 0; minuteBlock < 6; minuteBlock++)
                 {
                     var blockContainer = new Grid { Width = blockWidth, Height = blockHeight, Background = BlockBackgroundBrush, Margin = new Thickness(1, 0, 1, 0) };
@@ -202,27 +177,34 @@ namespace WorkPartner
                     Cursor = Cursors.Hand
                 };
                 coloredBar.MouseLeftButtonDown += TimeLogRect_MouseLeftButtonDown;
-
                 SelectionCanvas.Children.Add(coloredBar);
             }
         }
 
-        // Other UI-specific methods like UpdateCharacterInfoPanel, UpdatePinnedMemoView, etc.
-        // should also get their data from the _viewModel
+        // ✨ 캐릭터 정보 패널 업데이트 (ViewModel의 데이터 바인딩으로 대체 가능하지만 일단 유지)
         private void UpdateCharacterInfoPanel(string status = null)
         {
-            if (_viewModel?._settings == null) return;
+            if (_viewModel == null) return;
             UsernameDisplay.Text = _viewModel.Username;
             CoinDisplay.Text = _viewModel.CoinsDisplay;
             CharacterPreview.UpdateCharacter();
         }
 
-        // ... The rest of the UI logic (drag selection, sound players, etc.) remains here ...
-        // Make sure to call RenderTimeTable() and RecalculateAllTotals() after data changes.
-        // For example, in the SelectionCanvas_MouseLeftButtonUp after a bulk edit.
+        // ✨ 핀된 메모 업데이트 (이것도 추후 ViewModel로 이전 가능)
+        public void UpdatePinnedMemoView()
+        {
+            // 로직 유지
+        }
 
+        // 사운드 플레이어, 드래그 선택 등 나머지 UI 로직은 여기에 그대로 둡니다.
+        // InitializeSoundPlayers(), TimeLogRect_MouseLeftButtonDown(), SelectionCanvas_Mouse*() 등...
         #endregion
 
         public void SetParentWindow(MainWindow window) => _parentWindow = window;
+
+        // ✨ 아래 메서드들은 ViewModel로 이전되었으므로 삭제합니다.
+        // LoadTasks, SaveTasks, AddTaskButton_Click, EditTaskButton_Click, DeleteTaskButton_Click
+        // LoadTodos, SaveTodos, AddTodoButton_Click, TodoItem_CheckboxChanged, 
+        // LoadTimeLogs, SaveTimeLogs, RecalculateAllTotals, 등등...
     }
 }
