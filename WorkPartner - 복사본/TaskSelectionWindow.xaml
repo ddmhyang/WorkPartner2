@@ -1,0 +1,22 @@
+﻿<Window x:Class="WorkPartner.TaskSelectionWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="과목 일괄 변경" Height="150" Width="300"
+        WindowStartupLocation="CenterOwner" WindowStyle="ToolWindow"
+        ResizeMode="NoResize">
+    <Grid Margin="15">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" Text="선택된 시간의 과목을 변경합니다:" Margin="0,0,0,5"/>
+        <ComboBox x:Name="TaskComboBox" Grid.Row="1" DisplayMemberPath="Text"/>
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,15,0,0">
+            <Button Content="확인" Width="80" IsDefault="True" Click="OkButton_Click" Margin="0,0,10,0"/>
+            <Button Content="취소" Width="80" IsCancel="True" />
+        </StackPanel>
+    </Grid>
+</Window>

@@ -10,11 +10,12 @@
         <Grid>
             <Image x:Name="BackgroundImage" Stretch="UniformToFill" Opacity="0.5"/>
 
+
             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                 <local:CharacterDisplay x:Name="MiniCharacterDisplay" Width="40" Height="40" Visibility="Collapsed"/>
 
                 <TextBlock x:Name="TimeTextBlock" Text="00:00:00" Foreground="White" FontSize="24" FontWeight="Bold" HorizontalAlignment="Center"/>
-                <TextBlock x:Name="InfoTextBlock" Text="과목 정보" Foreground="White" FontSize="10" HorizontalAlignment="Center" Visibility="Collapsed"/>
+                <TextBlock x:Name="InfoTextBlock" Text="과목 정보" Foreground="White" FontSize="10" HorizontalAlignment="Center" Visibility="Visible"/>
             </StackPanel>
         </Grid>
     </Border>

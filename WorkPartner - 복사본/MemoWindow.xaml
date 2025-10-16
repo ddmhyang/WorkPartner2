@@ -1,0 +1,45 @@
+﻿<Window x:Class="WorkPartner.MemoWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:WorkPartner"
+        Title="메모장" Height="500" Width="700"
+        WindowStartupLocation="CenterOwner"
+        Closing="Window_Closing">
+    <Grid Margin="10">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="200"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <Border Grid.Column="0" BorderBrush="#E0E0E0" BorderThickness="1" CornerRadius="3" Padding="5">
+            <DockPanel>
+                <Button DockPanel.Dock="Bottom" Content="새 메모" Click="NewMemoButton_Click" Margin="0,10,0,0"/>
+                <ListBox x:Name="MemoListBox" ItemsSource="{Binding AllMemos}" SelectionChanged="MemoListBox_SelectionChanged">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate DataType="{x:Type local:MemoItem}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="📌" Visibility="{Binding IsPinned, Converter={StaticResource BooleanToVisibilityConverter}}" Margin="0,0,5,0"/>
+                                <TextBlock Text="{Binding Title}" ToolTip="{Binding Content}"/>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </DockPanel>
+        </Border>
+
+        <Grid Grid.Column="1" Margin="10,0,0,0" x:Name="EditorPanel" IsEnabled="False">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <TextBox Grid.Row="0" x:Name="MemoContentTextBox" AcceptsReturn="True" TextWrapping="Wrap" 
+                     VerticalScrollBarVisibility="Auto" TextChanged="MemoContentTextBox_TextChanged"/>
+
+            <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
+                <CheckBox x:Name="PinCheckBox" Content="대시보드에 고정" Click="PinCheckBox_Click" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                <Button Content="삭제" Click="DeleteMemoButton_Click" Background="#FFC1C1"/>
+            </StackPanel>
+        </Grid>
+    </Grid>
+</Window>

@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "WorkPartner": {
+      "commandName": "Project",
+      "workingDirectory": "C:\\Users\\kimgh\\source\\repos\\WorkPartner"
+    }
+  }
+}

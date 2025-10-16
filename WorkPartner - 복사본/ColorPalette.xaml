@@ -1,0 +1,13 @@
+﻿<Window x:Class="WorkPartner.ColorPalette"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Color Palette" Height="150" Width="250"
+        WindowStyle="ToolWindow"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource MainBackgroundBrush}">
+    <Grid Margin="10">
+        <WrapPanel x:Name="ColorPanel" HorizontalAlignment="Center" VerticalAlignment="Center">
+        </WrapPanel>
+    </Grid>
+</Window>
