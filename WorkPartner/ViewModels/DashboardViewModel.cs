@@ -8,22 +8,16 @@ using System.Windows;
 using WorkPartner.Commands;
 using System.Windows.Input;
 using System.Diagnostics;
-using System.Collections.Generic;
 using System.Windows.Media;
+using System.Collections.Generic;
 
 namespace WorkPartner.ViewModels
 {
-    // ✨ 모든 ViewModel의 기반이 되는 BaseViewModel 상속
     public class DashboardViewModel : BaseViewModel
     {
-        #region Fields (필드)
-        // ViewModel 내부에서만 사용할 변수들
         private AppSettings _settings;
         private DateTime _currentDateForTimeline = DateTime.Today;
-        #endregion
 
-        #region Properties (속성)
-        // UI와 데이터 바인딩으로 연결될 속성들
         public ObservableCollection<TaskItem> TaskItems { get; set; }
         public ObservableCollection<TodoItem> TodoItems { get; set; }
         public ObservableCollection<TodoItem> FilteredTodoItems { get; set; }
@@ -31,35 +25,15 @@ namespace WorkPartner.ViewModels
         public ObservableCollection<MemoItem> AllMemos { get; set; }
 
         private string _newTaskText;
-        public string NewTaskText
-        {
-            get => _newTaskText;
-            set
-            {
-                _newTaskText = value;
-                OnPropertyChanged(); // 값이 바뀌면 UI에 알려줌
-            }
-        }
+        public string NewTaskText { get => _newTaskText; set { _newTaskText = value; OnPropertyChanged(); } }
 
         private string _newTodoText;
-        public string NewTodoText
-        {
-            get => _newTodoText;
-            set
-            {
-                _newTodoText = value;
-                OnPropertyChanged();
-            }
-        }
+        public string NewTodoText { get => _newTodoText; set { _newTodoText = value; OnPropertyChanged(); } }
 
-        // UI에 표시될 날짜 문자열
         public string CurrentDateDisplay => _currentDateForTimeline.ToString("yyyy-MM-dd");
         public string Username => _settings?.Username;
         public string CoinsDisplay => _settings?.Coins.ToString("N0");
-        #endregion
 
-        #region Commands (커맨드)
-        // UI의 버튼 등과 연결될 커맨드들
         public ICommand AddTaskCommand { get; }
         public ICommand EditTaskCommand { get; }
         public ICommand DeleteTaskCommand { get; }
@@ -67,19 +41,16 @@ namespace WorkPartner.ViewModels
         public ICommand PrevDayCommand { get; }
         public ICommand TodayCommand { get; }
         public ICommand NextDayCommand { get; }
-        #endregion
 
-        // ViewModel 생성자
+        // ✨✨✨ 오류의 원인! 이 생성자는 아무 인수도 받지 않아야 합니다. ✨✨✨
         public DashboardViewModel()
         {
-            // 데이터 컬렉션 초기화
             TaskItems = new ObservableCollection<TaskItem>();
             TodoItems = new ObservableCollection<TodoItem>();
             FilteredTodoItems = new ObservableCollection<TodoItem>();
             TimeLogEntries = new ObservableCollection<TimeLogEntry>();
             AllMemos = new ObservableCollection<MemoItem>();
 
-            // ✨ Command 초기화 부분을 명확하게 수정
             AddTaskCommand = new RelayCommand(AddTask, CanAddTask);
             EditTaskCommand = new RelayCommand(EditTask);
             DeleteTaskCommand = new RelayCommand(DeleteTask);
@@ -88,13 +59,9 @@ namespace WorkPartner.ViewModels
             TodayCommand = new RelayCommand(p => GoToToday());
             NextDayCommand = new RelayCommand(p => ChangeDay(1));
 
-            // 비동기로 데이터 로딩 시작
-            _ = LoadAllDataAsync();
-
             DataManager.SettingsUpdated += OnSettingsUpdated;
         }
 
-        #region Data Logic (데이터 로직)
         public async Task LoadAllDataAsync()
         {
             LoadSettings();
@@ -102,14 +69,12 @@ namespace WorkPartner.ViewModels
             await LoadTodosAsync();
             await LoadTimeLogsAsync();
             await LoadMemosAsync();
-
             UpdateUIAfterDataLoad();
         }
 
         public void LoadSettings()
         {
             _settings = DataManager.LoadSettings();
-            // 설정이 로드되면 관련된 UI 속성들을 모두 갱신하도록 알림
             OnPropertyChanged(nameof(Username));
             OnPropertyChanged(nameof(CoinsDisplay));
         }
@@ -123,16 +88,14 @@ namespace WorkPartner.ViewModels
                 var loadedTasks = await JsonSerializer.DeserializeAsync<List<TaskItem>>(stream, DataManager.JsonOptions);
                 if (loadedTasks == null) return;
 
-                // UI 스레드에서 컬렉션을 변경하도록 Dispatcher 사용
-                Application.Current.Dispatcher.Invoke(() =>
+                await Application.Current.Dispatcher.InvokeAsync(() =>
                 {
                     TaskItems.Clear();
                     foreach (var task in loadedTasks)
                     {
                         if (_settings.TaskColors.TryGetValue(task.Text, out var colorHex))
                         {
-                            try { task.ColorBrush = (SolidColorBrush)new BrushConverter().ConvertFromString(colorHex); }
-                            catch { /* 색상 변환 실패 시 무시 */ }
+                            try { task.ColorBrush = (SolidColorBrush)new BrushConverter().ConvertFromString(colorHex); } catch { }
                         }
                         TaskItems.Add(task);
                     }
@@ -141,20 +104,18 @@ namespace WorkPartner.ViewModels
             catch (Exception ex) { Debug.WriteLine($"Error loading tasks: {ex.Message}"); }
         }
 
-        // LoadTodosAsync, LoadTimeLogsAsync, LoadMemosAsync (기존과 유사하게 구현)
         private async Task LoadTodosAsync()
         {
             if (!File.Exists(DataManager.TodosFilePath)) return;
             try
             {
                 await using var stream = File.OpenRead(DataManager.TodosFilePath);
-                var loadedTodos = await JsonSerializer.DeserializeAsync<ObservableCollection<TodoItem>>(stream, DataManager.JsonOptions);
+                var loadedTodos = await JsonSerializer.DeserializeAsync<List<TodoItem>>(stream, DataManager.JsonOptions);
                 if (loadedTodos == null) return;
-                Application.Current.Dispatcher.Invoke(() =>
+                await Application.Current.Dispatcher.InvokeAsync(() =>
                 {
                     TodoItems.Clear();
                     foreach (var todo in loadedTodos) TodoItems.Add(todo);
-                    FilterTodos();
                 });
             }
             catch (Exception ex) { Debug.WriteLine($"Error loading todos: {ex.Message}"); }
@@ -168,7 +129,7 @@ namespace WorkPartner.ViewModels
                 await using var stream = File.OpenRead(DataManager.TimeLogFilePath);
                 var loadedLogs = await JsonSerializer.DeserializeAsync<ObservableCollection<TimeLogEntry>>(stream, DataManager.JsonOptions);
                 if (loadedLogs == null) return;
-                Application.Current.Dispatcher.Invoke(() =>
+                await Application.Current.Dispatcher.InvokeAsync(() =>
                 {
                     TimeLogEntries.Clear();
                     foreach (var log in loadedLogs) TimeLogEntries.Add(log);
@@ -183,9 +144,9 @@ namespace WorkPartner.ViewModels
             try
             {
                 await using var stream = File.OpenRead(DataManager.MemosFilePath);
-                var loadedMemos = await JsonSerializer.DeserializeAsync<ObservableCollection<MemoItem>>(stream, DataManager.JsonOptions);
+                var loadedMemos = await JsonSerializer.DeserializeAsync<List<MemoItem>>(stream, DataManager.JsonOptions);
                 if (loadedMemos == null) return;
-                Application.Current.Dispatcher.Invoke(() =>
+                await Application.Current.Dispatcher.InvokeAsync(() =>
                 {
                     AllMemos.Clear();
                     foreach (var memo in loadedMemos) AllMemos.Add(memo);
@@ -198,9 +159,7 @@ namespace WorkPartner.ViewModels
         private void SaveTodos() => DataManager.SaveTodos(TodoItems);
         private void SaveTimeLogs() => DataManager.SaveTimeLogs(TimeLogEntries);
         private void SaveSettings() => DataManager.SaveSettingsAndNotify(_settings);
-        #endregion
 
-        #region Command Methods (커맨드 실행 메서드)
         private bool CanAddTask(object parameter) => !string.IsNullOrWhiteSpace(NewTaskText);
         private void AddTask(object parameter)
         {
@@ -228,7 +187,6 @@ namespace WorkPartner.ViewModels
         private void EditTask(object parameter)
         {
             if (parameter is not TaskItem selectedTask) return;
-
             var inputWindow = new InputWindow("과목 이름 수정", selectedTask.Text) { Owner = Application.Current.MainWindow };
             if (inputWindow.ShowDialog() != true) return;
 
@@ -253,14 +211,12 @@ namespace WorkPartner.ViewModels
             SaveTasks();
             SaveTimeLogs();
             SaveSettings();
-            // UI 갱신은 데이터 바인딩이 자동으로 처리!
         }
 
         private void DeleteTask(object parameter)
         {
             if (parameter is not TaskItem selectedTask) return;
-
-            if (MessageBox.Show($"'{selectedTask.Text}' 과목을 삭제하시겠습니까?\n관련된 모든 학습 기록도 삭제됩니다.", "삭제 확인", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+            if (MessageBox.Show($"'{selectedTask.Text}' 과목을 삭제하시겠습니까?", "삭제 확인", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
 
             string taskNameToDelete = selectedTask.Text;
             if (_settings.TaskColors.ContainsKey(taskNameToDelete))
@@ -272,8 +228,7 @@ namespace WorkPartner.ViewModels
             var logsToRemove = TimeLogEntries.Where(l => l.TaskText == taskNameToDelete).ToList();
             foreach (var log in logsToRemove) TimeLogEntries.Remove(log);
 
-            TaskItems.Remove(selectedTask); // 마지막에 제거해야 참조 문제 없음
-
+            TaskItems.Remove(selectedTask);
             SaveTasks();
             SaveTimeLogs();
         }
@@ -299,15 +254,12 @@ namespace WorkPartner.ViewModels
             _currentDateForTimeline = DateTime.Today;
             UpdateUIAfterDataLoad();
         }
-        #endregion
 
-        #region UI Update Logic (UI 갱신 로직)
         private void UpdateUIAfterDataLoad()
         {
-            OnPropertyChanged(nameof(CurrentDateDisplay)); // 날짜 표시 갱신
+            OnPropertyChanged(nameof(CurrentDateDisplay));
             RecalculateAllTotals();
             FilterTodos();
-            // ✨ RenderTimeTable() 호출은 View에서 담당하므로 여기서는 호출하지 않음
         }
 
         public void RecalculateAllTotals()
@@ -330,8 +282,7 @@ namespace WorkPartner.ViewModels
         private async void OnSettingsUpdated()
         {
             LoadSettings();
-            await LoadTasksAsync(); // 설정이 바뀌면 과목 색상 등을 다시 로드
+            await LoadTasksAsync();
         }
-        #endregion
     }
 }

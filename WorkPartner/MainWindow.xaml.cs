@@ -20,7 +20,7 @@ namespace WorkPartner
             _dashboardPage.SetParentWindow(this);
             MainFrame.Navigate(_dashboardPage);
 
-            Loaded += MainWindow_Loaded; // <--- 이 줄을 추가합니다.
+            Loaded += MainWindow_Loaded;
         }
 
         private async void NavButton_Click(object sender, RoutedEventArgs e)
@@ -32,7 +32,7 @@ namespace WorkPartner
         }
         private void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
-            ToggleMiniTimer(); // 메인 창이 모두 로드된 후 미니 타이머를 켭니다.
+            ToggleMiniTimer();
         }
 
         public async Task NavigateToPage(string pageName)
@@ -41,7 +41,10 @@ namespace WorkPartner
             {
                 case "Dashboard":
                     MainFrame.Navigate(_dashboardPage);
-                    await _dashboardPage.LoadAllDataAsync();
+                    if (_dashboardPage.DataContext is ViewModels.DashboardViewModel viewModel)
+                    {
+                        await viewModel.LoadAllDataAsync();
+                    }
                     break;
                 case "Avatar":
                     if (_avatarPage == null) _avatarPage = new AvatarPage();
@@ -50,14 +53,14 @@ namespace WorkPartner
                     break;
                 case "Analysis":
                     if (_analysisPage == null) _analysisPage = new AnalysisPage();
-                    await _analysisPage.LoadAndAnalyzeData(); // 비동기 로딩
+                    await _analysisPage.LoadAndAnalyzeData();
                     MainFrame.Navigate(_analysisPage);
                     break;
                 case "Settings":
                     if (_settingsPage == null)
                     {
                         _settingsPage = new SettingsPage();
-                        _settingsPage.SetParentWindow(this); // 부모 윈도우 참조 설정
+                        _settingsPage.SetParentWindow(this);
                     }
                     _settingsPage.LoadData();
                     MainFrame.Navigate(_settingsPage);
@@ -72,10 +75,7 @@ namespace WorkPartner
             {
                 if (_miniTimer == null)
                 {
-                    _miniTimer = new MiniTimerWindow
-                    {
-                        Owner = this // 오류가 해결된 상태이므로 이 코드를 그대로 둡니다.
-                    };
+                    _miniTimer = new MiniTimerWindow { Owner = this };
                     _miniTimer.Closed += (s, e) => _miniTimer = null;
                     _dashboardPage.SetMiniTimerReference(_miniTimer);
                 }
@@ -96,11 +96,9 @@ namespace WorkPartner
         private void CloseButton_Click(object sender, RoutedEventArgs e) => Application.Current.Shutdown();
         private void MinimizeButton_Click(object sender, RoutedEventArgs e) => this.WindowState = WindowState.Minimized;
 
-
         public void SetDashboardViewModel(object viewModel)
         {
             _dashboardPage.DataContext = viewModel;
         }
     }
 }
-

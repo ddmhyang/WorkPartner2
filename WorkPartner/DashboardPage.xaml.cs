@@ -14,6 +14,7 @@ namespace WorkPartner
     {
         private MainWindow _parentWindow;
         private readonly DashboardViewModel _viewModel;
+        private MiniTimerWindow _miniTimerRef;
 
         private readonly Dictionary<string, BackgroundSoundPlayer> _soundPlayers = new();
         private readonly Dictionary<string, SolidColorBrush> _taskBrushCache = new();
@@ -33,13 +34,7 @@ namespace WorkPartner
 
             InitializeSoundPlayers();
 
-            _selectionBox = new Rectangle
-            {
-                Stroke = Brushes.DodgerBlue,
-                StrokeThickness = 1,
-                Fill = new SolidColorBrush(Color.FromArgb(50, 30, 144, 255)),
-                Visibility = Visibility.Collapsed
-            };
+            _selectionBox = new Rectangle { Stroke = Brushes.DodgerBlue, StrokeThickness = 1, Fill = new SolidColorBrush(Color.FromArgb(50, 30, 144, 255)), Visibility = Visibility.Collapsed };
             if (!SelectionCanvas.Children.Contains(_selectionBox))
             {
                 SelectionCanvas.Children.Add(_selectionBox);
@@ -47,15 +42,17 @@ namespace WorkPartner
 
             _viewModel.TimeLogEntries.CollectionChanged += (s, e) => RenderTimeTable();
             _viewModel.PropertyChanged += (s, e) => {
-                if (e.PropertyName == nameof(_viewModel.CurrentDateDisplay))
-                {
-                    RenderTimeTable();
-                }
+                if (e.PropertyName == nameof(_viewModel.CurrentDateDisplay)) RenderTimeTable();
             };
 
             DataManager.SettingsUpdated += OnSettingsUpdated;
             this.Unloaded += (s, e) => DataManager.SettingsUpdated -= OnSettingsUpdated;
             this.Loaded += DashboardPage_Loaded;
+        }
+
+        public void SetMiniTimerReference(MiniTimerWindow miniTimer)
+        {
+            _miniTimerRef = miniTimer;
         }
 
         private async void DashboardPage_Loaded(object sender, RoutedEventArgs e)
@@ -128,17 +125,11 @@ namespace WorkPartner
             }
         }
 
-        private void InitializeSoundPlayers()
-        {
-            // Placeholder
-        }
+        private void InitializeSoundPlayers() { /* Placeholder */ }
 
         private SolidColorBrush GetColorForTask(string taskName)
         {
-            if (_taskBrushCache.TryGetValue(taskName, out var cachedBrush))
-            {
-                return cachedBrush;
-            }
+            if (_taskBrushCache.TryGetValue(taskName, out var cachedBrush)) return cachedBrush;
 
             var taskItem = _viewModel.TaskItems.FirstOrDefault(t => t.Text == taskName);
             if (taskItem?.ColorBrush is SolidColorBrush solidColorBrush)
@@ -146,20 +137,20 @@ namespace WorkPartner
                 _taskBrushCache[taskName] = solidColorBrush;
                 return solidColorBrush;
             }
-
             return DefaultGrayBrush;
         }
 
         private void RenderTimeTable()
         {
+            if (SelectionCanvas == null || TimeTableContainer == null) return;
+
             SelectionCanvas.Children.Clear();
             SelectionCanvas.Children.Add(_selectionBox);
             TimeTableContainer.Children.Clear();
 
             var logsForSelectedDate = _viewModel.TimeLogEntries
                 .Where(log => log.StartTime.Date.ToString("yyyy-MM-dd") == _viewModel.CurrentDateDisplay)
-                .OrderBy(l => l.StartTime)
-                .ToList();
+                .OrderBy(l => l.StartTime).ToList();
 
             double blockWidth = 35, blockHeight = 17, hourLabelWidth = 30;
 
@@ -170,8 +161,7 @@ namespace WorkPartner
                 hourRowPanel.Children.Add(hourLabel);
                 for (int minuteBlock = 0; minuteBlock < 6; minuteBlock++)
                 {
-                    var blockContainer = new Grid { Width = blockWidth, Height = blockHeight, Background = BlockBackgroundBrush, Margin = new Thickness(1, 0, 1, 0) };
-                    var blockWithBorder = new Border { BorderBrush = BlockBorderBrush, BorderThickness = new Thickness(1, 0, (minuteBlock + 1) % 6 == 0 ? 1 : 0, 0), Child = blockContainer };
+                    var blockWithBorder = new Border { BorderBrush = BlockBorderBrush, BorderThickness = new Thickness(1, 0, (minuteBlock + 1) % 6 == 0 ? 1 : 0, 0), Child = new Grid { Width = blockWidth, Height = blockHeight, Background = BlockBackgroundBrush, Margin = new Thickness(1, 0, 1, 0) } };
                     hourRowPanel.Children.Add(blockWithBorder);
                 }
                 TimeTableContainer.Children.Add(hourRowPanel);
@@ -180,8 +170,7 @@ namespace WorkPartner
             foreach (var logEntry in logsForSelectedDate)
             {
                 var logStart = logEntry.StartTime.TimeOfDay;
-                var logEnd = logEntry.EndTime.TimeOfDay;
-                var duration = logEnd - logStart;
+                var duration = logEntry.EndTime - logEntry.StartTime;
                 if (duration.TotalSeconds <= 1) continue;
 
                 var topOffset = logStart.TotalHours * (blockHeight + 2);
@@ -197,7 +186,7 @@ namespace WorkPartner
                     HorizontalAlignment = HorizontalAlignment.Left,
                     VerticalAlignment = VerticalAlignment.Top,
                     Margin = new Thickness(leftOffset, topOffset, 0, 0),
-                    ToolTip = new ToolTip { Content = $"{logEntry.TaskText}\n{logEntry.StartTime:HH:mm} ~ {logEntry.EndTime:HH:mm}\n\n클릭하여 수정 또는 삭제" },
+                    ToolTip = new ToolTip { Content = $"{logEntry.TaskText}\n{logEntry.StartTime:HH:mm} ~ {logEntry.EndTime:HH:mm}" },
                     Tag = logEntry,
                     Cursor = Cursors.Hand
                 };
