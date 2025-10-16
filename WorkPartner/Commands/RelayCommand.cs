@@ -1,6 +1,4 @@
-﻿// 파일: WorkPartner/Commands/RelayCommand.cs
-
-using System;
+﻿using System;
 using System.Windows.Input;
 
 namespace WorkPartner.Commands
@@ -16,15 +14,9 @@ namespace WorkPartner.Commands
             _canExecute = canExecute;
         }
 
-        public bool CanExecute(object parameter)
-        {
-            return _canExecute == null || _canExecute(parameter);
-        }
+        public bool CanExecute(object parameter) => _canExecute == null || _canExecute(parameter);
 
-        public void Execute(object parameter)
-        {
-            _execute(parameter);
-        }
+        public void Execute(object parameter) => _execute(parameter);
 
         public event EventHandler CanExecuteChanged
         {

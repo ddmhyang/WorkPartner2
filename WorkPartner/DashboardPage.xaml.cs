@@ -6,17 +6,16 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Shapes;
-using WorkPartner.ViewModels; // ✨ ViewModel 네임스페이스 추가
+using WorkPartner.ViewModels;
 
 namespace WorkPartner
 {
     public partial class DashboardPage : UserControl
     {
         private MainWindow _parentWindow;
-        // ✨ ViewModel 인스턴스를 멤버 변수로 가짐
         private readonly DashboardViewModel _viewModel;
 
-        // UI와 직접 관련된 필드들은 그대로 유지
+        // ... (다른 UI 관련 필드들은 변경 없이 그대로 유지) ...
         private readonly Dictionary<string, BackgroundSoundPlayer> _soundPlayers = new();
         private readonly Dictionary<string, SolidColorBrush> _taskBrushCache = new();
         private static readonly SolidColorBrush DefaultGrayBrush = new SolidColorBrush(Colors.Gray);
@@ -27,10 +26,10 @@ namespace WorkPartner
         private bool _isDragging = false;
         private MemoWindow _memoWindow;
 
+
         public DashboardPage()
         {
             InitializeComponent();
-            // ✨ ViewModel 인스턴스를 생성하고 DataContext로 설정
             _viewModel = new DashboardViewModel();
             this.DataContext = _viewModel;
 
@@ -48,7 +47,6 @@ namespace WorkPartner
                 SelectionCanvas.Children.Add(_selectionBox);
             }
 
-            // ✨ ViewModel의 데이터가 변경될 때마다 타임라인을 다시 그리도록 이벤트 연결
             _viewModel.TimeLogEntries.CollectionChanged += (s, e) => RenderTimeTable();
             _viewModel.PropertyChanged += (s, e) => {
                 if (e.PropertyName == nameof(_viewModel.CurrentDateDisplay))
@@ -62,17 +60,17 @@ namespace WorkPartner
             this.Loaded += DashboardPage_Loaded;
         }
 
-        private void DashboardPage_Loaded(object sender, RoutedEventArgs e)
+        private async void DashboardPage_Loaded(object sender, RoutedEventArgs e)
         {
-            // 페이지가 로드될 때 타임라인을 그림
+            await _viewModel.LoadAllDataAsync();
             RenderTimeTable();
+            UpdatePinnedMemoView(); // ✨ 로드 시 핀 메모 업데이트
         }
 
         private async void DashboardPage_IsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
         {
             if (e.NewValue is true)
             {
-                // ✨ 페이지가 다시 보일 때 데이터를 새로고침하고 UI 갱신
                 await _viewModel.LoadAllDataAsync();
                 RenderTimeTable();
                 UpdateCharacterInfoPanel();
@@ -80,15 +78,51 @@ namespace WorkPartner
             }
         }
 
+        // ✨ TimeLogRect_MouseLeftButtonDown 메서드 수정
+        private void TimeLogRect_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if ((sender as FrameworkElement)?.Tag is not TimeLogEntry log) return;
+
+            // ✨ 수정된 AddLogWindow 생성자 호출
+            var win = new AddLogWindow(_viewModel.TaskItems, log) { Owner = Window.GetWindow(this) };
+            if (win.ShowDialog() != true) return;
+
+            if (win.IsDeleted)
+            {
+                _viewModel.TimeLogEntries.Remove(log);
+            }
+            else
+            {
+                // ✨ NewLogEntry 속성을 통해 업데이트된 내용을 반영
+                log.StartTime = win.NewLogEntry.StartTime;
+                log.EndTime = win.NewLogEntry.EndTime;
+                log.TaskText = win.NewLogEntry.TaskText;
+                log.FocusScore = win.NewLogEntry.FocusScore;
+            }
+
+            // ViewModel의 데이터를 직접 저장하는 것은 이상적이지 않지만, 일단 현재 구조 유지
+            DataManager.SaveTimeLogs(_viewModel.TimeLogEntries);
+            _viewModel.RecalculateAllTotals();
+            RenderTimeTable();
+        }
+
+        // ... (다른 메서드들은 이전과 동일하게 유지) ...
+
+        // ✨ 핀 메모 닫기 버튼 이벤트 핸들러 추가
+        private void ClosePinnedMemo_Click(object sender, RoutedEventArgs e)
+        {
+            PinnedMemoPanel.Visibility = Visibility.Collapsed;
+        }
+
+        // ... (파일의 나머지 부분은 이전 답변과 동일) ...
+        #region Other Methods from previous answer
         private void OnSettingsUpdated()
         {
-            // 설정이 업데이트되면 브러시 캐시를 비우고 UI 갱신
             _taskBrushCache.Clear();
             RenderTimeTable();
             UpdateCharacterInfoPanel();
         }
 
-        // ✨ KeyDown 이벤트는 ViewModel의 Command를 직접 호출하도록 변경
         private void TaskInput_KeyDown(object sender, KeyEventArgs e)
         {
             if (e.Key == Key.Enter && _viewModel.AddTaskCommand.CanExecute(null))
@@ -105,7 +139,12 @@ namespace WorkPartner
             }
         }
 
-        #region UI Rendering (View의 고유 역할)
+        private void InitializeSoundPlayers()
+        {
+            // This is a placeholder. You should have your actual sound initialization here.
+            // For example: _soundPlayers["rain"] = new BackgroundSoundPlayer("rain.mp3");
+        }
+
         private SolidColorBrush GetColorForTask(string taskName)
         {
             if (_taskBrushCache.TryGetValue(taskName, out var cachedBrush))
@@ -113,12 +152,11 @@ namespace WorkPartner
                 return cachedBrush;
             }
 
-            // ✨ 이제 TaskItem 자체에 ColorBrush가 있으므로 ViewModel에서 가져옴
             var taskItem = _viewModel.TaskItems.FirstOrDefault(t => t.Text == taskName);
-            if (taskItem != null && taskItem.ColorBrush != null)
+            if (taskItem?.ColorBrush is SolidColorBrush solidColorBrush)
             {
-                _taskBrushCache[taskName] = taskItem.ColorBrush;
-                return taskItem.ColorBrush;
+                _taskBrushCache[taskName] = solidColorBrush;
+                return solidColorBrush;
             }
 
             return DefaultGrayBrush;
@@ -130,7 +168,6 @@ namespace WorkPartner
             SelectionCanvas.Children.Add(_selectionBox);
             TimeTableContainer.Children.Clear();
 
-            // ✨ 데이터를 ViewModel에서 직접 가져옴
             var logsForSelectedDate = _viewModel.TimeLogEntries
                 .Where(log => log.StartTime.Date.ToString("yyyy-MM-dd") == _viewModel.CurrentDateDisplay)
                 .OrderBy(l => l.StartTime)
@@ -181,7 +218,6 @@ namespace WorkPartner
             }
         }
 
-        // ✨ 캐릭터 정보 패널 업데이트 (ViewModel의 데이터 바인딩으로 대체 가능하지만 일단 유지)
         private void UpdateCharacterInfoPanel(string status = null)
         {
             if (_viewModel == null) return;
@@ -190,21 +226,21 @@ namespace WorkPartner
             CharacterPreview.UpdateCharacter();
         }
 
-        // ✨ 핀된 메모 업데이트 (이것도 추후 ViewModel로 이전 가능)
         public void UpdatePinnedMemoView()
         {
-            // 로직 유지
+            var pinnedMemo = _viewModel.AllMemos.FirstOrDefault(m => m.IsPinned);
+            if (pinnedMemo != null)
+            {
+                PinnedMemoPanel.Visibility = Visibility.Visible;
+                PinnedMemoContent.Text = pinnedMemo.Content;
+            }
+            else
+            {
+                PinnedMemoPanel.Visibility = Visibility.Collapsed;
+            }
         }
 
-        // 사운드 플레이어, 드래그 선택 등 나머지 UI 로직은 여기에 그대로 둡니다.
-        // InitializeSoundPlayers(), TimeLogRect_MouseLeftButtonDown(), SelectionCanvas_Mouse*() 등...
-        #endregion
-
         public void SetParentWindow(MainWindow window) => _parentWindow = window;
-
-        // ✨ 아래 메서드들은 ViewModel로 이전되었으므로 삭제합니다.
-        // LoadTasks, SaveTasks, AddTaskButton_Click, EditTaskButton_Click, DeleteTaskButton_Click
-        // LoadTodos, SaveTodos, AddTodoButton_Click, TodoItem_CheckboxChanged, 
-        // LoadTimeLogs, SaveTimeLogs, RecalculateAllTotals, 등등...
+        #endregion
     }
 }

@@ -79,9 +79,9 @@ namespace WorkPartner.ViewModels
             TimeLogEntries = new ObservableCollection<TimeLogEntry>();
             AllMemos = new ObservableCollection<MemoItem>();
 
-            // 커맨드 초기화 (RelayCommand와 실제 실행될 메서드를 연결)
+            // ✨ Command 초기화 부분을 명확하게 수정
             AddTaskCommand = new RelayCommand(AddTask, CanAddTask);
-            EditTaskCommand = new RelayCommand(EditTask); // CanExecute 조건이 필요 없으면 생략 가능
+            EditTaskCommand = new RelayCommand(EditTask);
             DeleteTaskCommand = new RelayCommand(DeleteTask);
             AddTodoCommand = new RelayCommand(AddTodo, CanAddTodo);
             PrevDayCommand = new RelayCommand(p => ChangeDay(-1));
