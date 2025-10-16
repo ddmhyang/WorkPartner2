@@ -244,6 +244,7 @@ namespace WorkPartner
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
             CurrentDateDisplay.Text = _currentDateForTimeline.ToString("yyyy-MM-dd");
+            CurrentDayDisplay.Text = _currentDateForTimeline.ToString("ddd");
             RecalculateAllTotals();
             RenderTimeTable();
         }
@@ -522,14 +523,18 @@ namespace WorkPartner
 
         private void RenderTimeTable()
         {
+            // ✨ [오류 수정] 타임라인에 그려진 이전 로그 기록들을 모두 삭제합니다.
+            var bordersToRemove = SelectionCanvas.Children.OfType<Border>()
+                                             .Where(b => b.Tag is TimeLogEntry)
+                                             .ToList();
+            foreach (var border in bordersToRemove)
+            {
+                SelectionCanvas.Children.Remove(border);
+            }
+
             TimeTableContainer.Children.Clear();
-            var logsForSelectedDate = TimeLogEntries
-                .Where(log => log.StartTime.Date == _currentDateForTimeline.Date)
-                .OrderBy(l => l.StartTime)
-                .ToList();
 
-            if (!logsForSelectedDate.Any()) return;
-
+            // ✨ [오류 수정] 로그 기록이 없는 날에도 타임 테이블 배경은 항상 표시되도록 수정했습니다.
             double blockWidth = 35, blockHeight = 17, hourLabelWidth = 30;
 
             for (int hour = 0; hour < 24; hour++)
@@ -557,6 +562,11 @@ namespace WorkPartner
                 }
                 TimeTableContainer.Children.Add(hourRowPanel);
             }
+
+            var logsForSelectedDate = TimeLogEntries
+                .Where(log => log.StartTime.Date == _currentDateForTimeline.Date)
+                .OrderBy(l => l.StartTime)
+                .ToList();
 
             foreach (var logEntry in logsForSelectedDate)
             {
@@ -604,6 +614,9 @@ namespace WorkPartner
         private void UpdateDateAndUI()
         {
             CurrentDateDisplay.Text = _currentDateForTimeline.ToString("yyyy-MM-dd");
+
+            CurrentDayDisplay.Text = _currentDateForTimeline.ToString("ddd");
+
             RenderTimeTable();
             RecalculateAllTotals();
             FilterTodos();
