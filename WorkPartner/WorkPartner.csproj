@@ -52,6 +52,10 @@
 	</ItemGroup>
 
 	<ItemGroup>
+	  <Compile Include="shaders\HueShift.ps" />
+	</ItemGroup>
+
+	<ItemGroup>
 		<!-- 프로그램 실행 시 필요한 파일들을 출력 폴더로 복사합니다. -->
 		<Content Include="WorkPartner.ico">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>

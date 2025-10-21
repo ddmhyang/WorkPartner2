@@ -1,4 +1,10 @@
-﻿// 𝙃𝙚𝙧𝙚'𝙨 𝙩𝙝𝙚 𝙘𝙤𝙙𝙚 𝙞𝙣 ddmhyang/workpartner2/WorkPartner2-4/WorkPartner/DashboardViewModel.cs
+﻿using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Diagnostics;
+using System.Runtime.CompilerServices;
+using WorkPartner.Services;
+
+[Source: ddmhyang/workpartner2/WorkPartner2-65ebebbf8a11c7a93c9f62b63c3b1e1c4da5911d/WorkPartner/DashboardViewModel.cs]
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -145,12 +151,47 @@ namespace WorkPartner.ViewModels
             UpdateLiveTimeDisplays();
         }
 
+        // ✨ [추가] AI 태그 규칙을 검사하고 현재 과목을 자동 변경하는 메서드
+        private void CheckTagRules(string activeTitle, string activeUrl)
+        {
+            if (_settings.TagRules == null || _settings.TagRules.Count == 0) return;
+
+            // 창 제목과 URL을 합쳐서 키워드 검사
+            string combinedText = (activeTitle + " " + activeUrl).ToLower();
+
+            foreach (var rule in _settings.TagRules)
+            {
+                string keyword = rule.Key.ToLower();
+                if (combinedText.Contains(keyword))
+                {
+                    string targetTaskName = rule.Value;
+
+                    // 현재 선택된 과목과 규칙이 일치하는 과목이 다를 경우에만 변경
+                    if (SelectedTaskItem == null || !SelectedTaskItem.Text.Equals(targetTaskName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        var foundTask = TaskItems.FirstOrDefault(t => t.Text.Equals(targetTaskName, StringComparison.OrdinalIgnoreCase));
+                        if (foundTask != null)
+                        {
+                            SelectedTaskItem = foundTask;
+                            Debug.WriteLine($"AI Tag Rule applied: '{rule.Key}' -> '{targetTaskName}'");
+                            break; // 첫 번째 일치하는 규칙만 적용
+                        }
+                    }
+                }
+            }
+        }
+
         private void HandleStopwatchMode()
         {
             if (_settings == null) return;
 
+            // ✨ [수정] 활성 창 제목을 가져오도록 추가
             string activeProcess = ActiveWindowHelper.GetActiveProcessName().ToLower();
             string activeUrl = ActiveWindowHelper.GetActiveBrowserTabUrl()?.ToLower() ?? string.Empty;
+            string activeTitle = ActiveWindowHelper.GetActiveWindowTitle()?.ToLower() ?? string.Empty; // ✨[추가]
+
+            // ✨ [추가] 태그 규칙을 먼저 검사하여 현재 과목(SelectedTaskItem)을 변경
+            CheckTagRules(activeTitle, activeUrl);
 
             Action stopAndLogAction = () =>
             {
@@ -159,19 +200,26 @@ namespace WorkPartner.ViewModels
                     LogWorkSession(_isPausedForIdle ? _sessionStartTime.Add(_stopwatch.Elapsed) : null);
                     _stopwatch.Reset();
                     IsRunningChanged?.Invoke(false);
-                    CurrentTaskDisplayText = "없음";
-                    CurrentTaskChanged?.Invoke(CurrentTaskDisplayText);
+                    // ✨ [수정] 태그 규칙에 의해 과목이 선택되었을 수 있으므로 "없음"으로 강제 변경하지 않습니다.
+                    // CurrentTaskDisplayText = "없음"; 
+                    // CurrentTaskChanged?.Invoke(CurrentTaskDisplayText);
                 }
                 _isPausedForIdle = false;
             };
 
-            if (_settings.DistractionProcesses.Any(p => activeProcess.Contains(p) || (!string.IsNullOrEmpty(activeUrl) && activeUrl.Contains(p))))
+            // ✨ [수정] 방해 프로세스 검사에 창 제목(activeTitle)도 포함 (더 정밀한 차단)
+            if (_settings.DistractionProcesses.Any(p => activeProcess.Contains(p) ||
+                                                        (!string.IsNullOrEmpty(activeUrl) && activeUrl.Contains(p)) ||
+                                                        (!string.IsNullOrEmpty(activeTitle) && activeTitle.Contains(p))))
             {
                 stopAndLogAction();
                 return;
             }
 
-            if (_settings.WorkProcesses.Any(p => activeProcess.Contains(p) || (!string.IsNullOrEmpty(activeUrl) && activeUrl.Contains(p))))
+            // ✨ [수정] 작업 프로세스 검사에 창 제목(activeTitle)도 포함
+            if (_settings.WorkProcesses.Any(p => activeProcess.Contains(p) ||
+                                                  (!string.IsNullOrEmpty(activeUrl) && activeUrl.Contains(p)) ||
+                                                  (!string.IsNullOrEmpty(activeTitle) && activeTitle.Contains(p))))
             {
                 bool isPassive = _settings.PassiveProcesses.Any(p => activeProcess.Contains(p));
                 bool isCurrentlyIdle = _settings.IsIdleDetectionEnabled && !isPassive && ActiveWindowHelper.GetIdleTime().TotalSeconds > _settings.IdleTimeoutSeconds;
@@ -200,6 +248,7 @@ namespace WorkPartner.ViewModels
                     }
                     else if (!_stopwatch.IsRunning)
                     {
+                        // ✨ [수정] AI 태그 규칙에 의해 SelectedTaskItem이 이미 설정되었을 수 있습니다.
                         _currentWorkingTask = SelectedTaskItem;
                         if (_currentWorkingTask == null && TaskItems.Any())
                         {

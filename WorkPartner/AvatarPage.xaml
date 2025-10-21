@@ -8,28 +8,64 @@
              d:DesignHeight="526" d:DesignWidth="682"
              Background="{DynamicResource MainBackgroundBrush}">
     <UserControl.Resources>
-        <Style x:Key="CategoryButtonStyle" TargetType="Button">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
-            <Setter Property="FontSize" Value="10"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="10" Padding="10,5">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+            </ResourceDictionary.MergedDictionaries>
 
-        <Style x:Key="SelectedCategoryButtonStyle" TargetType="Button" BasedOn="{StaticResource CategoryButtonStyle}">
-            <Setter Property="Background" Value="{DynamicResource AccentColorBrush}"/>
-            <Setter Property="Foreground" Value="White"/>
-        </Style>
+            <Style x:Key="CategoryButtonStyle" TargetType="Button">
+                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="BorderThickness" Value="0"/>
+                <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
+                <Setter Property="FontSize" Value="10"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="10" Padding="10,5">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+                <Style.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="Background" Value="{DynamicResource BorderBrush}"/>
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
 
+            <Style x:Key="SelectedCategoryButtonStyle" TargetType="Button" BasedOn="{StaticResource CategoryButtonStyle}">
+                <Setter Property="Background" Value="{DynamicResource AccentColorBrush}"/>
+                <Setter Property="Foreground" Value="White"/>
+                <Style.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="Background" Value="{DynamicResource AccentColorBrush}"/>
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+
+            <Style x:Key="PrimaryButtonStyle" TargetType="Button">
+                <Setter Property="Background" Value="{DynamicResource AccentColorBrush}"/>
+                <Setter Property="Foreground" Value="White"/>
+                <Setter Property="Padding" Value="10, 5"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border Background="{TemplateBinding Background}" CornerRadius="5">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <Style x:Key="SecondaryButtonStyle" TargetType="Button" BasedOn="{StaticResource PrimaryButtonStyle}">
+                <Setter Property="Background" Value="{DynamicResource SecondaryBackgroundBrush}"/>
+                <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
+            </Style>
+
+        </ResourceDictionary>
     </UserControl.Resources>
 
     <Viewbox Stretch="Uniform">
@@ -42,23 +78,50 @@
                 <local:CharacterDisplay x:Name="CharacterPreview" />
             </Border>
 
-            <StackPanel Canvas.Left="360" Canvas.Top="110" Width="282">
-                <StackPanel Orientation="Horizontal">
+            <Grid Canvas.Left="360" Canvas.Top="110" Width="282" Height="380">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <StackPanel Grid.Row="0" Orientation="Horizontal">
                     <TextBlock Text="보유 코인:" VerticalAlignment="Center" FontWeight="Bold" Foreground="{DynamicResource PrimaryTextBrush}"/>
                     <Image Source="/images/coin.png" Width="16" Height="16" Margin="10,0,5,0"/>
                     <TextBlock x:Name="CoinDisplay" Text="0" VerticalAlignment="Center" FontWeight="Bold" Foreground="{DynamicResource PrimaryTextBrush}"/>
                 </StackPanel>
 
-                <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" Margin="0,15,0,0">
+                <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" Margin="0,15,0,0">
                     <StackPanel x:Name="CategoryPanel" Orientation="Horizontal"/>
                 </ScrollViewer>
 
-                <Border Width="282" Height="300" Margin="0,15,0,0" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="2" CornerRadius="10">
+                <Grid Grid.Row="2" Margin="0,15,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel x:Name="HueSliderPanel" Grid.Column="0" VerticalAlignment="Center" Visibility="Collapsed">
+                        <TextBlock Text="색조 변경" FontSize="10" Foreground="{DynamicResource SecondaryTextBrush}"/>
+                        <Slider x:Name="HueSlider" Minimum="0" Maximum="360" Value="0" SmallChange="1" LargeChange="10" 
+                                ValueChanged="HueSlider_ValueChanged" Margin="0,5,10,0"/>
+                    </StackPanel>
+
+                    <Button x:Name="RevertButton" Grid.Column="1" Content="되돌리기" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,5,0"
+                            Click="RevertButton_Click"/>
+
+                    <Button x:Name="SaveButton" Grid.Column="2" Content="저장하기" Style="{StaticResource PrimaryButtonStyle}"
+                            Click="SaveButton_Click"/>
+                </Grid>
+
+                <Border Grid.Row="3" Width="282" Margin="0,15,0,0" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="2" CornerRadius="10">
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
                         <WrapPanel x:Name="ItemPanel" Margin="10"/>
                     </ScrollViewer>
                 </Border>
-            </StackPanel>
+            </Grid>
         </Canvas>
     </Viewbox>
 </UserControl>
