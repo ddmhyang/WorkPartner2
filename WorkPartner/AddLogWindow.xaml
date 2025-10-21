@@ -27,11 +27,11 @@
 
         <TextBlock Grid.Row="4" Text="집중도 평점" FontWeight="Bold" Margin="0,10,0,5"/>
         <StackPanel Grid.Row="5" Orientation="Horizontal" x:Name="RatingPanel" VerticalAlignment="Top">
-            <Button Content="★" Tag="1" Click="RatingButton_Click" Style="{StaticResource RatingButton}"/>
-            <Button Content="★" Tag="2" Click="RatingButton_Click" Style="{StaticResource RatingButton}"/>
-            <Button Content="★" Tag="3" Click="RatingButton_Click" Style="{StaticResource RatingButton}"/>
-            <Button Content="★" Tag="4" Click="RatingButton_Click" Style="{StaticResource RatingButton}"/>
-            <Button Content="★" Tag="5" Click="RatingButton_Click" Style="{StaticResource RatingButton}"/>
+            <Button Content="★" Tag="1" Click="RatingButton_Click"/>
+            <Button Content="★" Tag="2" Click="RatingButton_Click"/>
+            <Button Content="★" Tag="3" Click="RatingButton_Click"/>
+            <Button Content="★" Tag="4" Click="RatingButton_Click"/>
+            <Button Content="★" Tag="5" Click="RatingButton_Click"/>
         </StackPanel>
 
         <StackPanel Grid.Row="5" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Bottom">

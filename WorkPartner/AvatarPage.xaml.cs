@@ -330,7 +330,7 @@ namespace WorkPartner
         /// </summary>
         private void SaveButton_Click(object sender, RoutedEventArgs e)
         {
-            long totalCost = 0;
+            int totalCost = 0;
             var itemsToBuy = new List<ShopItem>();
 
             // 1. 구매할 아이템 목록 계산 (파츠)

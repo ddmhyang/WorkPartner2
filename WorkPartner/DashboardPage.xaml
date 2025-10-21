@@ -116,8 +116,12 @@
                     <Button Canvas.Left="296" Canvas.Top="12" Content="+ 기록 직접 추가" Click="AddManualLogButton_Click" Height="17" Width="69" FontSize="8" Foreground="White" Style="{StaticResource RoundedButtonStyle}" Background="#FF2195F2"/>
 
                     <ScrollViewer Canvas.Left="0" Canvas.Top="38" Width="262" Height="264" VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled">
-                        <Grid x:Name="SelectionCanvas" Background="Transparent" MouseLeftButtonDown="SelectionCanvas_MouseLeftButtonDown" MouseMove="SelectionCanvas_MouseMove" MouseLeftButtonUp="SelectionCanvas_MouseLeftButtonUp">
+                        <Grid>
                             <StackPanel x:Name="TimeTableContainer" Orientation="Vertical"/>
+                            <Canvas x:Name="SelectionCanvas" Background="Transparent"
+                MouseLeftButtonDown="SelectionCanvas_MouseLeftButtonDown"
+                MouseMove="SelectionCanvas_MouseMove"
+                MouseLeftButtonUp="SelectionCanvas_MouseLeftButtonUp"/>
                         </Grid>
                     </ScrollViewer>
 

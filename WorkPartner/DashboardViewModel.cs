@@ -1,11 +1,4 @@
-﻿using System.Collections.ObjectModel;
-using System.ComponentModel;
-using System.Diagnostics;
-using System.Runtime.CompilerServices;
-using WorkPartner.Services;
-
-[Source: ddmhyang/workpartner2/WorkPartner2-65ebebbf8a11c7a93c9f62b63c3b1e1c4da5911d/WorkPartner/DashboardViewModel.cs]
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
