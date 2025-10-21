@@ -63,9 +63,9 @@
 		<DesignDataWithDesignTimeCreatableTypes Include="shaders\HueShift.fx">
 		  <CopyToOutputDirectory>Always</CopyToOutputDirectory>
 		</DesignDataWithDesignTimeCreatableTypes>
-		<DesignDataWithDesignTimeCreatableTypes Include="shaders\TintColor.ps">
+		<Resource Include="shaders\TintColor.ps">
 		  <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-		</DesignDataWithDesignTimeCreatableTypes>
+		</Resource>
 	</ItemGroup>
 
 	<ItemGroup>

@@ -40,6 +40,42 @@ namespace WorkPartner
         static DataManager()
         {
             Directory.CreateDirectory(AppDataPath);
+
+            // ✨ [추가] items_db.json 파일이 AppData에 없으면, 실행 파일 경로에서 복사
+            InitializeDefaultDatabase(ItemsDbFilePath, "items_db.json");
+            // ✨ [추가] AI 모델 파일도 동일하게 처리 (AnalysisPage 로딩 대비)
+            InitializeDefaultDatabase(ModelFilePath, "model_input.json");
+        }
+
+        private static void InitializeDefaultDatabase(string destinationPath, string sourceFileName)
+        {
+            // AppData 폴더(destinationPath)에 파일이 이미 존재하면 아무것도 하지 않음
+            if (File.Exists(destinationPath))
+            {
+                return;
+            }
+
+            try
+            {
+                // 실행 파일과 같은 위치(예: bin/Debug)에 있는 원본 DB 파일을 찾습니다.
+                string sourcePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, sourceFileName);
+
+                if (File.Exists(sourcePath))
+                {
+                    // AppData 폴더로 복사
+                    File.Copy(sourcePath, destinationPath);
+                }
+                else
+                {
+                    // 원본 파일도 없는 경우 (프로젝트 설정 오류)
+                    System.Diagnostics.Debug.WriteLine($"Source file not found: {sourcePath}");
+                }
+            }
+            catch (Exception ex)
+            {
+                // 복사 중 오류 (권한 문제 등)
+                System.Diagnostics.Debug.WriteLine($"Error copying default file '{sourceFileName}': {ex.Message}");
+            }
         }
 
         public static AppSettings LoadSettings()

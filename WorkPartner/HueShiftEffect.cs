@@ -32,7 +32,7 @@ namespace WorkPartner
                 if (_sharedPixelShader == null && !_isShaderLoadedSuccessfully)
                 {
                     // .csproj에서 Resource로 포함된 .ps 파일을 로드합니다.
-                    _sharedPixelShader = new PixelShader { UriSource = new Uri("pack://application:,,,/WorkPartner;component/shaders/HueShift.ps") };
+                    _sharedPixelShader = new PixelShader { UriSource = new Uri("pack://application:,,,/WorkPartner;component/shaders/TintColor.ps") };
                     // 여기서 강제로 컴파일/로드를 시도합니다. 실패하면 예외 발생.
                     _sharedPixelShader.Freeze(); // 리소스를 프리즈하여 스레드 안전성 확보 및 성능 향상
                     _isShaderLoadedSuccessfully = true; // 성공 플래그 설정

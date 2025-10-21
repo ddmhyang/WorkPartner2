@@ -13,6 +13,7 @@ using System.Windows.Media;
 using System.Windows.Shapes;
 using System.Windows.Threading;
 using WorkPartner.AI;
+using System.ComponentModel; // PropertyChangedEventArgs 클래스를 사용하기 위해 필요
 
 namespace WorkPartner
 {
@@ -48,7 +49,6 @@ namespace WorkPartner
         private static readonly SolidColorBrush BlockBackgroundBrush = new SolidColorBrush(Color.FromRgb(0xF5, 0xF5, 0xF5));
         private static readonly SolidColorBrush BlockBorderBrush = Brushes.White;
 
-        private DispatcherTimer _liveTimer; // 실시간 타이머 변수 추가
         #endregion
 
         public DashboardPage()
@@ -56,7 +56,6 @@ namespace WorkPartner
             InitializeComponent();
             InitializeData();
             InitializeSoundPlayers();
-            InitializeLiveTimer(); // 타이머 초기화 메서드 호출 추가
 
             waveSlider.ValueChanged += SoundSlider_ValueChanged;
             forestSlider.ValueChanged += SoundSlider_ValueChanged;
@@ -83,15 +82,6 @@ namespace WorkPartner
             RenderOptions.SetEdgeMode(this, EdgeMode.Aliased);
         }
 
-        private void InitializeLiveTimer()
-        {
-            _liveTimer = new DispatcherTimer
-            {
-                Interval = TimeSpan.FromSeconds(1)
-            };
-            _liveTimer.Tick += (sender, e) => UpdateMainTimeDisplay();
-            _liveTimer.Start();
-        }
 
         private void OnSettingsUpdated()
         {
@@ -966,10 +956,66 @@ private void UpdateMainTimeDisplay()
 
         private void OnViewModelTimeUpdated(string newTime)
         {
+            // [추가] 오늘 날짜가 아니면 ViewModel의 실시간 업데이트를 무시합니다.
+            if (_currentDateForTimeline.Date != DateTime.Today.Date) return;
+
             // 이 기능은 이제 ViewModel이 아닌 코드 비하인드에서 직접 관리하므로,
             // 실시간 타이머가 필요할 경우 MainTimeDisplay.Text를 여기서 업데이트 할 수도 있습니다.
             // 하지만 현재는 날짜별 기록 표시에 집중하므로 비워둡니다.
             // _miniTimer?.UpdateTime(newTime);
+
+            // [수정] 위 주석을 무시하고, 여기서 UI를 직접 업데이트합니다.
+            Dispatcher.Invoke(() =>
+            {
+                // 1. 메인 타이머 업데이트
+                MainTimeDisplay.Text = newTime;
+
+                // 2. 미니 타이머 업데이트
+                if (_miniTimer != null && _miniTimer.IsVisible)
+                {
+                    if (_settings == null) LoadSettings();
+                    // CurrentTaskDisplay.Text는 OnViewModelTaskChanged가 업데이트합니다.
+                    _miniTimer.UpdateData(_settings, CurrentTaskDisplay.Text, newTime);
+                }
+            });
+        }
+
+        private void OnViewModelPropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            // 오늘 날짜가 아니면 VM 업데이트 무시
+            if (_currentDateForTimeline.Date != DateTime.Today.Date) return;
+
+            // TotalTimeTodayDisplayText 속성이 변경될 때만 하단 텍스트 업데이트
+            if (e.PropertyName == nameof(ViewModels.DashboardViewModel.TotalTimeTodayDisplayText))
+            {
+                if (sender is ViewModels.DashboardViewModel vm)
+                {
+                    Dispatcher.Invoke(() =>
+                    {
+                        SelectedTaskTotalTimeDisplay.Text = vm.TotalTimeTodayDisplayText;
+                    });
+                }
+            }
+        }
+
+        // [추가] ViewModel에서 과목이 (AI 태그 등으로) 변경될 때
+        private void OnViewModelTaskChanged(string newTaskName)
+        {
+            // 오늘 날짜가 아니면 VM 업데이트 무시
+            if (_currentDateForTimeline.Date != DateTime.Today.Date) return;
+
+            Dispatcher.Invoke(() =>
+            {
+                // 1. 상단 과목명(CurrentTaskDisplay) 업데이트
+                CurrentTaskDisplay.Text = newTaskName;
+
+                // 2. (중요) 과목 목록(TaskListBox)의 선택도 VM과 동기화
+                var foundTask = TaskItems.FirstOrDefault(t => t.Text == newTaskName);
+                if (foundTask != null && TaskListBox.SelectedItem != foundTask)
+                {
+                    TaskListBox.SelectedItem = foundTask;
+                }
+            });
         }
         #endregion
     }
