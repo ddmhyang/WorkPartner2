@@ -2,8 +2,8 @@
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Media.Imaging; // BitmapImage를 사용하기 위해 추가
-using System; // Uri를 사용하기 위해 추가
+using System.Windows.Media.Imaging;
+using System;
 
 namespace WorkPartner
 {
@@ -11,7 +11,6 @@ namespace WorkPartner
     {
         private readonly SolidColorBrush _runningBrush = new SolidColorBrush(Color.FromRgb(0, 122, 255)) { Opacity = 0.6 };
         private readonly SolidColorBrush _stoppedBrush = new SolidColorBrush(Colors.Black) { Opacity = 0.6 };
-        private AppSettings _settings;
 
         public MiniTimerWindow()
         {
@@ -28,15 +27,22 @@ namespace WorkPartner
             }
         }
 
-        public void UpdateTime(string time)
+        public void UpdateData(AppSettings settings, string taskName, string time)
         {
+            // 1. 텍스트 정보 업데이트
             TimeTextBlock.Text = time;
-        }
+            TaskTextBlock.Text = taskName;
+            UsernameLevelTextBlock.Text = $"{settings.Username} (Lv.{settings.Level})";
+            CoinAmountTextBlock.Text = settings.Coins.ToString("N0");
 
-        // ✨ 과목 정보를 업데이트하는 메서드
-        public void UpdateTaskInfo(string taskName)
-        {
-            InfoTextBlock.Text = taskName;
+            // 2. 설정에 따라 UI 요소 보이기/숨기기 적용
+            ApplySettings(settings);
+
+            // 3. 캐릭터가 보일 경우에만 업데이트 (성능 최적화)
+            if (settings.MiniTimerShowCharacter)
+            {
+                MiniCharacterDisplay.UpdateCharacter();
+            }
         }
 
         public void SetRunningStyle()
@@ -49,35 +55,36 @@ namespace WorkPartner
             (this.Content as Border).Background = _stoppedBrush;
         }
 
-        // ✨ 설정을 불러와 UI에 적용하는 메서드
         public void LoadSettings()
         {
-            _settings = DataManager.LoadSettings();
-            ApplySettings();
+            var settings = DataManager.LoadSettings(); // ✨ [수정] 지역 변수로 Load
+            ApplySettings(settings); // ✨ [수정] Load한 설정을 ApplySettings로 전달
         }
 
-        // ✨ 현재 설정에 맞게 UI를 변경하는 메서드
-        private void ApplySettings()
+        // ✨ [수정] AppSettings를 파라미터로 받도록 변경하고, 새 UI 요소를 제어합니다.
+        private void ApplySettings(AppSettings settings)
         {
             // 배경화면 설정
-            if (_settings.MiniTimerShowBackground)
+            if (settings.MiniTimerShowBackground)
             {
                 // TODO: 실제 이미지 경로로 변경해야 합니다.
                 // BackgroundImage.Source = new BitmapImage(new Uri("pack://application:,,,/images/mini_timer_bg.png"));
-                TimerBorder.Background = Brushes.Transparent; // 이미지를 보여주기 위해 배경 투명 처리
+                TimerBorder.Background = Brushes.Transparent;
             }
             else
             {
                 BackgroundImage.Source = null;
-                SetStoppedStyle(); // 기본 배경색으로 복원
+                SetStoppedStyle();
             }
 
             // 캐릭터 표시 설정
-            MiniCharacterDisplay.Visibility = _settings.MiniTimerShowCharacter ? Visibility.Visible : Visibility.Collapsed;
-            if (_settings.MiniTimerShowCharacter) MiniCharacterDisplay.UpdateCharacter();
+            MiniCharacterDisplay.Visibility = settings.MiniTimerShowCharacter ? Visibility.Visible : Visibility.Collapsed;
 
-            // 추가 정보(과목) 표시 설정
-            InfoTextBlock.Visibility = _settings.MiniTimerShowInfo ? Visibility.Visible : Visibility.Collapsed;
+            // 추가 정보(과목, 닉네임, 레벨, 코인) 표시 설정
+            var infoVisibility = settings.MiniTimerShowInfo ? Visibility.Visible : Visibility.Collapsed;
+            TaskTextBlock.Visibility = infoVisibility;
+            UsernameLevelTextBlock.Visibility = infoVisibility;
+            CoinStackPanel.Visibility = infoVisibility;
         }
     }
 }

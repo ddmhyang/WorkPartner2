@@ -62,17 +62,19 @@ namespace WorkPartner
             string processName = string.Empty;
             try
             {
-                IntPtr handle = GetForegroundWindow();
-                if (handle == IntPtr.Zero) return string.Empty;
-
-                GetWindowThreadProcessId(handle, out uint processId);
-                if (processId == 0) return string.Empty;
-
-                // ✨ [수정] 프로세스 정보 조회를 별도 스레드에서 타임아웃을 갖고 실행
+                // ✨ [수정] 모든 P/Invoke 및 프로세스 접근 코드를 Task.Run 내부로 이동시켰습니다.
+                // 이렇게 하면 GetForegroundWindow() 또는 GetWindowThreadProcessId()에서 멈춤 현상이 발생해도
+                // 메인 스레드가 정지하지 않고 ApiTimeoutMs 이후에 작업을 중단할 수 있습니다.
                 var task = Task.Run(() =>
                 {
                     try
                     {
+                        IntPtr handle = GetForegroundWindow();
+                        if (handle == IntPtr.Zero) return string.Empty;
+
+                        GetWindowThreadProcessId(handle, out uint processId);
+                        if (processId == 0) return string.Empty;
+
                         Process proc = Process.GetProcessById((int)processId);
                         return proc.ProcessName.ToLower();
                     }
@@ -86,7 +88,7 @@ namespace WorkPartner
                 }
                 else
                 {
-                    Debug.WriteLine($"[Timeout] GetActiveProcessName timed out for process ID {processId}.");
+                    Debug.WriteLine($"[Timeout] GetActiveProcessName timed out.");
                 }
             }
             catch (Exception ex)

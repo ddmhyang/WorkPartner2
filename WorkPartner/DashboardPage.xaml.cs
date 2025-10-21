@@ -503,9 +503,6 @@ namespace WorkPartner
         /// <summary>
         /// ✨ [REVISED] 메인 타이머와 과목 이름, 하단 총 시간을 모두 업데이트합니다.
         /// </summary>
-        /// <summary>
-        /// ✨ [REVISED] 메인 타이머와 과목 이름, 하단 총 시간을 모두 업데이트합니다.
-        /// </summary>
         private void UpdateMainTimeDisplay()
         {
             TaskItem selectedTask = TaskListBox.SelectedItem as TaskItem;
@@ -528,16 +525,27 @@ namespace WorkPartner
                 timeToShow = new TimeSpan(logsForSelectedDateAndTask.Sum(log => log.Duration.Ticks));
             }
 
+            // ✨ [추가] 미니 타이머로 보낼 문자열을 미리 준비합니다.
+            string timeString = timeToShow.ToString(@"hh\:mm\:ss");
+            string taskString = selectedTask != null ? selectedTask.Text : "과목을 선택하세요";
+
             // 메인 타이머 업데이트
-            MainTimeDisplay.Text = timeToShow.ToString(@"hh\:mm\:ss");
+            MainTimeDisplay.Text = timeString;
 
             // 현재 과목 이름 업데이트
-            CurrentTaskDisplay.Text = selectedTask != null ? selectedTask.Text : "과목을 선택하세요";
+            CurrentTaskDisplay.Text = taskString;
 
             // 하단 총 학습 시간 업데이트
             var todayLogs = TimeLogEntries.Where(log => log.StartTime.Date == _currentDateForTimeline.Date).ToList();
             var totalTimeToday = new TimeSpan(todayLogs.Sum(log => log.Duration.Ticks));
             SelectedTaskTotalTimeDisplay.Text = $"이날의 총 학습 시간: {(int)totalTimeToday.TotalHours}시간 {totalTimeToday.Minutes}분";
+
+            // ✨ [추가] 미니 타이머가 켜져있다면, 모든 정보를 새 UpdateData 메서드로 전달합니다.
+            if (_miniTimer != null && _miniTimer.IsVisible)
+            {
+                // _settings 필드는 LoadAllDataAsync()에서 이미 로드되었습니다.
+                _miniTimer.UpdateData(_settings, taskString, timeString);
+            }
         }
 
         /// <summary>
