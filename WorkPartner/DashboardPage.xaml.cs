@@ -13,6 +13,9 @@ using System.Windows.Media;
 using System.Windows.Shapes;
 using System.Windows.Threading;
 using WorkPartner.AI;
+using WorkPartner.Services;
+using WorkPartner.Services.Implementations;
+using WorkPartner.ViewModels;
 
 namespace WorkPartner
 {
@@ -51,9 +54,29 @@ namespace WorkPartner
         private DispatcherTimer _liveTimer; // 실시간 타이머 변수 추가
         #endregion
 
+        private DashboardViewModel _viewModel;
+        private ITaskService _taskService;
+        private ITimeLogService _timeLogService;
+
+        private MiniTimerWindow _miniTimerWindow;
+
+
         public DashboardPage()
         {
             InitializeComponent();
+            if (System.ComponentModel.DesignerProperties.GetIsInDesignMode(this)) return;
+
+            // 서비스들을 여기서 초기화하거나 주입받아야 합니다.
+            var timerService = new TimerService();
+            var settingsService = new SettingsService();
+            _taskService = new TaskService();
+            _timeLogService = new TimeLogService();
+
+            _viewModel = new DashboardViewModel(timerService, settingsService, _taskService, _timeLogService);
+            DataContext = _viewModel;
+
+            Loaded += Window_Loaded;
+            IsVisibleChanged += DashboardPage_IsVisibleChanged;
             InitializeData();
             InitializeSoundPlayers();
             InitializeLiveTimer(); // 타이머 초기화 메서드 호출 추가
@@ -252,6 +275,10 @@ namespace WorkPartner
             {
                 await LoadAllDataAsync();
             }
+            if ((bool)e.NewValue)
+            {
+                // 페이지가 다시 보일 때 필요한 데이터를 새로고침 할 수 있습니다.
+            }
         }
 
         private void Window_Loaded(object sender, RoutedEventArgs e)
@@ -260,7 +287,61 @@ namespace WorkPartner
             CurrentDayDisplay.Text = _currentDateForTimeline.ToString("ddd");
             RecalculateAllTotals();
             RenderTimeTable();
+            _viewModel.TimeUpdated += OnTimeUpdated;
+            _viewModel.CurrentTaskChanged += OnCurrentTaskChanged;
+            _viewModel.IsRunningChanged += OnIsRunningChanged;
+
+            ShowMiniTimer();
         }
+
+        private void OnTimeUpdated(string time)
+        {
+            Application.Current.Dispatcher.Invoke(() => {
+                UpdateMiniTimerDisplay();
+            });
+        }
+
+        private void OnCurrentTaskChanged(string task)
+        {
+            Application.Current.Dispatcher.Invoke(() => {
+                UpdateMiniTimerDisplay();
+            });
+        }
+
+        private void OnIsRunningChanged(bool isRunning)
+        {
+            Application.Current.Dispatcher.Invoke(() => {
+                UpdateMiniTimerDisplay();
+            });
+        }
+
+        private void ShowMiniTimer()
+        {
+            if (_miniTimerWindow == null)
+            {
+                _miniTimerWindow = new MiniTimerWindow();
+                _miniTimerWindow.Closed += (s, e) => _miniTimerWindow = null;
+                _miniTimerWindow.Show();
+            }
+            else
+            {
+                _miniTimerWindow.Activate();
+            }
+            UpdateMiniTimerDisplay();
+        }
+
+        // 미니 타이머 UI를 업데이트하는 통합 메서드
+        private void UpdateMiniTimerDisplay()
+        {
+            if (_miniTimerWindow == null) return;
+
+            string time = _viewModel.MainTimeDisplayText;
+            string taskName = _viewModel.SelectedTaskItem?.Text;
+            bool isRunning = _viewModel.IsRunning();
+
+            _miniTimerWindow.UpdateDisplay(time, taskName, isRunning, _viewModel);
+        }
+
 
         private void AddTaskButton_Click(object sender, RoutedEventArgs e)
         {
@@ -447,6 +528,31 @@ namespace WorkPartner
         {
             _parentWindow?.NavigateToPage("Avatar");
         }
+
+        private void StartButton_Click(object sender, RoutedEventArgs e)
+        {
+            var selectedTask = TaskComboBox.SelectedItem as TaskItem;
+            _viewModel.Start(selectedTask);
+        }
+
+        private void StopButton_Click(object sender, RoutedEventArgs e)
+        {
+            _viewModel.Stop();
+        }
+
+        private void AddTask_Click(object sender, RoutedEventArgs e)
+        {
+            var inputWindow = new InputWindow("새 과목 추가", "과목 이름을 입력하세요:");
+            if (inputWindow.ShowDialog() == true)
+            {
+                string newTaskName = inputWindow.InputText;
+                if (!string.IsNullOrWhiteSpace(newTaskName))
+                {
+                    // TODO: 과목 추가 로직 구현
+                }
+            }
+        }
+
 
         private void MemoButton_Click(object sender, RoutedEventArgs e)
         {
