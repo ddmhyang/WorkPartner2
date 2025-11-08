@@ -133,7 +133,7 @@ namespace WorkPartner
 
         #region 데이터 저장 / 불러오기
         public void LoadSettings() { _settings = DataManager.LoadSettings(); }
-        private void SaveSettings() { DataManager.SaveSettingsAndNotify(_settings); }
+        private void SaveSettings() { DataManager.SaveSettings(_settings); }
 
         private async Task LoadTasksAsync()
         {
@@ -586,6 +586,8 @@ private void UpdateMainTimeDisplay()
             return DefaultGrayBrush;
         }
 
+        // 621번째 줄의 RenderTimeTable 메서드 전체를 아래 코드로 대체해주세요.
+
         private void RenderTimeTable()
         {
             // --- 이전 기록 블록 삭제 ---
@@ -637,7 +639,7 @@ private void UpdateMainTimeDisplay()
             Debug.WriteLine("RenderTimeTable: Background grid rendered.");
 
 
-            // --- 시간 기록 블록 그리기 ---
+            // --- 시간 기록 블록 그리기 (✨ [수정됨] 줄바꿈 로직 적용) ---
             var logsForSelectedDate = TimeLogEntries
                 .Where(log => log.StartTime.Date == _currentDateForTimeline.Date)
                 .OrderBy(l => l.StartTime)
@@ -653,67 +655,81 @@ private void UpdateMainTimeDisplay()
 
             foreach (var logEntry in logsForSelectedDate)
             {
-                var logStart = logEntry.StartTime.TimeOfDay;
-                var logEnd = logEntry.EndTime.TimeOfDay;
-                var duration = logEnd - logStart;
+                // ✨ [수정 시작] 
+                // 이 로직은 하나의 로그를 시간대별로 "조각(Chunk)"내어 그립니다.
 
-                // 유효성 검사 1: Duration
-                if (duration.TotalSeconds <= 0)
+                DateTime currentChunkStartTime = logEntry.StartTime;
+                DateTime logEndTime = logEntry.EndTime;
+
+                // 로그 종료 시간이 24:00를 넘어가면 23:59:59로 잘라냅니다.
+                if (logEndTime.Date > currentChunkStartTime.Date)
                 {
-                    Debug.WriteLine($"--> Skipping log (duration <= 0): {logEntry.TaskText} at {logEntry.StartTime}");
-                    continue;
-                }
-                if (logEnd.TotalDays >= 1) logEnd = TimeSpan.FromHours(24) - TimeSpan.FromTicks(1);
-
-                var topOffset = Math.Floor(logStart.TotalHours) * rowHeight;
-                var leftOffset = hourLabelWidth + (logStart.Minutes / 10.0) * cellWidth; // 이전 버전 계산 유지
-
-                // ✨ [수정] 너비(barWidth) 계산: 지속 시간(분) 비율 * 셀 너비
-                //    (duration.TotalMinutes / 10.0)는 이 기록이 10분 블록 몇 개에 해당하는지 비율
-                //    여기에 cellWidth(37)를 곱하여 총 너비를 계산
-                double calculatedWidth = (duration.TotalMinutes / 10.0) * cellWidth;
-
-                // ✨ [수정] 양쪽 마진(horizontalMargin * 2 = 2)을 빼줍니다.
-                var barWidth = calculatedWidth - (horizontalMargin * 2);
-
-
-                // 유효성 검사 2: Width (음수 또는 0 체크)
-                if (barWidth <= 0)
-                {
-                    Debug.WriteLine($"--> Skipping log (width <= 0): {logEntry.TaskText} at {logEntry.StartTime}, Duration={duration}, Calculated Width before margin: {calculatedWidth:F2}, Final Width: {barWidth:F2}");
-                    continue;
-                }
-                // 유효성 검사 3: 좌표 (NaN, Infinity)
-                if (double.IsNaN(topOffset) || double.IsNaN(leftOffset) || double.IsInfinity(topOffset) || double.IsInfinity(leftOffset))
-                {
-                    Debug.WriteLine($"--> Skipping log (Invalid coordinates): {logEntry.TaskText} at {logEntry.StartTime}");
-                    continue;
+                    logEndTime = currentChunkStartTime.Date.AddDays(1).AddTicks(-1);
                 }
 
-
-                var coloredBar = new Border
+                while (currentChunkStartTime < logEndTime)
                 {
-                    Width = barWidth,
-                    Height = blockHeight, // 높이는 17
-                    Background = GetColorForTask(logEntry.TaskText),
-                    CornerRadius = new CornerRadius(2),
-                    ToolTip = new ToolTip { Content = $"{logEntry.TaskText}\n{logEntry.StartTime:HH:mm} ~ {logEntry.EndTime:HH:mm}\n\n클릭하여 수정 또는 삭제" },
-                    Tag = logEntry,
-                    Cursor = Cursors.Hand
-                };
-                coloredBar.MouseLeftButtonDown += TimeLogRect_MouseLeftButtonDown;
+                    // 1. 현재 조각의 끝 시간을 계산합니다.
+                    //    (다음 정시) 또는 (로그의 실제 종료 시간) 중 더 빠른 시간입니다.
+                    DateTime endOfCurrentHour = currentChunkStartTime.Date.AddHours(currentChunkStartTime.Hour + 1);
+                    DateTime currentChunkEndTime = (logEndTime < endOfCurrentHour) ? logEndTime : endOfCurrentHour;
 
-                // Canvas 배치
-                Canvas.SetLeft(coloredBar, leftOffset);
-                Canvas.SetTop(coloredBar, topOffset);
-                // ✨ Z-Index 설정 추가: 기록 블록(1)이 배경(0) 위에 오도록
-                Panel.SetZIndex(coloredBar, 1);
+                    TimeSpan chunkStart = currentChunkStartTime.TimeOfDay;
+                    TimeSpan chunkEnd = currentChunkEndTime.TimeOfDay;
+                    TimeSpan duration = chunkEnd - chunkStart;
 
-                // Canvas에 추가
-                SelectionCanvas.Children.Add(coloredBar);
+                    // 2. 유효성 검사 1: Duration
+                    if (duration.TotalSeconds <= 0)
+                    {
+                        // (예: 10:00에 시작하는 다음 조각이 10:00에 끝나면) 루프 종료
+                        break;
+                    }
 
-                // ✨ 디버깅 로그: 추가된 블록 정보 상세 출력
-                Debug.WriteLine($"--> Added block: Task='{logEntry.TaskText}', Start={logEntry.StartTime:HH:mm:ss}, Duration={duration}, Top={topOffset:F2}, Left={leftOffset:F2}, Width={barWidth:F2}");
+                    // 3. 기존 계산 로직을 "조각"에 대해 그대로 적용합니다.
+                    var topOffset = Math.Floor(chunkStart.TotalHours) * rowHeight;
+                    var leftOffset = hourLabelWidth + (chunkStart.Minutes / 10.0) * cellWidth;
+
+                    double calculatedWidth = (duration.TotalMinutes / 10.0) * cellWidth;
+                    var barWidth = calculatedWidth - (horizontalMargin * 2);
+
+                    // 4. 유효성 검사 (기존 코드 유지)
+                    if (barWidth <= 0)
+                    {
+                        Debug.WriteLine($"--> Skipping log chunk (width <= 0): {logEntry.TaskText} at {currentChunkStartTime}, Duration={duration}, Calculated Width before margin: {calculatedWidth:F2}, Final Width: {barWidth:F2}");
+                        currentChunkStartTime = currentChunkEndTime; // 다음 조각으로 이동
+                        continue;
+                    }
+                    if (double.IsNaN(topOffset) || double.IsNaN(leftOffset) || double.IsInfinity(topOffset) || double.IsInfinity(leftOffset))
+                    {
+                        Debug.WriteLine($"--> Skipping log chunk (Invalid coordinates): {logEntry.TaskText} at {currentChunkStartTime}");
+                        currentChunkStartTime = currentChunkEndTime; // 다음 조각으로 이동
+                        continue;
+                    }
+
+                    // 5. 조각(Border) 생성
+                    var coloredBar = new Border
+                    {
+                        Width = barWidth,
+                        Height = blockHeight, // 높이는 17
+                        Background = GetColorForTask(logEntry.TaskText),
+                        CornerRadius = new CornerRadius(2),
+                        ToolTip = new ToolTip { Content = $"{logEntry.TaskText}\n{logEntry.StartTime:HH:mm} ~ {logEntry.EndTime:HH:mm}\n\n클릭하여 수정 또는 삭제" },
+                        // ✨ [중요] Tag에는 원본 로그(logEntry)를 넣어야 수정/삭제가 정상 작동합니다.
+                        Tag = logEntry,
+                        Cursor = Cursors.Hand
+                    };
+                    coloredBar.MouseLeftButtonDown += TimeLogRect_MouseLeftButtonDown;
+
+                    // 6. Canvas에 배치
+                    Canvas.SetLeft(coloredBar, leftOffset);
+                    Canvas.SetTop(coloredBar, topOffset);
+                    Panel.SetZIndex(coloredBar, 1); // Z-Index 설정
+                    SelectionCanvas.Children.Add(coloredBar); // Canvas에 추가
+
+                    // 7. 다음 조각의 시작 시간을 설정
+                    currentChunkStartTime = currentChunkEndTime;
+                }
+                // ✨ [수정 종료] 
             }
 
             // ✨ [복원 및 필수] Canvas 높이 설정 코드를 다시 추가합니다.
@@ -935,7 +951,7 @@ private void UpdateMainTimeDisplay()
             _settings.TaskColors[selectedTask.Text] = newColor.ToString();
 
             selectedTask.ColorBrush = new SolidColorBrush(newColor);
-            DataManager.SaveSettingsAndNotify(_settings);
+            DataManager.SaveSettings(_settings);
 
             RenderTimeTable();
 

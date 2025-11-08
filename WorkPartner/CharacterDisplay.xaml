@@ -10,19 +10,29 @@
     <Grid>
         <Image x:Name="Part_Background" Stretch="Uniform" />
 
-        <Image x:Name="Part_Cushion" Stretch="Uniform" />
+        <Image x:Name="Part_Tail" Stretch="Uniform" />
 
-        <Image x:Name="Part_HairBack" Stretch="Uniform" />
+        <Image x:Name="Part_Lower" Stretch="Uniform" />
 
-        <Image x:Name="Part_Body" Stretch="Uniform" />
+        <Image x:Name="Part_Bottom" Stretch="Uniform" />
 
-        <Image x:Name="Part_HairFront" Stretch="Uniform" />
+        <Image x:Name="Part_Upper" Stretch="Uniform" />
 
-        <Image x:Name="Part_Eye" Stretch="Uniform" />
+        <Image x:Name="Part_Top" Stretch="Uniform" />
 
-        <Image x:Name="Part_Mouth" Stretch="Uniform" />
+        <Image x:Name="Part_Outerwear" Stretch="Uniform" />
 
-        <Image x:Name="Part_Clothes" Stretch="Uniform" />
+        <Image x:Name="Part_Head" Stretch="Uniform" />
+
+        <Image x:Name="Part_Scalp" Stretch="Uniform" />
+
+        <Image x:Name="Part_BackHair" Stretch="Uniform" />
+
+        <Image x:Name="Part_Face" Stretch="Uniform" />
+
+        <Image x:Name="Part_AnimalEar" Stretch="Uniform" />
+
+        <Image x:Name="Part_FrontHair" Stretch="Uniform" />
 
         <ItemsControl x:Name="Part_Accessories">
             <ItemsControl.ItemsPanel>

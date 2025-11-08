@@ -63,7 +63,7 @@ namespace WorkPartner
         private void SaveSettings()
         {
             if (!_isLoaded) return;
-            DataManager.SaveSettingsAndNotify(Settings);
+            DataManager.SaveSettings(Settings);
             if (Application.Current is App app)
             {
                 app.ApplyTheme(Settings);

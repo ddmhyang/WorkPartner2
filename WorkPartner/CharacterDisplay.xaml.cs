@@ -46,18 +46,13 @@ namespace WorkPartner
                 _allItemsCache = new List<ShopItem>();
             }
         }
-
-        /// <summary>
-        /// 저장된 설정(settings.json)을 기준으로 캐릭터를 업데이트합니다.
-        /// </summary>
         public void UpdateCharacter()
         {
             var settings = DataManager.LoadSettings();
             UpdateCharacter(settings);
         }
-
         /// <summary>
-        /// '미리보기'를 위해 특정 AppSettings 객체를 기준으로 캐릭터를 렌더링합니다.
+        /// 저장된 설정(settings.json)을 기준으로 캐릭터를 업데이트합니다.
         /// </summary>
         public void UpdateCharacter(AppSettings settings)
         {
@@ -67,31 +62,44 @@ namespace WorkPartner
             }
 
             // 1. 단일 파츠 렌더링 (EquippedParts)
+            // ✨ [수정] XAML과 1:1로 매칭되는 새 파츠 로직으로 변경
             SetImagePart(Part_Background, settings.EquippedParts.GetValueOrDefault(ItemType.Background));
-            SetImagePart(Part_Cushion, settings.EquippedParts.GetValueOrDefault(ItemType.Cushion));
-            SetImagePart(Part_HairBack, settings.EquippedParts.GetValueOrDefault(ItemType.HairBack));
-            SetImagePart(Part_Body, settings.EquippedParts.GetValueOrDefault(ItemType.Body));
-            SetImagePart(Part_HairFront, settings.EquippedParts.GetValueOrDefault(ItemType.HairFront));
-            SetImagePart(Part_Eye, settings.EquippedParts.GetValueOrDefault(ItemType.Eye));
-            SetImagePart(Part_Mouth, settings.EquippedParts.GetValueOrDefault(ItemType.Mouth));
-            SetImagePart(Part_Clothes, settings.EquippedParts.GetValueOrDefault(ItemType.Clothes));
+            SetImagePart(Part_Tail, settings.EquippedParts.GetValueOrDefault(ItemType.Tail));
+            SetImagePart(Part_Lower, settings.EquippedParts.GetValueOrDefault(ItemType.Lower));
+            SetImagePart(Part_Bottom, settings.EquippedParts.GetValueOrDefault(ItemType.Bottom));
+            SetImagePart(Part_Upper, settings.EquippedParts.GetValueOrDefault(ItemType.Upper));
+            SetImagePart(Part_Top, settings.EquippedParts.GetValueOrDefault(ItemType.Top));
+            SetImagePart(Part_Outerwear, settings.EquippedParts.GetValueOrDefault(ItemType.Outerwear));
+            SetImagePart(Part_Head, settings.EquippedParts.GetValueOrDefault(ItemType.Head));
+            SetImagePart(Part_Scalp, settings.EquippedParts.GetValueOrDefault(ItemType.Scalp));
+            SetImagePart(Part_BackHair, settings.EquippedParts.GetValueOrDefault(ItemType.BackHair));
+            SetImagePart(Part_Face, settings.EquippedParts.GetValueOrDefault(ItemType.Face));
+            SetImagePart(Part_AnimalEar, settings.EquippedParts.GetValueOrDefault(ItemType.AnimalEar));
+            SetImagePart(Part_FrontHair, settings.EquippedParts.GetValueOrDefault(ItemType.FrontHair));
+
 
             // 2. 장신구(Accessories) 렌더링 (EquippedAccessories)
-            // XAML의 DataTemplate을 사용하는 대신, 코드 비하인드에서 직접 ItemsSource를 설정합니다.
-            // ItemsControl이 EquippedItemInfo 객체의 리스트를 받아 처리하도록 합니다.
-            // DataTemplate이 바인딩을 처리하므로 C# 코드는 간단해집니다.
+            // ✨ [수정] ItemType.Accessories -> ItemType.Accessory로 변경
             var accessoryViewModels = new List<object>();
             foreach (var accessoryInfo in settings.EquippedAccessories)
             {
                 var shopItem = _allItemsCache.FirstOrDefault(i => i.Id == accessoryInfo.ItemId);
-                if (shopItem != null)
+
+                // ✨ [추가] ItemType.Accessory 타입인지 한 번 더 확인 (안전장치)
+                if (shopItem != null && shopItem.Type == ItemType.Accessory)
                 {
-                    // DataTemplate이 바인딩할 수 있도록 익명 객체 생성
-                    accessoryViewModels.Add(new
+                    try
                     {
-                        ImagePath = new BitmapImage(new Uri(shopItem.ImagePath, UriKind.Relative)),
-                        HueShift = accessoryInfo.HueShift
-                    });
+                        accessoryViewModels.Add(new
+                        {
+                            ImagePath = new BitmapImage(new Uri(shopItem.ImagePath, UriKind.Relative)),
+                            HueShift = accessoryInfo.HueShift
+                        });
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"장신구 이미지 로드 실패 {shopItem.ImagePath}: {ex.Message}");
+                    }
                 }
             }
             Part_Accessories.ItemsSource = accessoryViewModels;

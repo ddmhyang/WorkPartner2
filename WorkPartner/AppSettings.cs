@@ -80,7 +80,6 @@ namespace WorkPartner
             }
         }
 
-        // ✨ [수정] 기본 아이템 로직을 새 구조에 맞게 수정합니다.
         private void EquipDefaultItems()
         {
             if (!File.Exists(DataManager.ItemsDbFilePath)) return;
@@ -90,22 +89,27 @@ namespace WorkPartner
                 var json = File.ReadAllText(DataManager.ItemsDbFilePath);
                 var allItems = JsonConvert.DeserializeObject<List<ShopItem>>(json, new StringEnumConverter()) ?? new List<ShopItem>();
 
-                // ✨ [수정] 새 사양에 맞는 기본 아이템 이름 (예시)
+                // ✨ [수정] items_db.json에 정의된 새 기본 아이템 이름으로 변경
                 var defaultItemsMap = new Dictionary<ItemType, string>
                 {
-                    { ItemType.Background, "기본 배경" },
-                    { ItemType.Cushion, "기본 방석" },
-                    { ItemType.HairBack, "기본 뒷머리" },
-                    { ItemType.Body, "기본 몸" },
-                    { ItemType.HairFront, "기본 앞머리" },
-                    { ItemType.Eye, "기본 눈" },
-                    { ItemType.Mouth, "기본 입" },
-                    { ItemType.Clothes, "기본 옷" },
+                    { ItemType.Scalp, "기본 두피" },
+                    { ItemType.Head, "기본 머리" },
+                    { ItemType.Upper, "기본 상체" },
+                    { ItemType.Lower, "기본 하체" },
+                    // (참고: 배경, 얼굴, 머리 등은 AvatarPage에서 장착 해제/교체 가능하므로 여기서 기본값으로 설정하지 않아도 됩니다.)
                 };
 
                 foreach (var defaultItem in defaultItemsMap)
                 {
-                    var item = allItems.FirstOrDefault(i => i.Type == defaultItem.Key && i.Name == defaultItem.Value);
+                    // ✨ [수정] 기본 파츠는 Price: 0 이어야 함
+                    var item = allItems.FirstOrDefault(i => i.Type == defaultItem.Key && i.Price == 0);
+
+                    // 만약 Price 0인 기본 아이템이 여러 개라면, 이름으로 한 번 더 찾습니다.
+                    if (item == null)
+                    {
+                        item = allItems.FirstOrDefault(i => i.Type == defaultItem.Key && i.Name == defaultItem.Value);
+                    }
+
                     if (item != null)
                     {
                         // ✨ [수정] 새 구조체인 EquippedParts에 추가합니다.
@@ -118,9 +122,10 @@ namespace WorkPartner
                     }
                 }
             }
-            catch
+            catch (Exception ex)
             {
                 // 파일 읽기 실패 시 조용히 넘어감
+                System.Diagnostics.Debug.WriteLine($"EquipDefaultItems failed: {ex.Message}");
             }
         }
     }

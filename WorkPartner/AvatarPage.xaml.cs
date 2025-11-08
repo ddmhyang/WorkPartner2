@@ -19,7 +19,7 @@ namespace WorkPartner
         private AppSettings _previewSettings; // 미리보기용 임시 설정
 
         private List<ShopItem> _allItems;
-        private ItemType _selectedCategory = ItemType.HairFront; // 기본 카테고리
+        private ItemType _selectedCategory = ItemType.Background; // 기본 카테고리
         private Button _selectedCategoryButton = null;
 
         private ShopItem _selectedShopItem; // 현재 상점에서 선택한 아이템
@@ -38,7 +38,7 @@ namespace WorkPartner
         public void LoadData()
         {
             _savedSettings = DataManager.LoadSettings();
-            _previewSettings = DeepClone(_savedSettings); // ✨ 미리보기용 설정 복사
+            _previewSettings = DeepClone(_savedSettings);
 
             CoinDisplay.Text = _savedSettings.Coins.ToString("N0");
 
@@ -53,10 +53,11 @@ namespace WorkPartner
                 _allItems = new List<ShopItem>();
             }
 
-            CharacterPreview.UpdateCharacter(_previewSettings); // ✨ 미리보기 설정으로 캐릭터 표시
+
+            CharacterPreview.UpdateCharacter(_previewSettings); // 이 코드는 그대로 둡니다.
             PopulateCategories();
             UpdateItemList();
-            UpdateControlsVisibility(); // 컨트롤 숨김/표시
+            UpdateControlsVisibility();
         }
 
         #region 카테고리 및 아이템 목록 UI
@@ -71,10 +72,13 @@ namespace WorkPartner
             // ✨ 새 ItemType 순서대로 정렬
             var categories = _allItems.Select(i => i.Type).Distinct().OrderBy(t => GetCategoryOrder(t));
 
+            // ✨ [수정] 기본 파츠(Scalp, Head, Upper, Lower)는 상점 UI에 표시하지 않습니다.
+            var basicPartsToExclude = new[] { ItemType.Scalp, ItemType.Head, ItemType.Upper, ItemType.Lower}; // Body도 기존 파츠이므로 포함
+
             foreach (var category in categories)
             {
                 // 'Body'는 기본 파츠이므로 상점에서 선택하지 않음
-                if (category == ItemType.Body) continue;
+                if (basicPartsToExclude.Contains(category)) continue; // ✨ 수정된 기본 파츠 제외 로직
 
                 var button = new Button
                 {
@@ -224,24 +228,21 @@ namespace WorkPartner
         /// </summary>
         private void ApplyPreview(ShopItem itemToEquip)
         {
-            if (itemToEquip.Type == ItemType.Accessories)
+            if (itemToEquip.Type == ItemType.Accessory)
             {
-                // 장신구: 중복 착용/해제 처리
+                // 장신구: 중복 착용/해제 처리 (개수 제한 없음)
                 var existing = _previewSettings.EquippedAccessories.FirstOrDefault(e => e.ItemId == itemToEquip.Id);
                 if (existing != null)
                 {
                     // 이미 착용 중이면 해제
                     _previewSettings.EquippedAccessories.Remove(existing);
                 }
-                else if (_previewSettings.EquippedAccessories.Count < 3)
-                {
-                    // 3개 미만이면 새로 착용
-                    _previewSettings.EquippedAccessories.Add(new EquippedItemInfo(itemToEquip.Id, 0));
-                }
                 else
                 {
-                    MessageBox.Show("장신구는 최대 3개까지만 착용할 수 있습니다.", "알림");
+                    // ✨ [수정] 개수 제한(Count < 3)을 제거하고, 제한 없이 새로 착용
+                    _previewSettings.EquippedAccessories.Add(new EquippedItemInfo(itemToEquip.Id, 0));
                 }
+                // ✨ [수정] 3개 초과 시 경고 메시지를 표시하던 'else' 블록을 삭제했습니다.
             }
             else
             {
@@ -275,7 +276,7 @@ namespace WorkPartner
             double newHue = e.NewValue;
             EquippedItemInfo itemInfo = null;
 
-            if (_selectedShopItem.Type == ItemType.Accessories)
+            if (_selectedShopItem.Type == ItemType.Accessory)
             {
                 itemInfo = _previewSettings.EquippedAccessories.FirstOrDefault(i => i.ItemId == _selectedShopItem.Id);
             }
@@ -302,7 +303,8 @@ namespace WorkPartner
 
                 // 현재 아이템의 Hue 값을 찾아 슬라이더에 설정
                 EquippedItemInfo itemInfo = null;
-                if (_selectedShopItem.Type == ItemType.Accessories)
+                // ✨ [수정] ItemType.Accessories -> ItemType.Accessory
+                if (_selectedShopItem.Type == ItemType.Accessory)
                     itemInfo = _previewSettings.EquippedAccessories.FirstOrDefault(i => i.ItemId == _selectedShopItem.Id);
                 else
                     _previewSettings.EquippedParts.TryGetValue(_selectedShopItem.Type, out itemInfo);
@@ -393,7 +395,7 @@ namespace WorkPartner
             _savedSettings.EquippedAccessories = DeepClone(_previewSettings.EquippedAccessories);
 
             // 5. 저장 및 UI 갱신
-            DataManager.SaveSettingsAndNotify(_savedSettings);
+            DataManager.SaveSettings(_savedSettings);
             CoinDisplay.Text = _savedSettings.Coins.ToString("N0");
             UpdateItemList(); // '보유 중' 상태 갱신
             MessageBox.Show("성공적으로 저장되었습니다!", "저장 완료");
@@ -419,7 +421,7 @@ namespace WorkPartner
         /// </summary>
         private bool IsItemEquippedInPreview(ShopItem item)
         {
-            if (item.Type == ItemType.Accessories)
+            if (item.Type == ItemType.Accessory)
             {
                 return _previewSettings.EquippedAccessories.Any(e => e.ItemId == item.Id);
             }
@@ -436,14 +438,22 @@ namespace WorkPartner
         {
             return itemType switch
             {
-                ItemType.HairFront => "앞머리",
-                ItemType.HairBack => "뒷머리",
-                ItemType.Eye => "눈",
-                ItemType.Mouth => "입",
-                ItemType.Clothes => "옷",
-                ItemType.Accessories => "장신구",
-                ItemType.Cushion => "방석",
+                ItemType.FrontHair => "앞머리",
+                ItemType.BackHair => "뒷머리",
+                ItemType.Face => "얼굴",
+                ItemType.Top => "상의",
+                ItemType.Outerwear => "아우터",
+                ItemType.Bottom => "하의",
+                ItemType.Accessory => "장신구",
+                ItemType.Tail => "꼬리",
+                ItemType.AnimalEar => "동물귀",
+                ItemType.Shoes => "신발",
                 ItemType.Background => "배경",
+                // 기본 파츠는 상점 UI에 표시되지 않으므로 여기에 포함하지 않아도 됩니다.
+                ItemType.Scalp => "두피",
+                ItemType.Head => "머리",
+                ItemType.Upper => "상체",
+                ItemType.Lower => "하체",
                 _ => itemType.ToString(),
             };
         }
@@ -455,15 +465,22 @@ namespace WorkPartner
         {
             return itemType switch
             {
-                ItemType.HairFront => 1,
-                ItemType.HairBack => 2,
-                ItemType.Eye => 3,
-                ItemType.Mouth => 4,
-                ItemType.Clothes => 5,
-                ItemType.Accessories => 6,
-                ItemType.Cushion => 7,
-                ItemType.Background => 8,
-                _ => 99,
+                ItemType.Background => 1,
+                ItemType.Tail => 2,
+                ItemType.Lower => 3, // 하체 (기본)
+                ItemType.Bottom => 4,
+                ItemType.Upper => 5, // 상체 (기본)
+                ItemType.Top => 6,
+                ItemType.Outerwear => 7,
+                ItemType.Head => 8, // 머리 (기본)
+                ItemType.Scalp => 9, // 두피 (기본)
+                ItemType.BackHair => 10,
+                ItemType.Face => 11,
+                ItemType.AnimalEar => 12,
+                ItemType.FrontHair => 13,
+                ItemType.Accessory => 14,
+                ItemType.Shoes => 15,
+                _ => 100,
             };
         }
 

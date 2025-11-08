@@ -27,16 +27,33 @@ namespace WorkPartner
     }
 
     // ✨ [수정] ItemType을 새 사양에 맞게 완전히 변경합니다.
+    // 파일: WorkPartner/ShopItem.cs (또는 ItemType이 정의된 파일)
+
+    // ✨ [수정] 새 아이템 목록과 100% 일치하는 열거형입니다.
+    // 예전 파츠(Cushion, Eye, Mouth, Body, Clothes 등)를 모두 삭제했습니다.
     public enum ItemType
     {
-        Background,  // 배경 (레이어 1)
-        Cushion,     // 방석 (레이어 2)
-        HairBack,    // 뒷머리 (레이어 3)
-        Body,        // 몸 (기본 파츠, 레이어 4)
-        HairFront,   // 앞머리 (레이어 5)
-        Eye,         // 눈 (레이어 6)
-        Mouth,       // 입 (레이어 6)
-        Clothes,     // 옷 (레이어 7)
-        Accessories  // 장신구 (레이어 8, 중복 가능)
+        // ===================================
+        // ✨ 새 파츠 목록 (상점 노출)
+        // ===================================
+        Background,     // 1. 배경
+        Tail,           // 2. 꼬리
+        Bottom,         // 4. 하의
+        Top,            // 6. 상의
+        Outerwear,      // 7. 아우터
+        BackHair,       // 10. 뒷머리
+        Face,           // 11. 얼굴
+        AnimalEar,      // 12. 동물귀
+        FrontHair,      // 13. 앞머리
+        Accessory,      // 14. 장신구
+        Shoes,      // 15. 신발
+
+        // ===================================
+        // ✨ 기본 파츠 (상점 비노출)
+        // ===================================
+        Lower,          // 3. 하체
+        Upper,          // 5. 상체
+        Head,           // 8. 머리
+        Scalp           // 9. 두피
     }
 }

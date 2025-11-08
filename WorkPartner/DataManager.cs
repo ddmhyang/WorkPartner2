@@ -83,7 +83,7 @@ namespace WorkPartner
             if (!File.Exists(SettingsFilePath))
             {
                 var defaultSettings = new AppSettings();
-                SaveSettings(defaultSettings);
+                WriteSettingsToFile(defaultSettings); // ✨ [수정]
                 return defaultSettings;
             }
             try
@@ -94,20 +94,20 @@ namespace WorkPartner
             catch
             {
                 var backupSettings = new AppSettings();
-                SaveSettings(backupSettings);
+                WriteSettingsToFile(backupSettings); // ✨ [수정]
                 return backupSettings;
             }
         }
 
-        public static void SaveSettings(AppSettings settings)
+        public static void WriteSettingsToFile(AppSettings settings)
         {
             var json = JsonSerializer.Serialize(settings, JsonOptions);
             File.WriteAllText(SettingsFilePath, json);
         }
 
-        public static void SaveSettingsAndNotify(AppSettings settings)
+        public static void SaveSettings(AppSettings settings)
         {
-            SaveSettings(settings);
+            WriteSettingsToFile(settings);
             SettingsUpdated?.Invoke();
         }
 
