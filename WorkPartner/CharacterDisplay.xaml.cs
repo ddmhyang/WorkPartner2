@@ -9,7 +9,7 @@ using System.Windows.Media.Imaging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using WorkPartner;
-using DrawingColor = System.Drawing.Color; // ⚠️ System.Drawing.Common NuGet 패키지 설치 필요!
+using DrawingColor = System.Drawing.Color; // ⚠️ 1단계에서 System.Drawing.Common NuGet 패키지 설치 필수!
 
 namespace WorkPartner
 {
@@ -90,15 +90,15 @@ namespace WorkPartner
                     {
                         BitmapImage originalAccessory = new BitmapImage(new Uri(shopItem.ImagePath, UriKind.Relative));
 
-                        // ✨ [수정] 저장된 ColorHex 문자열을 Color로 변환
                         Color tintColor = Colors.White;
-                        if (!string.IsNullOrEmpty(accessoryInfo.ColorHex))
+                        if (shopItem.CanChangeColor && !string.IsNullOrEmpty(accessoryInfo.ColorHex))
                         {
                             try { tintColor = (Color)ColorConverter.ConvertFromString(accessoryInfo.ColorHex); }
                             catch { /* ignore invalid hex */ }
                         }
 
-                        BitmapSource finalAccessory = ImageProcessor.ApplyTint(originalAccessory, tintColor);
+                        // ✨ [수정] ImageProcessor.ApplyColor (색상화) 호출
+                        BitmapSource finalAccessory = ImageProcessor.ApplyColor(originalAccessory, tintColor);
 
                         accessoryViewModels.Add(new
                         {
@@ -139,7 +139,6 @@ namespace WorkPartner
                 Uri originalUri = new Uri(shopItem.ImagePath, UriKind.Relative);
                 BitmapImage originalImage = new BitmapImage(originalUri);
 
-                // ✨ [수정] ColorHex (문자열)에서 Color를 불러옴
                 Color finalColor = Colors.White; // 기본값 (색 변경 안 함)
                 if (shopItem.CanChangeColor && !string.IsNullOrEmpty(equippedInfo.ColorHex))
                 {
@@ -159,8 +158,8 @@ namespace WorkPartner
                     _currentHairColor = finalColor;
                 }
 
-                // C# 헬퍼(ImageProcessor)를 사용해 "곱하기(Tint)" 적용
-                BitmapSource finalImage = ImageProcessor.ApplyTint(originalImage, finalColor);
+                // ✨ [수정] ImageProcessor.ApplyColor (색상화) 호출
+                BitmapSource finalImage = ImageProcessor.ApplyColor(originalImage, finalColor);
 
                 imageControl.Source = finalImage;
             }
@@ -175,26 +174,25 @@ namespace WorkPartner
         }
 
 
-        // 컬러 팔레트에서 호출할 함수 (C# "곱하기" 방식 적용)
+        // 컬러 팔레트에서 호출할 함수 (C# "색상화" 방식 적용)
         public void SetPartColor(string partType, Color color)
         {
-            // AvatarPage.xaml.cs에서 "Hair"로 호출하면
-            // BackHair와 FrontHair를 모두 변경
-
             if (partType == "Hair")
             {
                 // 1. 뒷머리 변경 (저장된 "원본" Uri 사용)
                 if (_originalBackHairUri != null)
                 {
                     BitmapImage originalBack = new BitmapImage(_originalBackHairUri);
-                    Part_BackHair.Source = ImageProcessor.ApplyTint(originalBack, color);
+                    // ✨ [수정] ImageProcessor.ApplyColor (색상화) 호출
+                    Part_BackHair.Source = ImageProcessor.ApplyColor(originalBack, color);
                 }
 
                 // 2. 앞머리 변경 (저장된 "원본" Uri 사용)
                 if (_originalFrontHairUri != null)
                 {
                     BitmapImage originalFront = new BitmapImage(_originalFrontHairUri);
-                    Part_FrontHair.Source = ImageProcessor.ApplyTint(originalFront, color);
+                    // ✨ [수정] ImageProcessor.ApplyColor (색상화) 호출
+                    Part_FrontHair.Source = ImageProcessor.ApplyColor(originalFront, color);
                 }
 
                 // 3. 현재 색상 저장

@@ -265,14 +265,31 @@ namespace WorkPartner
             var newTask = new TaskItem { Text = newTaskText };
             TaskItems.Add(newTask);
 
-            var colorPicker = new ColorPalette { Owner = Window.GetWindow(this) };
-            if (colorPicker.ShowDialog() == true)
+            // ✨ [진짜 수정] ColorPalette(UserControl)를 호스팅할 새 Window를 만듭니다.
+            var palette = new ColorPalette();
+            var window = new Window
             {
-                _settings.TaskColors[newTask.Text] = colorPicker.SelectedColor.ToString();
-                SaveSettings();
-            }
+                Title = "과목 색상 선택",
+                Content = palette,
+                Width = 260, // 팔레트 크기에 맞게 조절
+                Height = 180,
+                WindowStyle = WindowStyle.ToolWindow,
+                ResizeMode = ResizeMode.NoResize,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                Owner = Window.GetWindow(this)
+            };
 
-            TaskInput.Clear();
+            // ✨ [진짜 수정] 팔레트에서 색을 선택하면(ColorChanged) 창을 닫고 저장합니다.
+            palette.ColorChanged += (s, newColor) =>
+            {
+                _settings.TaskColors[newTask.Text] = newColor.ToString();
+                SaveSettings();
+                window.Close(); // 색상 선택 시 창 닫기
+            };
+
+            window.ShowDialog(); // ✨ Window가 ShowDialog()를 호출
+
+            TaskInput.Clear();
             SaveTasks();
             RenderTimeTable();
         }
@@ -943,17 +960,41 @@ private void UpdateMainTimeDisplay()
             if (sender is not Border { Tag: TaskItem selectedTask }) return;
 
             TaskListBox.SelectedItem = selectedTask;
-            var colorPicker = new ColorPalette { Owner = Window.GetWindow(this) };
 
-            if (colorPicker.ShowDialog() != true) return;
+            // ✨ [진짜 수정] ColorPalette(UserControl)를 호스팅할 새 Window를 만듭니다.
+            var palette = new ColorPalette();
 
-            var newColor = colorPicker.SelectedColor;
-            _settings.TaskColors[selectedTask.Text] = newColor.ToString();
+            // (이미 저장된 색이 있으면 팔레트에 설정)
+            if (_settings.TaskColors.TryGetValue(selectedTask.Text, out var hex))
+            {
+                try { palette.SelectedColor = (Color)ColorConverter.ConvertFromString(hex); }
+                catch { /* ignore invalid hex */ }
+            }
 
-            selectedTask.ColorBrush = new SolidColorBrush(newColor);
-            DataManager.SaveSettings(_settings);
+            var window = new Window
+            {
+                Title = "과목 색상 변경",
+                Content = palette,
+                Width = 260, // 팔레트 크기에 맞게 조절
+                Height = 180,
+                WindowStyle = WindowStyle.ToolWindow,
+                ResizeMode = ResizeMode.NoResize,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                Owner = Window.GetWindow(this)
+            };
 
-            RenderTimeTable();
+            // ✨ [진짜 수정] 팔레트에서 색을 선택하면(ColorChanged) 창을 닫고 저장합니다.
+            palette.ColorChanged += (s, newColor) =>
+            {
+                _settings.TaskColors[selectedTask.Text] = newColor.ToString();
+                selectedTask.ColorBrush = new SolidColorBrush(newColor);
+                DataManager.SaveSettings(_settings); // (DataManager.cs가 static이므로)
+
+                RenderTimeTable();
+                window.Close(); // 색상 선택 시 창 닫기
+            };
+
+            window.ShowDialog(); // ✨ Window가 ShowDialog()를 호출
 
             e.Handled = true;
         }

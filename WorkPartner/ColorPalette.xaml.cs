@@ -9,7 +9,7 @@ using System.Windows.Shapes;
 namespace WorkPartner
 {
     // ✨ [수정] Window가 아닌 UserControl을 상속
-    public partial class ColorPalette : Window
+    public partial class ColorPalette : UserControl
     {
         // ✨ [신규 추가] AvatarPage.xaml.cs가 호출할 이벤트
         public event Action<object, Color> ColorChanged;
@@ -40,7 +40,7 @@ namespace WorkPartner
 
         private void GenerateColorSwatches()
         {
-            // XAML의 ColorPanel을 찾습니다. (이름이 ColorPanel이어야 함 [cite: ColorPalette.xaml])
+            // XAML의 ColorPanel을 찾습니다.
             var colorPanel = FindName("ColorPanel") as WrapPanel;
             if (colorPanel == null) return;
 

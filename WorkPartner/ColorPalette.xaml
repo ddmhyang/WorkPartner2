@@ -1,13 +1,13 @@
-﻿<Window x:Class="WorkPartner.ColorPalette"
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Color Palette" Height="150" Width="250"
-        WindowStyle="ToolWindow"
-        ResizeMode="NoResize"
-        WindowStartupLocation="CenterOwner"
-        Background="{DynamicResource MainBackgroundBrush}">
+﻿<UserControl x:Class="WorkPartner.ColorPalette"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://expression.blend/2008" 
+             mc:Ignorable="d" 
+             d:DesignHeight="150" d:DesignWidth="250"
+             Background="{DynamicResource MainBackgroundBrush}">
     <Grid Margin="10">
         <WrapPanel x:Name="ColorPanel" HorizontalAlignment="Center" VerticalAlignment="Center">
         </WrapPanel>
     </Grid>
-</Window>
+</UserControl>
