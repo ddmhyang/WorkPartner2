@@ -18,7 +18,7 @@ namespace WorkPartner
             DependencyProperty.Register("HueShift", typeof(double), typeof(HueShiftEffect),
                 new UIPropertyMetadata(0.0, PixelShaderConstantCallback(0)));
 
-        private PixelShader _pixelShaderInstance;
+        // private PixelShader _pixelShaderInstance; // 공유 인스턴스를 사용하므로 주석 처리
 
         private static bool _isShaderLoadedSuccessfully = false;
         private static PixelShader _sharedPixelShader; // 성공적으로 로드된 셰이더 공유
@@ -31,12 +31,16 @@ namespace WorkPartner
                 // 처음 로드 시도 또는 이전에 실패했을 경우에만 로드
                 if (_sharedPixelShader == null && !_isShaderLoadedSuccessfully)
                 {
-                    // .csproj에서 Resource로 포함된 .ps 파일을 로드합니다.
-                    _sharedPixelShader = new PixelShader { UriSource = new Uri("pack://application:,,,/WorkPartner;component/shaders/TintColor.ps") };
+                    // =================================================================
+                    // ✨ [핵심 수정] "TintColor.ps"를 "HueShift.fx"로 바로잡습니다.
+                    // =================================================================
+                    // .csproj에서 Resource로 포함된 .fx 파일을 로드합니다.
+                    _sharedPixelShader = new PixelShader { UriSource = new Uri("pack://application:,,,/WorkPartner;component/shaders/HueShift.fx") };
+
                     // 여기서 강제로 컴파일/로드를 시도합니다. 실패하면 예외 발생.
                     _sharedPixelShader.Freeze(); // 리소스를 프리즈하여 스레드 안전성 확보 및 성능 향상
                     _isShaderLoadedSuccessfully = true; // 성공 플래그 설정
-                    Debug.WriteLine("HueShift.ps loaded successfully.");
+                    Debug.WriteLine("HueShift.fx loaded successfully.");
                 }
 
                 // 성공적으로 로드된 공유 셰이더 인스턴스를 사용
@@ -56,7 +60,7 @@ namespace WorkPartner
             catch (Exception ex)
             {
                 // 로딩 실패 시 예외 기록 (Output 창 확인)
-                Debug.WriteLine($"!!! Critical Error loading PixelShader 'HueShift.ps': {ex.Message}");
+                Debug.WriteLine($"!!! Critical Error loading PixelShader 'HueShift.fx': {ex.Message}");
                 Debug.WriteLine($"StackTrace: {ex.StackTrace}");
                 if (ex.InnerException != null)
                 {
@@ -71,7 +75,6 @@ namespace WorkPartner
 
                 // ✨ 중요: XamlParseException을 방지하기 위해 생성자에서 예외를 throw하지 않습니다.
                 // 대신 디버그 출력으로 오류를 알리고 효과를 비활성화합니다.
-                // throw; // 여기서 throw하면 XamlParseException 발생
             }
         }
         // Getter/Setter for Input
