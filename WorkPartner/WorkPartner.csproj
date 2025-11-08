@@ -60,12 +60,6 @@
 		<Content Include="items_db.json">
 			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
 		</Content>
-		<Resource Include="shaders\HueShift.fx">
-		  <CopyToOutputDirectory>Never</CopyToOutputDirectory>
-		</Resource>
-		<Resource Include="shaders\TintColor.ps">
-		  <CopyToOutputDirectory>Never</CopyToOutputDirectory>
-		</Resource>
 	</ItemGroup>
 
 	<ItemGroup>
@@ -90,7 +84,7 @@
 		<PackageReference Include="Microsoft.ML.FastTree" Version="1.7.1" />
 		<PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
 		<PackageReference Include="SharpVectors.Wpf" Version="1.8.5" />
-		<PackageReference Include="System.Drawing.Common" Version="8.0.4" />
+		<PackageReference Include="System.Drawing.Common" Version="9.0.10" />
 		<PackageReference Include="System.Management" Version="8.0.0" />
 	</ItemGroup>
 
@@ -278,6 +272,10 @@
 	  <Resource Update="images\warning.svg">
 	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 	  </Resource>
+	</ItemGroup>
+
+	<ItemGroup>
+	  <Folder Include="shaders\" />
 	</ItemGroup>
 
 </Project>

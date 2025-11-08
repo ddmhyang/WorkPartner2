@@ -8,18 +8,21 @@ namespace WorkPartner
     public class EquippedItemInfo
     {
         public Guid ItemId { get; set; }
-        public double HueShift { get; set; } // 0~360도 색조 값 (0 = 원본색)
+
+        // ✨ [수정] HueShift(double) 대신 ColorHex(string)를 사용
+        public string ColorHex { get; set; }
 
         public EquippedItemInfo()
         {
             ItemId = Guid.Empty;
-            HueShift = 0;
+            ColorHex = null; // 기본값은 null
         }
 
-        public EquippedItemInfo(Guid id, double hue = 0)
+        // ✨ [수정] 생성자도 ColorHex를 받도록 (또는 기본값 사용)
+        public EquippedItemInfo(Guid id, string colorHex = null)
         {
             ItemId = id;
-            HueShift = hue;
+            ColorHex = colorHex;
         }
     }
 }

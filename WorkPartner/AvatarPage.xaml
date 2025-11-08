@@ -103,11 +103,10 @@
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
 
-                    <StackPanel x:Name="HueSliderPanel" Grid.Column="0" VerticalAlignment="Center" Visibility="Collapsed">
-                        <TextBlock Text="색조 변경" FontSize="10" Foreground="{DynamicResource SecondaryTextBrush}"/>
-                        <Slider x:Name="HueSlider" Minimum="0" Maximum="360" Value="0" SmallChange="1" LargeChange="10" 
-                                ValueChanged="HueSlider_ValueChanged" Margin="0,5,10,0"/>
-                    </StackPanel>
+                    <local:ColorPalette x:Name="ItemColorPalette" Grid.Column="0"
+                                        VerticalAlignment="Center"
+                                        Visibility="Collapsed" 
+                                        HorizontalAlignment="Left" />
 
                     <Button x:Name="RevertButton" Grid.Column="1" Content="되돌리기" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,5,0"
                             Click="RevertButton_Click"/>

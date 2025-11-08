@@ -1,4 +1,4 @@
-﻿// [수정] WorkPartner/AvatarPage.xaml.cs
+﻿// [최종 수정] WorkPartner/AvatarPage.xaml.cs
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -24,17 +24,27 @@ namespace WorkPartner
 
         private ShopItem _selectedShopItem; // 현재 상점에서 선택한 아이템
         private Border _selectedItemBorder; // 현재 상점에서 선택한 아이템의 테두리
-        private bool _isSliderEventBlocked = false; // 슬라이더 값 변경 이벤트 중복 방지 플래그
+
+        private ColorPalette _colorPalette;
+        private AvatarPageHelpers _avatarHelpers;
+
 
         public AvatarPage()
         {
             InitializeComponent();
+
+            _colorPalette = FindName("ItemColorPalette") as ColorPalette;
+            _avatarHelpers = new AvatarPageHelpers();
+
+            // ✨ [수정] 이제 ColorPalette.xaml.cs가 정상이므로 주석 해제
+            if (_colorPalette != null)
+            {
+                _colorPalette.ColorChanged += ColorPalette_ColorChanged;
+            }
+
             LoadData();
         }
 
-        /// <summary>
-        /// 데이터를 로드하고 미리보기 상태를 초기화합니다.
-        /// </summary>
         public void LoadData()
         {
             _savedSettings = DataManager.LoadSettings();
@@ -54,31 +64,22 @@ namespace WorkPartner
             }
 
 
-            CharacterPreview.UpdateCharacter(_previewSettings); // 이 코드는 그대로 둡니다.
+            CharacterPreview.UpdateCharacter(_previewSettings);
             PopulateCategories();
             UpdateItemList();
             UpdateControlsVisibility();
         }
 
         #region 카테고리 및 아이템 목록 UI
-
-        /// <summary>
-        /// 상단 카테고리 버튼을 생성합니다.
-        /// </summary>
-        private void PopulateCategories()
+        private void PopulateCategories()
         {
             CategoryPanel.Children.Clear();
-
-            // ✨ 새 ItemType 순서대로 정렬
             var categories = _allItems.Select(i => i.Type).Distinct().OrderBy(t => GetCategoryOrder(t));
-
-            // ✨ [수정] 기본 파츠(Scalp, Head, Upper, Lower)는 상점 UI에 표시하지 않습니다.
-            var basicPartsToExclude = new[] { ItemType.Scalp, ItemType.Head, ItemType.Upper, ItemType.Lower}; // Body도 기존 파츠이므로 포함
+            var basicPartsToExclude = new[] { ItemType.Scalp, ItemType.Head, ItemType.Upper, ItemType.Lower };
 
             foreach (var category in categories)
             {
-                // 'Body'는 기본 파츠이므로 상점에서 선택하지 않음
-                if (basicPartsToExclude.Contains(category)) continue; // ✨ 수정된 기본 파츠 제외 로직
+                if (basicPartsToExclude.Contains(category)) continue;
 
                 var button = new Button
                 {
@@ -111,17 +112,14 @@ namespace WorkPartner
                 _selectedCategoryButton = button;
 
                 UpdateItemList();
-                UpdateControlsVisibility(); // 카테고리 변경 시 슬라이더 숨김
+                UpdateControlsVisibility();
             }
         }
 
-        /// <summary>
-        /// 아이템 목록 UI를 다시 그립니다.
-        /// </summary>
         private void UpdateItemList()
         {
             ItemPanel.Children.Clear();
-            _selectedItemBorder = null; // 선택 테두리 초기화
+            _selectedItemBorder = null;
 
             var itemsInCategory = _allItems.Where(i => i.Type == _selectedCategory);
 
@@ -132,13 +130,10 @@ namespace WorkPartner
             }
         }
 
-        /// <summary>
-        /// 아이템 1개의 UI (테두리, 아이콘, 가격)를 생성합니다.
-        /// </summary>
         private Border CreateItemView(ShopItem item)
         {
             bool isOwned = _savedSettings.OwnedItemIds.Contains(item.Id);
-            bool isEquipped = IsItemEquippedInPreview(item); // ✨ 미리보기 상태 기준
+            bool isEquipped = IsItemEquippedInPreview(item);
 
             var border = new Border
             {
@@ -186,27 +181,22 @@ namespace WorkPartner
 
             if (isEquipped)
             {
-                _selectedItemBorder = border; // 현재 장착 중인 아이템을 선택된 것으로 설정
+                _selectedItemBorder = border;
                 _selectedShopItem = item;
             }
 
             return border;
         }
-
         #endregion
 
         #region 미리보기 (Preview) 로직
 
-        /// <summary>
-        /// 아이템 클릭 시, 구매/장착 대신 '미리보기'를 적용합니다.
-        /// </summary>
         private void Item_Click(object sender, MouseButtonEventArgs e)
         {
             if (sender is not Border border || border.Tag is not ShopItem selectedItem) return;
 
             _selectedShopItem = selectedItem;
 
-            // 시각적 선택 효과 업데이트
             if (_selectedItemBorder != null)
             {
                 _selectedItemBorder.BorderBrush = Brushes.LightGray;
@@ -216,64 +206,52 @@ namespace WorkPartner
             border.BorderThickness = new Thickness(2);
             _selectedItemBorder = border;
 
-            // 미리보기 적용
             ApplyPreview(selectedItem);
-
-            // 컨트롤 UI 업데이트
             UpdateControlsVisibility();
         }
 
-        /// <summary>
-        /// 선택한 아이템을 _previewSettings에 적용합니다.
-        /// </summary>
         private void ApplyPreview(ShopItem itemToEquip)
         {
+            string currentHex = null;
+
             if (itemToEquip.Type == ItemType.Accessory)
             {
-                // 장신구: 중복 착용/해제 처리 (개수 제한 없음)
                 var existing = _previewSettings.EquippedAccessories.FirstOrDefault(e => e.ItemId == itemToEquip.Id);
                 if (existing != null)
                 {
-                    // 이미 착용 중이면 해제
                     _previewSettings.EquippedAccessories.Remove(existing);
                 }
                 else
                 {
-                    // ✨ [수정] 개수 제한(Count < 3)을 제거하고, 제한 없이 새로 착용
-                    _previewSettings.EquippedAccessories.Add(new EquippedItemInfo(itemToEquip.Id, 0));
+                    _previewSettings.EquippedAccessories.Add(new EquippedItemInfo(itemToEquip.Id, null));
                 }
-                // ✨ [수정] 3개 초과 시 경고 메시지를 표시하던 'else' 블록을 삭제했습니다.
             }
             else
             {
-                // 일반 파츠: 교체 또는 해제
                 if (_previewSettings.EquippedParts.TryGetValue(itemToEquip.Type, out var current) && current.ItemId == itemToEquip.Id)
                 {
-                    // 이미 착용한 아이템을 다시 클릭하면 해제 (기본 아이템으로 돌아가기 - 여기서는 그냥 제거)
                     _previewSettings.EquippedParts.Remove(itemToEquip.Type);
-                    // TODO: 기본 아이템으로 되돌리는 로직이 필요할 수 있습니다.
                 }
                 else
                 {
-                    // 다른 아이템으로 교체
-                    _previewSettings.EquippedParts[itemToEquip.Type] = new EquippedItemInfo(itemToEquip.Id, 0);
+                    _previewSettings.EquippedParts.TryGetValue(itemToEquip.Type, out var oldItem);
+                    currentHex = oldItem?.ColorHex;
+
+                    _previewSettings.EquippedParts[itemToEquip.Type] = new EquippedItemInfo(itemToEquip.Id, currentHex);
                 }
             }
 
-            // 캐릭터 디스플레이 업데이트
             CharacterPreview.UpdateCharacter(_previewSettings);
-            // 아이템 목록 테두리(장착 여부) 업데이트
             UpdateItemList();
         }
 
-        /// <summary>
-        /// 슬라이더 값이 변경되면, 선택된 아이템의 색조를 _previewSettings에 적용합니다.
-        /// </summary>
-        private void HueSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        // ✨ [수정] 이제 이 함수가 ColorPalette.xaml.cs에서 호출됩니다.
+        private void ColorPalette_ColorChanged(object sender, Color newColor)
         {
-            if (_selectedShopItem == null || _isSliderEventBlocked) return;
+            if (_selectedShopItem == null || !IsItemEquippedInPreview(_selectedShopItem)) return;
 
-            double newHue = e.NewValue;
+            // 미리보기(Preview)에 즉시 적용
+            string newColorHex = newColor.ToString();
             EquippedItemInfo itemInfo = null;
 
             if (_selectedShopItem.Type == ItemType.Accessory)
@@ -287,39 +265,45 @@ namespace WorkPartner
 
             if (itemInfo != null)
             {
-                itemInfo.HueShift = newHue;
-                CharacterPreview.UpdateCharacter(_previewSettings); // 실시간 미리보기
+                itemInfo.ColorHex = newColorHex;
+                CharacterPreview.UpdateCharacter(_previewSettings); // 캐릭터 새로고침
             }
         }
 
-        /// <summary>
-        /// 아이템 선택 변경 시, 슬라이더의 표시 여부와 현재 값을 업데이트합니다.
-        /// </summary>
         private void UpdateControlsVisibility()
         {
+            if (_colorPalette == null) return;
+
             if (_selectedShopItem != null && _selectedShopItem.CanChangeColor && IsItemEquippedInPreview(_selectedShopItem))
             {
-                HueSliderPanel.Visibility = Visibility.Visible;
+                _colorPalette.Visibility = Visibility.Visible;
 
-                // 현재 아이템의 Hue 값을 찾아 슬라이더에 설정
                 EquippedItemInfo itemInfo = null;
-                // ✨ [수정] ItemType.Accessories -> ItemType.Accessory
                 if (_selectedShopItem.Type == ItemType.Accessory)
                     itemInfo = _previewSettings.EquippedAccessories.FirstOrDefault(i => i.ItemId == _selectedShopItem.Id);
                 else
                     _previewSettings.EquippedParts.TryGetValue(_selectedShopItem.Type, out itemInfo);
 
-                // 이벤트 핸들러가 이 값 변경으로 인해 실행되는 것을 방지
-                _isSliderEventBlocked = true;
-                HueSlider.Value = itemInfo?.HueShift ?? 0;
-                _isSliderEventBlocked = false;
+                string currentHex = itemInfo?.ColorHex;
+
+                // ✨ [수정] 이제 ColorPalette.xaml.cs가 정상이므로 주석 해제
+                if (!string.IsNullOrEmpty(currentHex))
+                {
+                    try
+                    {
+                        // (SelectedColor.set이 public이므로 작동)
+                        _colorPalette.SelectedColor = (Color)ColorConverter.ConvertFromString(currentHex);
+                    }
+                    catch { _colorPalette.Reset(); } // (Reset()이 있으므로 작동)
+                }
+                else
+                {
+                    _colorPalette.Reset(); // (Reset()이 있으므로 작동)
+                }
             }
             else
             {
-                HueSliderPanel.Visibility = Visibility.Collapsed;
-                _isSliderEventBlocked = true;
-                HueSlider.Value = 0;
-                _isSliderEventBlocked = false;
+                _colorPalette.Visibility = Visibility.Collapsed;
             }
         }
 
@@ -327,9 +311,6 @@ namespace WorkPartner
 
         #region 저장 및 되돌리기 로직
 
-        /// <summary>
-        /// '저장하기' 버튼 클릭: 변경 사항을 구매하고 _savedSettings에 적용합니다.
-        /// </summary>
         private void SaveButton_Click(object sender, RoutedEventArgs e)
         {
             int totalCost = 0;
@@ -363,7 +344,6 @@ namespace WorkPartner
                 }
             }
 
-            // 중복 제거 (필요 시)
             itemsToBuy = itemsToBuy.Distinct().ToList();
             totalCost = itemsToBuy.Sum(i => i.Price);
 
@@ -382,7 +362,6 @@ namespace WorkPartner
                     return;
                 }
 
-                // 코인 차감 및 아이템 추가
                 _savedSettings.Coins -= totalCost;
                 foreach (var item in itemsToBuy)
                 {
@@ -394,16 +373,17 @@ namespace WorkPartner
             _savedSettings.EquippedParts = DeepClone(_previewSettings.EquippedParts);
             _savedSettings.EquippedAccessories = DeepClone(_previewSettings.EquippedAccessories);
 
+            // ✨ [수정] 이제 _avatarHelpers.SaveEquippedColor가 필요 없습니다.
+            //    (모든 색상 정보가 _previewSettings에 이미 저장되었고, 
+            //     위 줄에서 _savedSettings로 통째로 복사되었기 때문입니다.)
+
             // 5. 저장 및 UI 갱신
-            DataManager.SaveSettings(_savedSettings);
+            DataManager.SaveSettings(_savedSettings); // (이제 이 한 줄로 색상까지 모두 저장됩니다)
             CoinDisplay.Text = _savedSettings.Coins.ToString("N0");
-            UpdateItemList(); // '보유 중' 상태 갱신
+            UpdateItemList();
             MessageBox.Show("성공적으로 저장되었습니다!", "저장 완료");
         }
 
-        /// <summary>
-        /// '되돌리기' 버튼 클릭: _previewSettings를 _savedSettings로 되돌립니다.
-        /// </summary>
         private void RevertButton_Click(object sender, RoutedEventArgs e)
         {
             _previewSettings = DeepClone(_savedSettings);
@@ -415,11 +395,7 @@ namespace WorkPartner
         #endregion
 
         #region 유틸리티 메서드
-
-        /// <summary>
-        /// _previewSettings 기준으로 아이템이 장착 중인지 확인합니다.
-        /// </summary>
-        private bool IsItemEquippedInPreview(ShopItem item)
+        private bool IsItemEquippedInPreview(ShopItem item)
         {
             if (item.Type == ItemType.Accessory)
             {
@@ -431,9 +407,6 @@ namespace WorkPartner
             }
         }
 
-        /// <summary>
-        /// 새 ItemType에 맞는 카테고리 이름을 반환합니다.
-        /// </summary>
         private string GetCategoryDisplayName(ItemType itemType)
         {
             return itemType switch
@@ -449,7 +422,6 @@ namespace WorkPartner
                 ItemType.AnimalEar => "동물귀",
                 ItemType.Shoes => "신발",
                 ItemType.Background => "배경",
-                // 기본 파츠는 상점 UI에 표시되지 않으므로 여기에 포함하지 않아도 됩니다.
                 ItemType.Scalp => "두피",
                 ItemType.Head => "머리",
                 ItemType.Upper => "상체",
@@ -458,22 +430,19 @@ namespace WorkPartner
             };
         }
 
-        /// <summary>
-        /// 카테고리 표시 순서를 반환합니다.
-        /// </summary>
         private int GetCategoryOrder(ItemType itemType)
         {
             return itemType switch
             {
                 ItemType.Background => 1,
                 ItemType.Tail => 2,
-                ItemType.Lower => 3, // 하체 (기본)
+                ItemType.Lower => 3,
                 ItemType.Bottom => 4,
-                ItemType.Upper => 5, // 상체 (기본)
+                ItemType.Upper => 5,
                 ItemType.Top => 6,
                 ItemType.Outerwear => 7,
-                ItemType.Head => 8, // 머리 (기본)
-                ItemType.Scalp => 9, // 두피 (기본)
+                ItemType.Head => 8,
+                ItemType.Scalp => 9,
                 ItemType.BackHair => 10,
                 ItemType.Face => 11,
                 ItemType.AnimalEar => 12,
@@ -484,9 +453,6 @@ namespace WorkPartner
             };
         }
 
-        /// <summary>
-        /// JSON 직렬화/역직렬화를 이용해 객체를 깊은 복사(Deep Clone)합니다.
-        /// </summary>
         private T DeepClone<T>(T obj)
         {
             var json = JsonConvert.SerializeObject(obj);

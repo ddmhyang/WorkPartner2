@@ -113,7 +113,7 @@ namespace WorkPartner
                     if (item != null)
                     {
                         // ✨ [수정] 새 구조체인 EquippedParts에 추가합니다.
-                        EquippedParts[item.Type] = new EquippedItemInfo(item.Id, 0); // 기본 색조 0
+                        EquippedParts[item.Type] = new EquippedItemInfo(item.Id, null); // 기본 색조 0
 
                         if (!OwnedItemIds.Contains(item.Id))
                         {

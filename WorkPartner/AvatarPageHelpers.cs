@@ -1,62 +1,46 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Globalization;
-using System.Linq;
-using System.Windows;
-using System.Windows.Data;
 using System.Windows.Media;
 
 namespace WorkPartner
 {
-    // 아이템 목록에 표시될 데이터를 담는 클래스
-    public class DisplayShopItem : INotifyPropertyChanged
+    /// <summary>
+    /// AvatarPage에서 사용하는 헬퍼 함수들을 모아둔 클래스입니다.
+    /// </summary>
+    public class AvatarPageHelpers
     {
-        public ShopItem OriginalItem { get; }
-        public string Name => OriginalItem.Name;
-        public int Price => OriginalItem.Price;
-        public string ImagePath => OriginalItem.ImagePath;
-        public bool IsOwned { get; set; }
-        public bool IsEquipped { get; set; }
-        public bool IsFree => Price == 0;
-        public Brush BorderColor => IsEquipped ? Brushes.Gold : (IsOwned ? Brushes.SkyBlue : Brushes.LightGray);
-
-        public event PropertyChangedEventHandler PropertyChanged;
-
-        public DisplayShopItem(ShopItem originalItem, List<Guid> ownedIds, Dictionary<ItemType, Guid> equippedIds)
+        /// <summary>
+        /// ✨ [수정됨] Hue(숫자) 대신 Color(문자열)를 저장합니다.
+        /// </summary>
+        public void SaveEquippedColor(string partType, Color color)
         {
-            OriginalItem = originalItem;
-            IsOwned = ownedIds.Contains(originalItem.Id) || originalItem.Price == 0;
-            IsEquipped = equippedIds.TryGetValue(originalItem.Type, out Guid equippedId) && equippedId == originalItem.Id;
-        }
+            var settings = DataManager.LoadSettings();
+            var partToUpdate = new List<EquippedItemInfo>();
 
-        public void UpdateStatus(List<Guid> ownedIds, Dictionary<ItemType, Guid> equippedIds)
-        {
-            IsOwned = ownedIds.Contains(OriginalItem.Id) || OriginalItem.Price == 0;
-            IsEquipped = equippedIds.TryGetValue(OriginalItem.Type, out Guid equippedId) && equippedId == OriginalItem.Id;
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsOwned)));
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsEquipped)));
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(BorderColor)));
-        }
-    }
-
-    // Boolean 값을 Visibility 값으로 변환해주는 컨버터
-    public class BooleanToVisibilityConverter : IValueConverter
-    {
-        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
-        {
-            bool boolValue = (bool)value;
-            if (parameter != null && parameter.ToString().ToLower() == "invert")
+            if (partType == "Hair")
             {
-                boolValue = !boolValue;
+                if (settings.EquippedParts.TryGetValue(ItemType.BackHair, out var backHair))
+                    partToUpdate.Add(backHair);
+                if (settings.EquippedParts.TryGetValue(ItemType.FrontHair, out var frontHair))
+                    partToUpdate.Add(frontHair);
             }
-            return boolValue ? Visibility.Visible : Visibility.Collapsed;
-        }
+            // (다른 파츠 타입 추가 가능) ...
 
-        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
-        {
-            throw new NotImplementedException();
+            if (partToUpdate.Count > 0)
+            {
+                // ✨ [핵심 수정] Color -> Hex 문자열로 변환
+                string hex = color.ToString(); // (예: "#FFFF0000")
+
+                foreach (var partInfo in partToUpdate)
+                {
+                    if (partInfo != null)
+                    {
+                        // ✨ [핵심 수정] HueShift 대신 ColorHex에 저장
+                        partInfo.ColorHex = hex;
+                    }
+                }
+                DataManager.SaveSettings(settings);
+            }
         }
     }
 }
-
