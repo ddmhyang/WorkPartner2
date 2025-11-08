@@ -1,9 +1,8 @@
-﻿// 𝙃𝙚𝙧𝙚'𝙨 𝙩𝙝𝙚 𝙘𝙤𝙙𝙚 𝙞𝙣 ddmhyang/workpartner2/WorkPartner2-4/WorkPartner/ActiveWindowHelper.cs
-using System;
+﻿using System;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
-using System.Threading.Tasks; // ✨ Task(비동기) 사용을 위해 추가
+using System.Threading.Tasks;
 using System.Windows.Automation;
 using System.ComponentModel;
 
@@ -33,7 +32,6 @@ namespace WorkPartner
             public uint dwTime;
         }
 
-        // ✨ [추가] 멈춤 현상을 방지하기 위한 타임아웃 시간 (밀리초 단위)
         private const int ApiTimeoutMs = 200;
 
         public static string GetActiveWindowTitle()
@@ -62,9 +60,6 @@ namespace WorkPartner
             string processName = string.Empty;
             try
             {
-                // ✨ [수정] 모든 P/Invoke 및 프로세스 접근 코드를 Task.Run 내부로 이동시켰습니다.
-                // 이렇게 하면 GetForegroundWindow() 또는 GetWindowThreadProcessId()에서 멈춤 현상이 발생해도
-                // 메인 스레드가 정지하지 않고 ApiTimeoutMs 이후에 작업을 중단할 수 있습니다.
                 var task = Task.Run(() =>
                 {
                     try
@@ -81,7 +76,6 @@ namespace WorkPartner
                     catch { return string.Empty; }
                 });
 
-                // ✨ 지정된 시간 안에 작업이 완료되면 결과 반환, 아니면 빈 문자열 반환
                 if (task.Wait(TimeSpan.FromMilliseconds(ApiTimeoutMs)))
                 {
                     processName = task.Result;
@@ -116,7 +110,6 @@ namespace WorkPartner
             string url = null;
             try
             {
-                // ✨ [수정] UI 자동화 전체 로직을 별도 스레드에서 타임아웃을 갖고 실행
                 var task = Task.Run(() =>
                 {
                     try
@@ -149,7 +142,6 @@ namespace WorkPartner
                     return null;
                 });
 
-                // ✨ 지정된 시간 안에 작업이 완료되면 결과 반환, 아니면 null 반환
                 if (task.Wait(TimeSpan.FromMilliseconds(ApiTimeoutMs)))
                 {
                     url = task.Result;
