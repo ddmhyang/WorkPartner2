@@ -37,6 +37,7 @@ namespace WorkPartner.ViewModels
 
         private Dictionary<string, TimeSpan> _dailyTaskTotals = new Dictionary<string, TimeSpan>();
         private TimeSpan _totalTimeTodayFromLogs;
+        public event EventHandler TimerStoppedAndSaved;
 
         #endregion
 
@@ -298,7 +299,8 @@ namespace WorkPartner.ViewModels
                 _dailyTaskTotals[entry.TaskText] = duration;
             }
             _totalTimeTodayFromLogs += duration;
-
+            // ✨ [추가] 모든 저장이 끝났으니, 이 이벤트를 구독하는 모든 곳(DashboardPage)에 신호를 보냅니다.
+            TimerStoppedAndSaved?.Invoke(this, EventArgs.Empty);
         }
 
         private void UpdateLiveTimeDisplays()
@@ -337,5 +339,6 @@ namespace WorkPartner.ViewModels
             return true;
         }
         #endregion
+
     }
 }

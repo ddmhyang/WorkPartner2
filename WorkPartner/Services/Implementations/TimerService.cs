@@ -45,22 +45,55 @@ namespace WorkPartner.Services.Implementations
 
         private void CheckActiveWindow()
         {
-            if (_settings == null || IsPaused) return;
+            // 0. 설정이 로드되지 않았으면 아무것도 하지 않음
+            if (_settings == null) return;
 
+            // 1. 활성 프로세스 이름 가져오기 (이제 "notepad.exe"가 아닌 "notepad"가 반환됨)
             string activeProcessName = ActiveWindowHelper.GetActiveProcessName()?.ToLower();
-            if (string.IsNullOrEmpty(activeProcessName)) return;
+            if (string.IsNullOrEmpty(activeProcessName))
+            {
+                // 활성 창이 없으면 (예: 바탕화면 클릭) '수동 앱'으로 간주
+                Pause();
+                return;
+            }
 
-            if (_settings.DistractionProcesses.Any(p => activeProcessName.Contains(p)))
+            // 2. [방해 앱 검사 - 프로세스]
+            // "notepad" == "notepad" 비교 (정확한 일치)
+            if (_settings.DistractionProcesses.Any(p => activeProcessName == p))
             {
                 Pause();
+                return;
             }
-            else if (_settings.WorkProcesses.Any(p => activeProcessName.Contains(p)))
+
+            // 3. [작업 앱 검사 - 프로세스]
+            // "notepad" == "notepad" 비교 (정확한 일치)
+            if (_settings.WorkProcesses.Any(p => activeProcessName == p))
             {
                 if (IsPaused)
                 {
                     Resume();
                 }
+                return; // 작업 앱이므로 URL 검사 불필요
             }
+
+            // --- 여기까지 왔다면, 프로세스가 '작업 앱'도 '방해 앱'도 아닌 경우 ---
+
+            // 4. https://www.wordreference.com/enko/%EA%B2%80%EC%82%AC 브라우저 URL 검사
+            string activeUrl = ActiveWindowHelper.GetActiveBrowserTabUrl()?.ToLower();
+            if (!string.IsNullOrEmpty(activeUrl))
+            {
+                // 5. [방해 앱 검사 - URL]
+                // (예: "www.youtube.com".Contains("youtube.com"))
+                if (_settings.DistractionProcesses.Any(p => activeUrl.Contains(p)))
+                {
+                    Pause();
+                    return;
+                }
+            }
+
+            // 6. [수동 앱 처리] (모두 아닐 경우)
+            // '수동 앱'(탐색기, 카톡 등) 또는 URL 검사를 통과한 브라우저(예: google.com)로 간주
+            Pause();
         }
 
         public bool IsRunning => _timer.IsEnabled;

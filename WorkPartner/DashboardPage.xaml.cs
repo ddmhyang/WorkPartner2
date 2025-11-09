@@ -49,6 +49,8 @@ namespace WorkPartner
         private static readonly SolidColorBrush BlockBackgroundBrush = new SolidColorBrush(Color.FromRgb(0xF5, 0xF5, 0xF5));
         private static readonly SolidColorBrush BlockBorderBrush = Brushes.White;
 
+
+        // ✨ [추가] 타이머가 중지되고 저장이 완료되었음을 알리는 이벤트를 선언합니다.
         #endregion
 
         public DashboardPage()
@@ -1090,35 +1092,31 @@ namespace WorkPartner
             e.Handled = true;
         }
 
-        // 🎯 WorkPartner/DashboardPage.xaml.cs의 DashboardPage_DataContextChanged 메서드를
-        //    아래와 같이 수정합니다. (이벤트 구독/해지 추가)
         private void DashboardPage_DataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
         {
             if (e.OldValue is ViewModels.DashboardViewModel oldVm)
             {
                 oldVm.TimeUpdated -= OnViewModelTimeUpdated;
-                // ✨ [버그 2 수정] 이벤트 구독 해지
-                oldVm.TaskStoppedAndSaved -= OnViewModelTaskStopped;
+                // ✨ [추가] ViewModel이 변경되면 이전 이벤트 구독 해제
+                if (oldVm != null) oldVm.TimerStoppedAndSaved -= OnViewModelTimerStopped;
             }
             if (e.NewValue is ViewModels.DashboardViewModel newVm)
             {
                 newVm.TimeUpdated += OnViewModelTimeUpdated;
-                // ✨ [버그 2 수정] 이벤트 구독
-                newVm.TaskStoppedAndSaved += OnViewModelTaskStopped;
+                // ✨ [추가] 새 ViewModel의 타이머 중지 이벤트 구독
+                newVm.TimerStoppedAndSaved += OnViewModelTimerStopped;
             }
         }
-        private async void OnViewModelTaskStopped()
+        // ✨ [전체 추가] ViewModel에서 타이머가 중지되고 저장이 완료되었을 때 호출될 메서드
+        private void OnViewModelTimerStopped(object sender, EventArgs e)
         {
-            // ViewModel이 timelogs.json을 변경했으므로,
-            // Page가 UI를 업데이트하기 위해 파일에서 데이터를 다시 로드해야 합니다.
-            await Dispatcher.InvokeAsync(async () =>
+            // ViewModel이 방금 새 로그를 저장했으므로, 
+            // 디스크에서 TimeLogs를 다시 로드하고 UI를 전부 새로고침합니다.
+            Dispatcher.Invoke(async () =>
             {
-                // 1. 디스크에서 최신 로그 파일을 다시 로드
-                await LoadTimeLogsAsync();
-                // 2. 과목별 시간 (TaskItems) 재계산 및 메인 타이머/미니 타이머 업데이트
-                RecalculateAllTotals();
-                // 3. 타임라인 새로 그리기
-                RenderTimeTable();
+                await LoadTimeLogsAsync();    // 1. 파일에서 다시 로드
+                RecalculateAllTotals(); // 2. 총 시간 다시 계산
+                RenderTimeTable();      // 3. 타임라인 다시 그리기
             });
         }
 

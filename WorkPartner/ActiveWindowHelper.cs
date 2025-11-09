@@ -66,23 +66,50 @@ namespace WorkPartner
         /// </summary>
         public static string GetActiveProcessName()
         {
+            string processName = string.Empty;
             try
             {
-                IntPtr handle = GetForegroundWindow();
-                if (handle == IntPtr.Zero) return null;
+                var task = Task.Run(() =>
+                {
+                    try
+                    {
+                        IntPtr handle = GetForegroundWindow();
+                        if (handle == IntPtr.Zero) return string.Empty;
 
-                GetWindowThreadProcessId(handle, out uint processId);
-                if (processId == 0) return null;
+                        GetWindowThreadProcessId(handle, out uint processId);
+                        if (processId == 0) return string.Empty;
 
-                Process process = Process.GetProcessById((int)processId);
-                return process.ProcessName?.ToLower();
+                        Process proc = Process.GetProcessById((int)processId);
+
+                        // ✨ [핵심 수정]
+                        // "notepad.exe"에서 ".exe"를 제거하고 "notepad"만 반환하도록 수정
+                        string name = proc.ProcessName.ToLower();
+                        if (name.EndsWith(".exe"))
+                        {
+                            name = name.Substring(0, name.Length - 4);
+                        }
+                        return name;
+                    }
+                    catch { return string.Empty; }
+                });
+
+                if (task.Wait(TimeSpan.FromMilliseconds(ApiTimeoutMs)))
+                {
+                    processName = task.Result;
+                }
+                else
+                {
+                    Debug.WriteLine($"[Timeout] GetActiveProcessName timed out.");
+                }
             }
-            catch
+            catch (Exception ex)
             {
-                return null; // 액세스 거부 등 예외 발생 시
+                Debug.WriteLine($"[Error] GetActiveProcessName: {ex.Message}");
             }
+            return processName;
         }
 
+        private const int ApiTimeoutMs = 200;
         /// <summary>
         /// 현재 활성화된 창의 제목을 가져옵니다.
         /// </summary>
