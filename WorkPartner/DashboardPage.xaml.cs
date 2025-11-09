@@ -202,7 +202,7 @@ namespace WorkPartner
 
         private void SaveTimeLogs()
         {
-            DataManager.SaveTimeLogs(TimeLogEntries);
+            DataManager.SaveTimeLogsImmediately(TimeLogEntries);
         }
 
         private async Task LoadMemosAsync()
@@ -476,6 +476,7 @@ namespace WorkPartner
             }
         }
 
+        // 🎯 수정 후
         private void AddManualLogButton_Click(object sender, RoutedEventArgs e)
         {
             var win = new AddLogWindow(TaskItems) { Owner = Window.GetWindow(this) };
@@ -483,12 +484,23 @@ namespace WorkPartner
             if (win.NewLogEntry != null)
             {
                 TimeLogEntries.Add(win.NewLogEntry);
+
+                // ✨ [버그 1 수정]
+                // 수동 추가한 로그의 과목을 찾아 TaskListBox에서 선택해줍니다.
+                var addedTaskName = win.NewLogEntry.TaskText;
+                var taskToSelect = TaskItems.FirstOrDefault(t => t.Text == addedTaskName);
+                if (taskToSelect != null)
+                {
+                    TaskListBox.SelectedItem = taskToSelect;
+                }
+                // ✨ [수정 종료]
             }
             SaveTimeLogs();
             RecalculateAllTotals();
             RenderTimeTable();
         }
 
+        // 🎯 수정 후
         private void TimeLogRect_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             if ((sender as FrameworkElement)?.Tag is not TimeLogEntry log) return;
@@ -506,6 +518,16 @@ namespace WorkPartner
                 log.EndTime = win.NewLogEntry.EndTime;
                 log.TaskText = win.NewLogEntry.TaskText;
                 log.FocusScore = win.NewLogEntry.FocusScore;
+
+                // ✨ [버그 1 수정]
+                // 수정한 로그의 과목을 찾아 TaskListBox에서 선택해줍니다.
+                var editedTaskName = win.NewLogEntry.TaskText;
+                var taskToSelect = TaskItems.FirstOrDefault(t => t.Text == editedTaskName);
+                if (taskToSelect != null)
+                {
+                    TaskListBox.SelectedItem = taskToSelect;
+                }
+                // ✨ [수정 종료]
             }
             SaveTimeLogs();
             RecalculateAllTotals();
@@ -518,7 +540,7 @@ namespace WorkPartner
         /// <summary>
         /// ✨ [REVISED] 메인 타이머와 과목 이름, 하단 총 시간을 모두 업데이트합니다.
         /// </summary>
-private void UpdateMainTimeDisplay()
+        private void UpdateMainTimeDisplay()
         {
             TaskItem selectedTask = TaskListBox.SelectedItem as TaskItem;
             if (selectedTask == null && TaskItems.Any())
@@ -531,15 +553,14 @@ private void UpdateMainTimeDisplay()
                 }
             }
 
+            // 🎯 수정 후
             TimeSpan timeToShow = TimeSpan.Zero;
             if (selectedTask != null)
             {
-                // 오늘 날짜의 해당 과목 로그 시간을 합산합니다.
-                var logsForSelectedDateAndTask = TimeLogEntries
-                    .Where(log => log.StartTime.Date == _currentDateForTimeline.Date && log.TaskText == selectedTask.Text);
-                timeToShow = new TimeSpan(logsForSelectedDateAndTask.Sum(log => log.Duration.Ticks));
+                // ✨ [수정] RecalculateAllTotals()에서 이미 계산한 값을 사용합니다.
+                timeToShow = selectedTask.TotalTime;
             }
-            
+
             // ✨ [추가] 미니 타이머로 보낼 문자열을 미리 준비합니다.
             string timeString = timeToShow.ToString(@"hh\:mm\:ss");
             string taskString = selectedTask != null ? selectedTask.Text : "과목을 선택하세요";
@@ -633,7 +654,7 @@ private void UpdateMainTimeDisplay()
             double borderBottomThickness = 1; // Border의 Bottom 두께 (new Thickness(...,1) 로 설정됨)
 
             // 행 높이와 셀 너비는 실제 렌더링 차이를 반영
-            double rowHeight = blockHeight + (verticalMargin * 2) + borderBottomThickness;
+            double rowHeight = blockHeight + (verticalMargin * 2.65) + borderBottomThickness;
             double cellWidth = blockWidth + (horizontalMargin * 2) + borderLeftThickness;
 
             for (int hour = 0; hour < 24; hour++)
@@ -713,19 +734,37 @@ private void UpdateMainTimeDisplay()
                         TimeSpan blockDuration = blockEnd - blockStart;
                         if (blockDuration.TotalSeconds <= 0) break;
 
-                        // 좌표 계산 (Border & Margin 고려)
-                        TimeSpan blockStartOffsetInHour = blockStart.TimeOfDay;
-                        double topOffset = Math.Floor(blockStartOffsetInHour.TotalHours) * rowHeight + verticalMargin;
-                        // leftOffset: hourLabel + n * cellWidth + (insideBlock offset)
-                        // 안쪽 그리드의 시작은 borderLeftThickness + horizontalMargin 지점임.
-                        double leftOffset = hourLabelWidth
-                                            + (blockStartOffsetInHour.Minutes / 10.0) * cellWidth
-                                            + borderLeftThickness
-                                            + horizontalMargin;
+                        // --- [수정된 좌표 계산 로직] ---
+                        // 1. 10분당 픽셀 수 (실제 그리기 영역 'blockWidth' 기준)
+                        double pixelsPerMinuteInBlock = blockWidth / 10.0;
 
-                        double calculatedWidth = (blockDuration.TotalMinutes / 10.0) * cellWidth;
-                        double barWidth = calculatedWidth - (horizontalMargin * 2) - borderLeftThickness;
-                        // 위에서 bar가 보일 영역은 inner grid 너비에 맞춰야 함 (borderLeft이 차지하는 부분 제외)
+                        // 2. 현재 블록이 속한 10분 단위 셀 인덱스 (0~5)
+                        int cellIndex = (int)Math.Floor(blockStart.Minute / 10.0);
+
+                        // 3. 해당 셀 안에서의 분 (0.0 ~ 9.99...)
+                        //    (정확한 오프셋 계산을 위해 TotalMinutes 사용)
+                        double minuteInCell = blockStart.TimeOfDay.TotalMinutes % 10.0;
+
+                        // 4. 해당 셀의 '그리기 영역(blockContainer)'이 시작되는 X좌표
+                        //    = (시간 레이블) + (이전 셀들의 총 너비) + (현재 셀의 왼쪽 테두리) + (현재 셀의 왼쪽 여백)
+                        double cellDrawableAreaStart = hourLabelWidth
+                                                     + (cellIndex * cellWidth)
+                                                     + borderLeftThickness
+                                                     + horizontalMargin;
+
+                        // 5. 셀 내부 '그리기 영역' 안에서의 픽셀 오프셋
+                        double offsetInCell = minuteInCell * pixelsPerMinuteInBlock;
+
+                        // 6. 최종 Left 좌표
+                        double leftOffset = cellDrawableAreaStart + offsetInCell;
+
+                        // 7. 최종 Width (지속 시간(분) * 분당 픽셀)
+                        double barWidth = blockDuration.TotalMinutes * pixelsPerMinuteInBlock;
+
+                        // 8. Top 좌표 (기존 로직 유지)
+                        double topOffset = Math.Floor(blockStart.TimeOfDay.TotalHours) * rowHeight + verticalMargin;
+                        // --- [계산 로직 종료] ---
+
 
                         if (barWidth <= 0 || double.IsNaN(topOffset) || double.IsNaN(leftOffset))
                         {
@@ -737,7 +776,7 @@ private void UpdateMainTimeDisplay()
                         var coloredBar = new Border
                         {
                             Width = barWidth,
-                            Height = blockHeight,
+                            Height = blockHeight, // 기존 코드(blockHeight+2) 유지
                             Background = GetColorForTask(logEntry.TaskText),
                             CornerRadius = new CornerRadius(2),
                             Tag = logEntry,
@@ -1051,16 +1090,36 @@ private void UpdateMainTimeDisplay()
             e.Handled = true;
         }
 
+        // 🎯 WorkPartner/DashboardPage.xaml.cs의 DashboardPage_DataContextChanged 메서드를
+        //    아래와 같이 수정합니다. (이벤트 구독/해지 추가)
         private void DashboardPage_DataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
         {
             if (e.OldValue is ViewModels.DashboardViewModel oldVm)
             {
                 oldVm.TimeUpdated -= OnViewModelTimeUpdated;
+                // ✨ [버그 2 수정] 이벤트 구독 해지
+                oldVm.TaskStoppedAndSaved -= OnViewModelTaskStopped;
             }
             if (e.NewValue is ViewModels.DashboardViewModel newVm)
             {
                 newVm.TimeUpdated += OnViewModelTimeUpdated;
+                // ✨ [버그 2 수정] 이벤트 구독
+                newVm.TaskStoppedAndSaved += OnViewModelTaskStopped;
             }
+        }
+        private async void OnViewModelTaskStopped()
+        {
+            // ViewModel이 timelogs.json을 변경했으므로,
+            // Page가 UI를 업데이트하기 위해 파일에서 데이터를 다시 로드해야 합니다.
+            await Dispatcher.InvokeAsync(async () =>
+            {
+                // 1. 디스크에서 최신 로그 파일을 다시 로드
+                await LoadTimeLogsAsync();
+                // 2. 과목별 시간 (TaskItems) 재계산 및 메인 타이머/미니 타이머 업데이트
+                RecalculateAllTotals();
+                // 3. 타임라인 새로 그리기
+                RenderTimeTable();
+            });
         }
 
         private void OnViewModelTimeUpdated(string newTime)

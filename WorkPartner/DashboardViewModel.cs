@@ -33,6 +33,7 @@ namespace WorkPartner.ViewModels
         public event Action<string> TimeUpdated;
         public event Action<string> CurrentTaskChanged;
         public event Action<bool> IsRunningChanged;
+        public event Action TaskStoppedAndSaved;
 
         private Dictionary<string, TimeSpan> _dailyTaskTotals = new Dictionary<string, TimeSpan>();
         private TimeSpan _totalTimeTodayFromLogs;
@@ -285,6 +286,8 @@ namespace WorkPartner.ViewModels
             // ✨ [오류 수정] .ToList()를 제거하여 올바른 타입으로 데이터를 넘겨줍니다.
             _timeLogService.SaveTimeLogsAsync(TimeLogEntries);
 
+            TaskStoppedAndSaved?.Invoke();
+
             var duration = entry.Duration;
             if (_dailyTaskTotals.ContainsKey(entry.TaskText))
             {
@@ -295,6 +298,7 @@ namespace WorkPartner.ViewModels
                 _dailyTaskTotals[entry.TaskText] = duration;
             }
             _totalTimeTodayFromLogs += duration;
+
         }
 
         private void UpdateLiveTimeDisplays()

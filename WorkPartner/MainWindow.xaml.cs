@@ -65,10 +65,14 @@ namespace WorkPartner
             }
         }
 
-        public void ToggleMiniTimer()
+        public void ToggleMiniTimer(bool? isEnabled = null)
         {
-            var settings = DataManager.LoadSettings();
-            if (settings.IsMiniTimerEnabled)
+            // ✨ [수정] 
+            // isEnabled가 null이면(앱 시작 시) 디스크에서 로드하고,
+            // null이 아니면(설정 페이지에서 전달) 그 값을 사용합니다.
+            bool enabled = isEnabled ?? DataManager.LoadSettings().IsMiniTimerEnabled;
+
+            if (enabled)
             {
                 if (_miniTimer == null)
                 {

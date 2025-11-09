@@ -53,9 +53,22 @@ namespace WorkPartner
             _isLoaded = true;
         }
 
+        // 🎯 수정 후
         private void LoadSettings()
         {
             Settings = DataManager.LoadSettings();
+
+            if (Settings.IsMiniTimerEnabled == false &&
+                Settings.MiniTimerShowInfo == false &&
+                Settings.MiniTimerShowCharacter == false &&
+                Settings.MiniTimerShowBackground == false)
+            {
+                Settings.MiniTimerShowInfo = true;
+                Settings.MiniTimerShowCharacter = true;
+                Settings.MiniTimerShowBackground = true;
+            }
+            // ✨ [수정 종료]
+
             this.DataContext = this;
             _ = PopulateProcessViewModelsAsync();
         }
@@ -144,11 +157,17 @@ namespace WorkPartner
             if (_isLoaded) SaveSettings();
         }
 
+        // 🎯 [수정 1] WorkPartner/SettingsPage.xaml.cs
+        // (약 144줄 근처의 Setting_Changed 메서드를 교체하세요)
+
         private void Setting_Changed(object sender, RoutedEventArgs e)
         {
             if (!_isLoaded) return;
 
-            // ✨ 미니 타이머 설정 저장
+            // ✨ [버그 2 수정] 누락된 메인 토글 상태를 Settings 객체에 저장합니다.
+            Settings.IsMiniTimerEnabled = MiniTimerCheckBox.IsChecked ?? false;
+
+            // (기존 코드)
             Settings.MiniTimerShowInfo = MiniTimerShowInfoCheckBox.IsChecked ?? false;
             Settings.MiniTimerShowCharacter = MiniTimerShowCharacterCheckBox.IsChecked ?? false;
             Settings.MiniTimerShowBackground = MiniTimerShowBackgroundCheckBox.IsChecked ?? false;
@@ -157,7 +176,8 @@ namespace WorkPartner
 
             if (sender == MiniTimerCheckBox)
             {
-                _mainWindow?.ToggleMiniTimer();
+                // (MainWindow.xaml.cs는 이미 bool? 타입을 받도록 수정되었습니다)
+                _mainWindow?.ToggleMiniTimer(MiniTimerCheckBox.IsChecked ?? false);
             }
         }
         #endregion
@@ -208,16 +228,43 @@ namespace WorkPartner
 
         #region Process Settings
 
+        // 🎯 [수정 2] WorkPartner/SettingsPage.xaml.cs
+        // (약 222줄 근처의 PopulateProcessViewModelsAsync 메서드를 교체하세요)
+        // (GetAwaiter 오류 수정)
+
         private async Task PopulateProcessViewModelsAsync()
         {
             WorkProcessViewModels.Clear();
-            foreach (var p in Settings.WorkProcesses) { WorkProcessViewModels.Add(await ProcessViewModel.Create(p)); }
+            var workVms = new List<ProcessViewModel>();
+            foreach (var p in Settings.WorkProcesses)
+            {
+                var vm = ProcessViewModel.Create(p); // 1. 동기 생성 (await 제거)
+                WorkProcessViewModels.Add(vm);        // 2. UI에 즉시 추가
+                workVms.Add(vm);                      // 3. 아이콘 로드 목록에 추가
+            }
 
             PassiveProcessViewModels.Clear();
-            foreach (var p in Settings.PassiveProcesses) { PassiveProcessViewModels.Add(await ProcessViewModel.Create(p)); }
+            var passiveVms = new List<ProcessViewModel>();
+            foreach (var p in Settings.PassiveProcesses)
+            {
+                var vm = ProcessViewModel.Create(p); // 1. 동기 생성 (await 제거)
+                PassiveProcessViewModels.Add(vm);
+                passiveVms.Add(vm);
+            }
 
             DistractionProcessViewModels.Clear();
-            foreach (var p in Settings.DistractionProcesses) { DistractionProcessViewModels.Add(await ProcessViewModel.Create(p)); }
+            var distractionVms = new List<ProcessViewModel>();
+            foreach (var p in Settings.DistractionProcesses)
+            {
+                var vm = ProcessViewModel.Create(p); // 1. 동기 생성 (await 제거)
+                DistractionProcessViewModels.Add(vm);
+                distractionVms.Add(vm);
+            }
+
+            // 4. UI가 업데이트된 후, 아이콘을 비동기로 일괄 로드
+            await Task.WhenAll(workVms.Select(vm => vm.LoadIconAsync()));
+            await Task.WhenAll(passiveVms.Select(vm => vm.LoadIconAsync()));
+            await Task.WhenAll(distractionVms.Select(vm => vm.LoadIconAsync()));
         }
 
         // [수정] '+' 버튼은 이제 팝업을 띄우는 역할만 합니다.
@@ -350,6 +397,9 @@ namespace WorkPartner
             }
         }
 
+        // 🎯 [수정 3] WorkPartner/SettingsPage.xaml.cs
+        // (약 436줄 근처의 AddProcessInternalAsync 메서드를 교체하세요)
+
         private async Task AddProcessInternalAsync(string type, string processName)
         {
             ObservableCollection<string> targetList = null;
@@ -363,13 +413,25 @@ namespace WorkPartner
             {
                 if (!targetList.Contains(processName.ToLower()))
                 {
+                    // ✨ [버그 1 수정] 로직 순서 변경 (저장/UI 업데이트를 먼저 수행)
+
+                    // 1. 설정에 즉시 추가
                     targetList.Add(processName.ToLower());
-                    targetViewModelList.Add(await ProcessViewModel.Create(processName.ToLower()));
+
+                    // 2. 즉시 저장 (TimerService가 알 수 있도록)
                     SaveSettings();
+
+                    // 3. 아이콘이 없는 VM을 동기 생성 (await 제거)
+                    var vm = ProcessViewModel.Create(processName.ToLower());
+
+                    // 4. UI에 즉시 추가 (리스트에 반영)
+                    targetViewModelList.Add(vm);
+
+                    // 5. 아이콘 로드를 "후발주자"로 실행 (완료되면 Icon 속성이 업데이트됨)
+                    _ = vm.LoadIconAsync();
                 }
             }
         }
-
         #endregion
 
         #region Data Management
@@ -495,6 +557,9 @@ namespace WorkPartner
         #endregion
     }
 
+    // 🎯 [수정 4] WorkPartner/SettingsPage.xaml.cs
+    // (파일 맨 아래 'ProcessViewModel' 클래스 전체를 교체하세요)
+
     public class ProcessViewModel : INotifyPropertyChanged
     {
         public string DisplayName { get; set; }
@@ -505,14 +570,21 @@ namespace WorkPartner
             set { _icon = value; OnPropertyChanged(nameof(Icon)); }
         }
 
-        public static async Task<ProcessViewModel> Create(string identifier)
+        // ✨ [수정] Create 메서드를 동기(Sync)로 변경 (GetAwaiter 오류 수정)
+        public static ProcessViewModel Create(string identifier)
         {
             var vm = new ProcessViewModel { DisplayName = identifier };
-            vm.Icon = await GetIconForIdentifier(identifier);
             return vm;
         }
 
-        private static async Task<BitmapSource> GetIconForIdentifier(string identifier)
+        // ✨ [추가] 아이콘을 비동기(Async)로 로드하는 메서드
+        public async Task LoadIconAsync()
+        {
+            Icon = await GetIconForIdentifier(DisplayName);
+        }
+
+        // ✨ [수정] public static으로 변경 (AddProcessInternalAsync에서도 호출)
+        public static async Task<BitmapSource> GetIconForIdentifier(string identifier)
         {
             try
             {
@@ -534,7 +606,8 @@ namespace WorkPartner
                 {
                     using (var client = new HttpClient())
                     {
-                        var response = await client.GetAsync($"https-www.google.com/s2/favicons?sz=32&domain_url={identifier}");
+                        // ✨ [수정] URL 하드코딩 오류 수정 (https://)
+                        var response = await client.GetAsync($"https://www.google.com/s2/favicons?sz=32&domain_url={identifier}");
                         if (response.IsSuccessStatusCode)
                         {
                             var bytes = await response.Content.ReadAsByteArrayAsync();

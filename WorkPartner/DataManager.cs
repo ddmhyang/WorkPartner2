@@ -146,10 +146,26 @@ namespace WorkPartner
             DebounceSave(TodosFilePath, todos);
         }
 
-        // ✨ [오류 수정] TimeLogService와의 호환성을 위해 ObservableCollection 타입을 받도록 수정했습니다.
+
         public static void SaveTimeLogs(ObservableCollection<TimeLogEntry> logs)
         {
             DebounceSave(TimeLogFilePath, logs);
+        }
+
+        // ✨ [버그 1 수정]
+        // Debounce(지연 저장)를 사용하지 않고, 즉시 파일에 저장하는 메서드를 추가합니다.
+        // 수동 추가/수정/삭제 시 이 메서드를 사용합니다.
+        public static void SaveTimeLogsImmediately(ObservableCollection<TimeLogEntry> logs)
+        {
+            try
+            {
+                string json = JsonSerializer.Serialize(logs, JsonOptions);
+                File.WriteAllText(TimeLogFilePath, json);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error saving {Path.GetFileName(TimeLogFilePath)}: {ex.Message}");
+            }
         }
     }
 }
