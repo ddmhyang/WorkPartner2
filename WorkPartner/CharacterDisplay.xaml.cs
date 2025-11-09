@@ -9,7 +9,7 @@ using System.Windows.Media.Imaging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using WorkPartner;
-using DrawingColor = System.Drawing.Color; // ⚠️ 1단계에서 System.Drawing.Common NuGet 패키지 설치 필수!
+using DrawingColor = System.Drawing.Color;
 
 namespace WorkPartner
 {
@@ -22,8 +22,15 @@ namespace WorkPartner
         // "원본" 회색조 이미지 경로(string) 저장 (이미지 사라짐 버그 해결용)
         private string _originalBackHairUriPath;
         private string _originalFrontHairUriPath;
-        // 현재 적용된 "색상(Color)" 저장 (실시간 변경용)
         private Color _currentHairColor;
+
+        // ✨ [추가] 2, 3번 목표: 원본 경로 및 색상 저장용
+        private string _originalScalpUriPath;
+
+        private string _originalFaceUriPath;
+        private string _originalUpperUriPath;
+        private string _originalLowerUriPath;
+        private Color _currentSkinColor;
 
 
         public CharacterDisplay()
@@ -58,7 +65,7 @@ namespace WorkPartner
         }
 
         /// <summary>
-        /// ✨ [수정] 이미지를 메모리에 즉시 로드하는 헬퍼 메서드 (경로 오류 방지용)
+        /// 이미지를 메모리에 즉시 로드하는 헬퍼 메서드 (경로 오류 방지용)
         /// </summary>
         private BitmapImage LoadBitmapImageOnLoad(string relativePath)
         {
@@ -66,32 +73,28 @@ namespace WorkPartner
 
             try
             {
-                // 1. 경로가 슬래시(/)로 시작하면 제거 (Pack URI 형식에 맞추기 위해)
                 if (relativePath.StartsWith("/"))
                 {
                     relativePath = relativePath.Substring(1);
                 }
 
-                // 2. (핵심) 절대 Pack URI 생성
-                // 예: "pack://application:,,,/images/character/tail1.png"
                 Uri packUri = new Uri($"pack://application:,,,/{relativePath}", UriKind.Absolute);
 
-                // 3. BitmpImage 생성
                 BitmapImage bitmap = new BitmapImage();
                 bitmap.BeginInit();
                 bitmap.UriSource = packUri;
-                bitmap.CacheOption = BitmapCacheOption.OnLoad; // 즉시 메모리에 로드
+                bitmap.CacheOption = BitmapCacheOption.OnLoad;
                 bitmap.EndInit();
                 bitmap.Freeze();
                 return bitmap;
             }
             catch (Exception ex)
             {
-                // 오류 로그를 남겨 어떤 경로가 실패했는지 확인
                 System.Diagnostics.Debug.WriteLine($"[LoadBitmapImageOnLoad] 이미지 로드 실패 {relativePath}: {ex.Message}");
                 return null;
             }
         }
+
 
         public void UpdateCharacter(AppSettings settings)
         {
@@ -105,6 +108,7 @@ namespace WorkPartner
             SetImagePart(Part_Tail, settings.EquippedParts.GetValueOrDefault(ItemType.Tail));
             SetImagePart(Part_Lower, settings.EquippedParts.GetValueOrDefault(ItemType.Lower));
             SetImagePart(Part_Bottom, settings.EquippedParts.GetValueOrDefault(ItemType.Bottom));
+            SetImagePart(Part_Shoes, settings.EquippedParts.GetValueOrDefault(ItemType.Shoes));
             SetImagePart(Part_Upper, settings.EquippedParts.GetValueOrDefault(ItemType.Upper));
             SetImagePart(Part_Top, settings.EquippedParts.GetValueOrDefault(ItemType.Top));
             SetImagePart(Part_Outerwear, settings.EquippedParts.GetValueOrDefault(ItemType.Outerwear));
@@ -116,6 +120,7 @@ namespace WorkPartner
             SetImagePart(Part_Accessory, settings.EquippedParts.GetValueOrDefault(ItemType.Accessory));
             SetImagePart(Part_FrontHair, settings.EquippedParts.GetValueOrDefault(ItemType.FrontHair));
 
+            // 2. 장신구 렌더링 로직은 이전 단계에서 SetImagePart로 통합됨
         }
 
         /// <summary>
@@ -123,6 +128,8 @@ namespace WorkPartner
         /// </summary>
         private void SetImagePart(Image imageControl, EquippedItemInfo equippedInfo)
         {
+            if (imageControl == null) return; // (안전 코드)
+
             if (equippedInfo == null || equippedInfo.ItemId == Guid.Empty)
             {
                 imageControl.Source = null;
@@ -143,12 +150,18 @@ namespace WorkPartner
                 BitmapImage originalImage = LoadBitmapImageOnLoad(shopItem.ImagePath);
 
                 Color finalColor = Colors.White; // 기본값 (색 변경 안 함)
-                if (shopItem.CanChangeColor && !string.IsNullOrEmpty(equippedInfo.ColorHex))
+
+                // ✨ [수정] 3번 목표: 피부 파츠는 CanChangeColor=false여도 강제로 색상 적용
+                bool isSkinPart = (imageControl == Part_Face || imageControl == Part_Upper || imageControl == Part_Lower);
+
+                // (색상 변경 가능 파츠 || 피부 파츠) && 색상값이 있으면
+                if ((shopItem.CanChangeColor || isSkinPart) && !string.IsNullOrEmpty(equippedInfo.ColorHex))
                 {
                     try { finalColor = (Color)ColorConverter.ConvertFromString(equippedInfo.ColorHex); }
                     catch { /* ignore invalid hex */ }
                 }
 
+                // ✨ [수정] 2, 3번 목표: 원본 경로 저장 로직 확장
                 if (imageControl == Part_BackHair)
                 {
                     _originalBackHairUriPath = shopItem.ImagePath;
@@ -159,9 +172,28 @@ namespace WorkPartner
                     _originalFrontHairUriPath = shopItem.ImagePath;
                     _currentHairColor = finalColor;
                 }
+                else if (imageControl == Part_Scalp) // (2번 목표)
+                {
+                    _originalScalpUriPath = shopItem.ImagePath;
+                    _currentHairColor = finalColor;
+                }
+                else if (imageControl == Part_Face) // (3번 목표)
+                {
+                    _originalFaceUriPath = shopItem.ImagePath;
+                    _currentSkinColor = finalColor;
+                }
+                else if (imageControl == Part_Upper) // (3번 목표)
+                {
+                    _originalUpperUriPath = shopItem.ImagePath;
+                    _currentSkinColor = finalColor;
+                }
+                else if (imageControl == Part_Lower) // (3번 목표)
+                {
+                    _originalLowerUriPath = shopItem.ImagePath;
+                    _currentSkinColor = finalColor;
+                }
 
                 BitmapSource finalImage = ImageProcessor.ApplyColor(originalImage, finalColor);
-
                 imageControl.Source = finalImage;
             }
             catch (Exception ex)
@@ -177,24 +209,57 @@ namespace WorkPartner
         // 컬러 팔레트에서 호출할 함수 (C# "색상화" 방식 적용)
         public void SetPartColor(string partType, Color color)
         {
+            // ✨ [수정] 2번 목표: 머리색 연동
             if (partType == "Hair")
             {
-                // 1. 뒷머리 변경 (저장된 "원본" string 경로 사용)
-                if (!string.IsNullOrEmpty(_originalBackHairUriPath))
+                // 1. 뒷머리
+                if (Part_BackHair != null && !string.IsNullOrEmpty(_originalBackHairUriPath))
                 {
                     BitmapImage originalBack = LoadBitmapImageOnLoad(_originalBackHairUriPath);
                     Part_BackHair.Source = ImageProcessor.ApplyColor(originalBack, color);
                 }
 
-                // 2. 앞머리 변경 (저장된 "원본" string 경로 사용)
-                if (!string.IsNullOrEmpty(_originalFrontHairUriPath))
+                // 2. 앞머리
+                if (Part_FrontHair != null && !string.IsNullOrEmpty(_originalFrontHairUriPath))
                 {
                     BitmapImage originalFront = LoadBitmapImageOnLoad(_originalFrontHairUriPath);
                     Part_FrontHair.Source = ImageProcessor.ApplyColor(originalFront, color);
                 }
 
-                // 3. 현재 색상 저장
+                // 3. 두피 (Scalp)
+                if (Part_Scalp != null && !string.IsNullOrEmpty(_originalScalpUriPath))
+                {
+                    BitmapImage originalScalp = LoadBitmapImageOnLoad(_originalScalpUriPath);
+                    Part_Scalp.Source = ImageProcessor.ApplyColor(originalScalp, color);
+                }
+
                 _currentHairColor = color;
+            }
+            // ✨ [수정] 3번 목표: 피부색 연동
+            else if (partType == "Skin")
+            {
+                // 1. 얼굴
+                if (Part_Face != null && !string.IsNullOrEmpty(_originalFaceUriPath))
+                {
+                    BitmapImage originalFace = LoadBitmapImageOnLoad(_originalFaceUriPath);
+                    Part_Face.Source = ImageProcessor.ApplyColor(originalFace, color);
+                }
+
+                // 2. 상체
+                if (Part_Upper != null && !string.IsNullOrEmpty(_originalUpperUriPath))
+                {
+                    BitmapImage originalUpper = LoadBitmapImageOnLoad(_originalUpperUriPath);
+                    Part_Upper.Source = ImageProcessor.ApplyColor(originalUpper, color);
+                }
+
+                // 3. 하체
+                if (Part_Lower != null && !string.IsNullOrEmpty(_originalLowerUriPath))
+                {
+                    BitmapImage originalLower = LoadBitmapImageOnLoad(_originalLowerUriPath);
+                    Part_Lower.Source = ImageProcessor.ApplyColor(originalLower, color);
+                }
+
+                _currentSkinColor = color;
             }
         }
     }

@@ -12,15 +12,43 @@
         <Image x:Name="Part_Tail" RenderOptions.BitmapScalingMode="NearestNeighbor" />
         <Image x:Name="Part_Lower" RenderOptions.BitmapScalingMode="NearestNeighbor" />
         <Image x:Name="Part_Bottom" RenderOptions.BitmapScalingMode="NearestNeighbor" />
-        <Image x:Name="Part_Upper" RenderOptions.BitmapScalingMode="NearestNeighbor" />
-        <Image x:Name="Part_Top" RenderOptions.BitmapScalingMode="NearestNeighbor" />
-        <Image x:Name="Part_Outerwear" RenderOptions.BitmapScalingMode="NearestNeighbor" />
-        <Image x:Name="Part_Head" RenderOptions.BitmapScalingMode="NearestNeighbor" />
-        <Image x:Name="Part_Scalp" RenderOptions.BitmapScalingMode="NearestNeighbor" />
-        <Image x:Name="Part_BackHair" RenderOptions.BitmapScalingMode="NearestNeighbor" />
-        <Image x:Name="Part_Face" RenderOptions.BitmapScalingMode="NearestNeighbor" />
-        <Image x:Name="Part_AnimalEar" RenderOptions.BitmapScalingMode="NearestNeighbor" />
-        <Image x:Name="Part_Accessory" RenderOptions.BitmapScalingMode="NearestNeighbor" />
-        <Image x:Name="Part_FrontHair" RenderOptions.BitmapScalingMode="NearestNeighbor" />
+
+        <Image x:Name="Part_Shoes" RenderOptions.BitmapScalingMode="NearestNeighbor" />
+
+        <Grid x:Name="AnimatedCharacterGrid">
+            <Grid.RenderTransform>
+                <TranslateTransform Y="0" />
+            </Grid.RenderTransform>
+
+            <Grid.Triggers>
+                <EventTrigger RoutedEvent="Loaded">
+                    <BeginStoryboard>
+                        <Storyboard RepeatBehavior="Forever">
+                            <DoubleAnimationUsingKeyFrames
+                            Storyboard.TargetName="AnimatedCharacterGrid"
+                            Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)">
+
+                                <DiscreteDoubleKeyFrame KeyTime="0:0:0" Value="0" />
+
+                                <DiscreteDoubleKeyFrame KeyTime="0:0:0.5" Value="1" />
+
+                                <DiscreteDoubleKeyFrame KeyTime="0:0:1.0" Value="0" />
+                            </DoubleAnimationUsingKeyFrames>
+                        </Storyboard>
+                    </BeginStoryboard>
+                </EventTrigger>
+            </Grid.Triggers>
+
+            <Image x:Name="Part_Upper" RenderOptions.BitmapScalingMode="NearestNeighbor" />
+            <Image x:Name="Part_Top" RenderOptions.BitmapScalingMode="NearestNeighbor" />
+            <Image x:Name="Part_Outerwear" RenderOptions.BitmapScalingMode="NearestNeighbor" />
+            <Image x:Name="Part_Head" RenderOptions.BitmapScalingMode="NearestNeighbor" />
+            <Image x:Name="Part_Scalp" RenderOptions.BitmapScalingMode="NearestNeighbor" />
+            <Image x:Name="Part_BackHair" RenderOptions.BitmapScalingMode="NearestNeighbor" />
+            <Image x:Name="Part_Face" RenderOptions.BitmapScalingMode="NearestNeighbor" />
+            <Image x:Name="Part_AnimalEar" RenderOptions.BitmapScalingMode="NearestNeighbor" />
+            <Image x:Name="Part_Accessory" RenderOptions.BitmapScalingMode="NearestNeighbor" />
+            <Image x:Name="Part_FrontHair" RenderOptions.BitmapScalingMode="NearestNeighbor" />
+        </Grid>
     </Grid>
 </UserControl>

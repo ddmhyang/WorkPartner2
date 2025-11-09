@@ -33,7 +33,7 @@
     "Type": "Lower",
     "Price": 0,
     "ImagePath": "/images/character/lower.png",
-    "IconPath": "/images/character/lower.png\",",
+    "IconPath": "/images/character/lower.png",
     "CanChangeColor": true
   },
 
