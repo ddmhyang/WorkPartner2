@@ -8,48 +8,27 @@
              d:DesignHeight="300" d:DesignWidth="300">
 
     <Grid>
-        <Image x:Name="Part_Background" Stretch="Uniform" />
-
-        <Image x:Name="Part_Tail" Stretch="Uniform" />
-
-        <Image x:Name="Part_Lower" Stretch="Uniform" />
-
-        <Image x:Name="Part_Bottom" Stretch="Uniform" />
-
-        <Image x:Name="Part_Upper" Stretch="Uniform" />
-
-        <Image x:Name="Part_Top" Stretch="Uniform" />
-
-        <Image x:Name="Part_Outerwear" Stretch="Uniform" />
-
-        <Image x:Name="Part_Head" Stretch="Uniform" />
-
-        <Image x:Name="Part_Scalp" Stretch="Uniform" />
-
-        <Image x:Name="Part_BackHair" Stretch="Uniform" />
-
-        <Image x:Name="Part_Face" Stretch="Uniform" />
-
-        <Image x:Name="Part_AnimalEar" Stretch="Uniform" />
-
-        <Image x:Name="Part_FrontHair" Stretch="Uniform" />
+        <Image x:Name="Part_Background" RenderOptions.BitmapScalingMode="NearestNeighbor" />
+        <Image x:Name="Part_Tail" RenderOptions.BitmapScalingMode="NearestNeighbor" />
+        <Image x:Name="Part_Lower" RenderOptions.BitmapScalingMode="NearestNeighbor" />
+        <Image x:Name="Part_Bottom" RenderOptions.BitmapScalingMode="NearestNeighbor" />
+        <Image x:Name="Part_Upper" RenderOptions.BitmapScalingMode="NearestNeighbor" />
+        <Image x:Name="Part_Top" RenderOptions.BitmapScalingMode="NearestNeighbor" />
+        <Image x:Name="Part_Outerwear" RenderOptions.BitmapScalingMode="NearestNeighbor" />
+        <Image x:Name="Part_Head" RenderOptions.BitmapScalingMode="NearestNeighbor" />
+        <Image x:Name="Part_Scalp" RenderOptions.BitmapScalingMode="NearestNeighbor" />
+        <Image x:Name="Part_BackHair" RenderOptions.BitmapScalingMode="NearestNeighbor" />
+        <Image x:Name="Part_Face" RenderOptions.BitmapScalingMode="NearestNeighbor" />
+        <Image x:Name="Part_AnimalEar" RenderOptions.BitmapScalingMode="NearestNeighbor" />
+        <Image x:Name="Part_FrontHair" RenderOptions.BitmapScalingMode="NearestNeighbor" />
 
         <ItemsControl x:Name="Part_Accessories">
-            <ItemsControl.ItemsPanel>
-                <ItemsPanelTemplate>
-                    <Grid/>
-                </ItemsPanelTemplate>
-            </ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>
                 <DataTemplate>
-                    <Image Source="{Binding ImagePath}" Stretch="Uniform">
-                        <Image.Effect>
-                            <local:HueShiftEffect HueShift="{Binding HueShift}" />
-                        </Image.Effect>
-                    </Image>
+                    <Image Source="{Binding ImagePath}" 
+                       RenderOptions.BitmapScalingMode="NearestNeighbor" />
                 </DataTemplate>
             </ItemsControl.ItemTemplate>
         </ItemsControl>
-
     </Grid>
 </UserControl>

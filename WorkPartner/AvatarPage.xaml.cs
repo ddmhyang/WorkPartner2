@@ -25,7 +25,8 @@ namespace WorkPartner
         private ShopItem _selectedShopItem; // 현재 상점에서 선택한 아이템
         private Border _selectedItemBorder; // 현재 상점에서 선택한 아이템의 테두리
 
-        private ColorPalette _colorPalette;
+        // ✨ [수정] ColorPalette -> HslColorPicker
+        private HslColorPicker _hslPicker;
         private AvatarPageHelpers _avatarHelpers;
 
 
@@ -33,13 +34,15 @@ namespace WorkPartner
         {
             InitializeComponent();
 
-            _colorPalette = FindName("ItemColorPalette") as ColorPalette;
+            // ✨ [수정] FindName 대상을 XAML의 새 이름("ItemHslPicker")으로 변경
+            _hslPicker = FindName("ItemHslPicker") as HslColorPicker;
             _avatarHelpers = new AvatarPageHelpers();
 
-            // ✨ [수정] 이제 ColorPalette.xaml.cs가 정상이므로 주석 해제
-            if (_colorPalette != null)
+            // ✨ [수정] _hslPicker의 이벤트 구독
+            if (_hslPicker != null)
             {
-                _colorPalette.ColorChanged += ColorPalette_ColorChanged;
+                // ✨ [수정] HslColorPicker의 이벤트 핸들러로 연결
+                _hslPicker.ColorChanged += ColorPalette_ColorChanged; // (함수 이름은 재사용)
             }
 
             LoadData();
@@ -71,7 +74,7 @@ namespace WorkPartner
         }
 
         #region 카테고리 및 아이템 목록 UI
-        private void PopulateCategories()
+        private void PopulateCategories()
         {
             CategoryPanel.Children.Clear();
             var categories = _allItems.Select(i => i.Type).Distinct().OrderBy(t => GetCategoryOrder(t));
@@ -152,7 +155,8 @@ namespace WorkPartner
             var image = new Image { Width = 40, Height = 40, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, 5, 0, 0) };
             if (!string.IsNullOrEmpty(item.IconPath))
             {
-                try { image.Source = new BitmapImage(new Uri(item.IconPath, UriKind.Relative)); }
+                // ✨ [수정] 경로 오류 방지를 위해 LoadBitmapImageOnLoad 헬퍼 사용
+                try { image.Source = LoadBitmapImageOnLoad(item.IconPath); }
                 catch { /* Image not found */ }
             }
 
@@ -166,7 +170,8 @@ namespace WorkPartner
             }
             else
             {
-                var coinIcon = new Image { Source = new BitmapImage(new Uri("/images/coin.png", UriKind.Relative)), Width = 10, Height = 10 };
+                // ✨ [수정] 경로 오류 방지를 위해 LoadBitmapImageOnLoad 헬퍼 사용
+                var coinIcon = new Image { Source = LoadBitmapImageOnLoad("/images/coin.png"), Width = 10, Height = 10 };
                 var priceLabel = new TextBlock { Text = item.Price.ToString("N0"), FontSize = 9, Margin = new Thickness(3, 0, 0, 0), Foreground = (Brush)FindResource("PrimaryTextBrush") };
                 pricePanel.Children.Add(coinIcon);
                 pricePanel.Children.Add(priceLabel);
@@ -245,7 +250,7 @@ namespace WorkPartner
             UpdateItemList();
         }
 
-        // ✨ [수정] 이제 이 함수가 ColorPalette.xaml.cs에서 호출됩니다.
+        // ✨ [수정] HslColorPicker의 이벤트 핸들러로 사용
         private void ColorPalette_ColorChanged(object sender, Color newColor)
         {
             if (_selectedShopItem == null || !IsItemEquippedInPreview(_selectedShopItem)) return;
@@ -272,11 +277,13 @@ namespace WorkPartner
 
         private void UpdateControlsVisibility()
         {
-            if (_colorPalette == null) return;
+            // ✨ [수정] _hslPicker로 변경
+            if (_hslPicker == null) return;
 
             if (_selectedShopItem != null && _selectedShopItem.CanChangeColor && IsItemEquippedInPreview(_selectedShopItem))
             {
-                _colorPalette.Visibility = Visibility.Visible;
+                // ✨ [수정] _hslPicker로 변경
+                _hslPicker.Visibility = Visibility.Visible;
 
                 EquippedItemInfo itemInfo = null;
                 if (_selectedShopItem.Type == ItemType.Accessory)
@@ -286,24 +293,23 @@ namespace WorkPartner
 
                 string currentHex = itemInfo?.ColorHex;
 
-                // ✨ [수정] 이제 ColorPalette.xaml.cs가 정상이므로 주석 해제
+                // ✨ [수정] HSL 피커에 현재 색상을 설정하는 로직
+                Color currentColor = Colors.White; // 기본값
                 if (!string.IsNullOrEmpty(currentHex))
                 {
-                    try
-                    {
-                        // (SelectedColor.set이 public이므로 작동)
-                        _colorPalette.SelectedColor = (Color)ColorConverter.ConvertFromString(currentHex);
-                    }
-                    catch { _colorPalette.Reset(); } // (Reset()이 있으므로 작동)
+                    try { currentColor = (Color)ColorConverter.ConvertFromString(currentHex); }
+                    catch { /* 기본값 White 사용 */ }
                 }
-                else
-                {
-                    _colorPalette.Reset(); // (Reset()이 있으므로 작동)
-                }
+
+                // WpfColor -> HSL로 변환
+                (double H, double S, double L) hsl = WpfColorToHsl(currentColor);
+                // HSL 피커의 슬라이더 값 설정
+                _hslPicker.SetHsl(hsl.H, hsl.S, hsl.L);
             }
             else
             {
-                _colorPalette.Visibility = Visibility.Collapsed;
+                // ✨ [수정] _hslPicker로 변경
+                _hslPicker.Visibility = Visibility.Collapsed;
             }
         }
 
@@ -373,10 +379,6 @@ namespace WorkPartner
             _savedSettings.EquippedParts = DeepClone(_previewSettings.EquippedParts);
             _savedSettings.EquippedAccessories = DeepClone(_previewSettings.EquippedAccessories);
 
-            // ✨ [수정] 이제 _avatarHelpers.SaveEquippedColor가 필요 없습니다.
-            //    (모든 색상 정보가 _previewSettings에 이미 저장되었고, 
-            //     위 줄에서 _savedSettings로 통째로 복사되었기 때문입니다.)
-
             // 5. 저장 및 UI 갱신
             DataManager.SaveSettings(_savedSettings); // (이제 이 한 줄로 색상까지 모두 저장됩니다)
             CoinDisplay.Text = _savedSettings.Coins.ToString("N0");
@@ -395,7 +397,7 @@ namespace WorkPartner
         #endregion
 
         #region 유틸리티 메서드
-        private bool IsItemEquippedInPreview(ShopItem item)
+        private bool IsItemEquippedInPreview(ShopItem item)
         {
             if (item.Type == ItemType.Accessory)
             {
@@ -457,6 +459,74 @@ namespace WorkPartner
         {
             var json = JsonConvert.SerializeObject(obj);
             return JsonConvert.DeserializeObject<T>(json);
+        }
+
+        // ✨ [추가] 경로 오류 방지용 헬퍼 (CreateItemView에서 사용)
+        private BitmapImage LoadBitmapImageOnLoad(string relativePath)
+        {
+            if (string.IsNullOrEmpty(relativePath)) return null;
+
+            try
+            {
+                if (relativePath.StartsWith("/"))
+                {
+                    relativePath = relativePath.Substring(1);
+                }
+                Uri packUri = new Uri($"pack://application:,,,/{relativePath}", UriKind.Absolute);
+
+                BitmapImage bitmap = new BitmapImage();
+                bitmap.BeginInit();
+                bitmap.UriSource = packUri;
+                bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                bitmap.EndInit();
+                bitmap.Freeze();
+                return bitmap;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[LoadBitmapImageOnLoad] 아이콘 로드 실패 {relativePath}: {ex.Message}");
+                return null;
+            }
+        }
+
+        // ✨ [추가] WpfColor -> HSL 변환 헬퍼 (UpdateControlsVisibility에서 사용)
+        private (double H, double S, double L) WpfColorToHsl(Color wpfColor)
+        {
+            double r = wpfColor.R / 255.0;
+            double g = wpfColor.G / 255.0;
+            double b = wpfColor.B / 255.0;
+
+            double max = Math.Max(r, Math.Max(g, b));
+            double min = Math.Min(r, Math.Min(g, b));
+
+            double h = 0, s = 0, l = (max + min) / 2.0;
+
+            if (max == min)
+            {
+                h = s = 0; // 회색조
+            }
+            else
+            {
+                double delta = max - min;
+                s = l > 0.5 ? delta / (2.0 - max - min) : delta / (max + min);
+
+                if (max == r)
+                {
+                    h = (g - b) / delta + (g < b ? 6.0 : 0.0);
+                }
+                else if (max == g)
+                {
+                    h = (b - r) / delta + 2.0;
+                }
+                else // max == b
+                {
+                    h = (r - g) / delta + 4.0;
+                }
+
+                h /= 6.0; // 0-1 범위로 정규화
+            }
+
+            return (h * 360.0, s, l); // H(0-360), S(0-1), L(0-1)
         }
 
         #endregion

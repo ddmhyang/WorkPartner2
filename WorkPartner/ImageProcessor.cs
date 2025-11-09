@@ -1,22 +1,21 @@
 ﻿using System;
-using System.Drawing; // ⚠️ 1단계에서 System.Drawing.Common NuGet 패키지 설치 필수!
-using System.Drawing.Imaging;
+using System.Drawing;
+// using System.Drawing.Imaging; // (주석 처리)
 using System.IO;
+using System.Windows;
+using System.Windows.Media;
 using System.Windows.Media.Imaging;
+// ✨ [수정] GDI+의 PixelFormat에 대한 별칭(alias) 생성
+using GdiPixelFormat = System.Drawing.Imaging.PixelFormat;
 
 namespace WorkPartner
 {
     public static class ImageProcessor
     {
-        /// <summary>
-        /// ✨ [수정] "곱하기"가 아닌 "색상화(Colorize)"를 적용합니다.
-        /// 원본의 밝기(L)는 유지하고, 선택한 색의 색조(H)와 채도(S)를 입힙니다.
-        /// </summary>
         public static BitmapSource ApplyColor(BitmapSource sourceImage, System.Windows.Media.Color tintColor)
         {
             if (sourceImage == null) return null;
 
-            // ✨ 색이 흰색(기본값)이면 변환할 필요 없이 원본 반환
             if (tintColor == System.Windows.Media.Colors.White)
             {
                 return sourceImage;
@@ -24,39 +23,24 @@ namespace WorkPartner
 
             try
             {
-                // 1. WPF Color -> GDI+ Color
                 System.Drawing.Color gdiTint = System.Drawing.Color.FromArgb(tintColor.A, tintColor.R, tintColor.G, tintColor.B);
 
-                // 2. Get the HUE and SATURATION from the tint.
                 float tintHue = gdiTint.GetHue();
                 float tintSat = gdiTint.GetSaturation();
-                float tintLum = gdiTint.GetBrightness(); // (선택한 색이 회색조일 때 사용)
+                float tintLum = gdiTint.GetBrightness();
 
-                // 3. WPF BitmapSource -> GDI+ Bitmap
                 Bitmap gdiBitmap = ConvertBitmapSourceToBitmap(sourceImage);
 
-                // 3.5 GDI+ 비트맵이 32bpp ARGB가 아니면 변환 (픽셀 접근을 위해)
-                if (gdiBitmap.PixelFormat != PixelFormat.Format32bppArgb)
-                {
-                    Bitmap temp = new Bitmap(gdiBitmap.Width, gdiBitmap.Height, PixelFormat.Format32bppArgb);
-                    using (Graphics g = Graphics.FromImage(temp))
-                    {
-                        g.DrawImage(gdiBitmap, new Rectangle(0, 0, temp.Width, temp.Height));
-                    }
-                    gdiBitmap.Dispose(); // 원본 GDI 비트맵 해제
-                    gdiBitmap = temp;
-                }
-
-                // 4. Use LockBits for fast pixel manipulation
                 Rectangle rect = new Rectangle(0, 0, gdiBitmap.Width, gdiBitmap.Height);
-                BitmapData bmpData = gdiBitmap.LockBits(rect, ImageLockMode.ReadWrite, PixelFormat.Format32bppArgb);
+
+                // ✨ [수정] 별칭을 사용하여 GDI+ PixelFormat을 명시
+                System.Drawing.Imaging.BitmapData bmpData = gdiBitmap.LockBits(rect, System.Drawing.Imaging.ImageLockMode.ReadWrite, GdiPixelFormat.Format32bppArgb);
 
                 IntPtr ptr = bmpData.Scan0;
                 int bytes = Math.Abs(bmpData.Stride) * gdiBitmap.Height;
                 byte[] bgraValues = new byte[bytes];
                 System.Runtime.InteropServices.Marshal.Copy(ptr, bgraValues, 0, bytes);
 
-                // 5. Loop through pixels (BGRA format)
                 for (int i = 0; i < bgraValues.Length; i += 4)
                 {
                     byte b = bgraValues[i];
@@ -64,55 +48,36 @@ namespace WorkPartner
                     byte r = bgraValues[i + 2];
                     byte a = bgraValues[i + 3];
 
-                    // Skip transparent pixels
                     if (a == 0) continue;
 
-                    // Get original image's HSL
-                    // (Since it's grayscale, R=G=B, so H=0, S=0)
-                    // We just need the Luminance (Brightness)
                     System.Drawing.Color originalPixel = System.Drawing.Color.FromArgb(a, r, g, b);
                     float originalLum = originalPixel.GetBrightness();
-
-                    System.Drawing.Color newPixel;
-                    if (tintSat < 0.01f)
-                    {
-                        // The tint is grayscale (white/gray/black).
-                        // "색상화" 대신 "곱하기"를 해서 밝기만 조절
-                        float lum = originalLum * tintLum;
-                        byte newGray = (byte)(Math.Clamp(lum, 0, 1) * 255);
-                        newPixel = System.Drawing.Color.FromArgb(a, newGray, newGray, newGray);
-                    }
-                    else
-                    {
-                        // The tint has color. Use Tint's H+S, Image's L.
-                        newPixel = HslToRgb(tintHue, tintSat, originalLum, a);
-                    }
+                    float newLum = originalLum * tintLum;
+                    System.Drawing.Color newPixel = HslToRgb(tintHue, tintSat, newLum, a);
 
                     bgraValues[i] = newPixel.B;
                     bgraValues[i + 1] = newPixel.G;
                     bgraValues[i + 2] = newPixel.R;
-                    bgraValues[i + 3] = a; // Preserve original alpha
+                    bgraValues[i + 3] = a;
                 }
 
-                // 6. Copy back
                 System.Runtime.InteropServices.Marshal.Copy(bgraValues, 0, ptr, bytes);
                 gdiBitmap.UnlockBits(bmpData);
 
-                // 7. GDI+ Bitmap -> WPF BitmapSource
                 return ConvertBitmapToBitmapSource(gdiBitmap);
             }
             catch (Exception ex)
             {
-                // ⚠️ 여기가 실행되면 "색조 반영이 안 되는" 증상이 나타남
                 System.Diagnostics.Debug.WriteLine($"[ImageProcessor.ApplyColor] Error: {ex.Message}");
                 System.Diagnostics.Debug.WriteLine(ex.StackTrace);
-                return sourceImage; // 오류 시 원본 반환
+                return sourceImage;
             }
         }
 
-        // HSL to RGB Helper (System.Drawing.Color 기반)
         private static System.Drawing.Color HslToRgb(float h, float s, float l, byte a)
         {
+            l = Math.Clamp(l, 0f, 1f);
+
             if (s == 0)
             {
                 byte gray = (byte)(l * 255);
@@ -129,7 +94,6 @@ namespace WorkPartner
             return System.Drawing.Color.FromArgb(a, (byte)(r * 255), (byte)(g * 255), (byte)(b * 255));
         }
 
-        // Hue to Component Helper
         private static float HueToComponent(float p, float q, float t)
         {
             if (t < 0) t += 1;
@@ -141,34 +105,73 @@ namespace WorkPartner
         }
 
 
-        // --- Bitmap <-> BitmapSource 변환 헬퍼 ---
+        // --- Bitmap <-> BitmapSource 변환 헬퍼 (고화질 버전) ---
+
         private static Bitmap ConvertBitmapSourceToBitmap(BitmapSource bmpSource)
         {
-            using (MemoryStream stream = new MemoryStream())
+            var formattedSource = new FormatConvertedBitmap(bmpSource, PixelFormats.Bgra32, null, 0);
+
+            Bitmap gdiBitmap = new Bitmap(
+                formattedSource.PixelWidth,
+                formattedSource.PixelHeight,
+                // ✨ [수정] 별칭을 사용하여 GDI+ PixelFormat을 명시
+                GdiPixelFormat.Format32bppArgb);
+
+            Rectangle rect = new Rectangle(0, 0, gdiBitmap.Width, gdiBitmap.Height);
+
+            // ✨ [수정] 별칭을 사용하여 GDI+ PixelFormat을 명시
+            System.Drawing.Imaging.BitmapData bmpData = gdiBitmap.LockBits(rect, System.Drawing.Imaging.ImageLockMode.WriteOnly, GdiPixelFormat.Format32bppArgb);
+
+            try
             {
-                BitmapEncoder encoder = new PngBitmapEncoder();
-                encoder.Frames.Add(BitmapFrame.Create(bmpSource));
-                encoder.Save(stream);
-                return new Bitmap(stream);
+                formattedSource.CopyPixels(
+                    Int32Rect.Empty,
+                    bmpData.Scan0,
+                    bmpData.Stride * bmpData.Height,
+                    bmpData.Stride
+                );
             }
+            finally
+            {
+                gdiBitmap.UnlockBits(bmpData);
+            }
+
+            return gdiBitmap;
         }
 
         private static BitmapSource ConvertBitmapToBitmapSource(Bitmap bitmap)
         {
-            BitmapSource bmpSource;
-            using (MemoryStream stream = new MemoryStream())
+            Rectangle rect = new Rectangle(0, 0, bitmap.Width, bitmap.Height);
+
+            // ✨ [수정] 별칭을 사용하여 GDI+ PixelFormat을 명시
+            System.Drawing.Imaging.BitmapData bmpData = bitmap.LockBits(rect, System.Drawing.Imaging.ImageLockMode.ReadOnly, GdiPixelFormat.Format32bppArgb);
+
+            BitmapSource bmpSource = null;
+
+            try
             {
-                bitmap.Save(stream, ImageFormat.Png);
-                stream.Position = 0;
-                BitmapImage bmpImage = new BitmapImage();
-                bmpImage.BeginInit();
-                bmpImage.StreamSource = stream;
-                bmpImage.CacheOption = BitmapCacheOption.OnLoad;
-                bmpImage.EndInit();
-                bmpImage.Freeze();
-                bmpSource = bmpImage;
+                // (이 부분은 WPF의 PixelFormats가 맞으므로 수정하지 않음)
+                bmpSource = BitmapSource.Create(
+                    bitmap.Width,
+                    bitmap.Height,
+                    bitmap.HorizontalResolution,
+                    bitmap.VerticalResolution,
+                    PixelFormats.Bgra32,
+                    null,
+                    bmpData.Scan0,
+                    bmpData.Stride * bmpData.Height,
+                    bmpData.Stride
+                );
+
+                bmpSource.Freeze();
             }
-            bitmap.Dispose(); // GDI+ 비트맵 리소스 해제
+            finally
+            {
+                bitmap.UnlockBits(bmpData);
+            }
+
+            bitmap.Dispose();
+
             return bmpSource;
         }
     }

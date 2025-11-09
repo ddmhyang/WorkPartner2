@@ -92,7 +92,7 @@
     "Type": "Tail",
     "Price": 100,
     "ImagePath": "/images/character/tail4.png",
-    "IconPath": "/images/character/tail4/png",
+    "IconPath": "/images/character/tail4.png",
     "CanChangeColor": true
   },
   {
