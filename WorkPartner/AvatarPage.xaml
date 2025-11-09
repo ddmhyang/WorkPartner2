@@ -7,6 +7,7 @@
              mc:Ignorable="d"
              d:DesignHeight="526" d:DesignWidth="682"
              Background="{DynamicResource MainBackgroundBrush}">
+
     <UserControl.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
@@ -71,56 +72,61 @@
     <Viewbox Stretch="Uniform">
         <Canvas Width="682" Height="526">
 
-            <TextBlock Canvas.Left="40" Canvas.Top="40" Text="아바타" FontSize="18" FontFamily="Pretendard" FontWeight="Bold" Foreground="{DynamicResource PrimaryTextBrush}"/>
-            <TextBlock Canvas.Left="40" Canvas.Top="70" Text="획득한 코인으로 나만의 아바타를 꾸며보세요!" FontSize="12" FontFamily="Pretendard" Foreground="{DynamicResource SecondaryTextBrush}"/>
+            <Grid Canvas.Left="0" Canvas.Top="0" Width="682" Height="526" Margin="20">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="300"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="100"/>
+                </Grid.ColumnDefinitions>
 
-            <Border Canvas.Left="40" Canvas.Top="110" Width="300" Height="380" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="2" CornerRadius="10" Background="{DynamicResource SecondaryBackgroundBrush}">
-                <local:CharacterDisplay x:Name="CharacterPreview" />
-            </Border>
+                <StackPanel Grid.Column="0" Margin="0,0,15,0">
+                    <TextBlock Text="아바타" FontSize="18" FontFamily="Pretendard" FontWeight="Bold" Foreground="{DynamicResource PrimaryTextBrush}"/>
+                    <TextBlock Text="획득한 코인으로 나만의 아바타를 꾸며보세요!" FontSize="12" FontFamily="Pretendard" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,5,0,0"/>
 
-            <Grid Canvas.Left="360" Canvas.Top="110" Width="282" Height="380">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="*"/>
-                </Grid.RowDefinitions>
+                    <Border Height="300" Margin="0,15,0,0"
+                            BorderBrush="{DynamicResource BorderBrush}" BorderThickness="2" CornerRadius="10" 
+                            Background="{DynamicResource SecondaryBackgroundBrush}">
+                        <local:CharacterDisplay x:Name="CharacterPreview" />
+                    </Border>
 
-                <StackPanel Grid.Row="0" Orientation="Horizontal">
-                    <TextBlock Text="보유 코인:" VerticalAlignment="Center" FontWeight="Bold" Foreground="{DynamicResource PrimaryTextBrush}"/>
-                    <Image Source="/images/coin.png" Width="16" Height="16" Margin="10,0,5,0"/>
-                    <TextBlock x:Name="CoinDisplay" Text="0" VerticalAlignment="Center" FontWeight="Bold" Foreground="{DynamicResource PrimaryTextBrush}"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,15,0,0">
+                        <TextBlock Text="보유 코인:" VerticalAlignment="Center" FontWeight="Bold" Foreground="{DynamicResource PrimaryTextBrush}"/>
+                        <Image Source="/images/coin.png" Width="16" Height="16" Margin="10,0,5,0"/>
+                        <TextBlock x:Name="CoinDisplay" Text="0" VerticalAlignment="Center" FontWeight="Bold" Foreground="{DynamicResource PrimaryTextBrush}"/>
+                    </StackPanel>
+
+                    <Button x:Name="RevertButton" Content="되돌리기" Style="{StaticResource SecondaryButtonStyle}" Margin="0,15,0,5"
+                            Click="RevertButton_Click"/>
+                    <Button x:Name="SaveButton" Content="저장하기" Style="{StaticResource PrimaryButtonStyle}"
+                            Click="SaveButton_Click"/>
                 </StackPanel>
 
-                <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" Margin="0,15,0,0">
-                    <StackPanel x:Name="CategoryPanel" Orientation="Horizontal"/>
-                </ScrollViewer>
+                <Grid Grid.Column="1" Margin="0,0,15,0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
 
-                <Grid Grid.Row="2" Margin="0,15,0,0">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
+                    <local:HslColorPicker x:Name="ItemHslPicker" Grid.Row="0"
+                                          Visibility="Visible" 
+                                          HorizontalAlignment="Stretch" 
+                                          MinWidth="150" MinHeight="160"/>
 
-                    <local:HslColorPicker x:Name="ItemHslPicker" Grid.Column="0"
-                          VerticalAlignment="Center"
-                          Visibility="Collapsed" 
-                          HorizontalAlignment="Left"
-                          Width="200"/>
-
-                    <Button x:Name="RevertButton" Grid.Column="1" Content="되돌리기" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,5,0"
-            Click="RevertButton_Click"/>
-
-                    <Button x:Name="SaveButton" Grid.Column="2" Content="저장하기" Style="{StaticResource PrimaryButtonStyle}"
-            Click="SaveButton_Click"/>
+                    <Border Grid.Row="1" Margin="0,15,0,0"
+                            BorderBrush="{DynamicResource BorderBrush}" BorderThickness="2" CornerRadius="10">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <WrapPanel x:Name="ItemPanel" Margin="10"/>
+                        </ScrollViewer>
+                    </Border>
                 </Grid>
 
-                <Border Grid.Row="3" Width="282" Margin="0,15,0,0" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="2" CornerRadius="10">
-                    <ScrollViewer VerticalScrollBarVisibility="Auto">
-                        <WrapPanel x:Name="ItemPanel" Margin="10"/>
+                <Border Grid.Column="2"
+                        BorderBrush="{DynamicResource BorderBrush}" BorderThickness="2" CornerRadius="10">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel x:Name="CategoryPanel" Orientation="Vertical" Margin="5"/>
                     </ScrollViewer>
                 </Border>
+
             </Grid>
         </Canvas>
     </Viewbox>

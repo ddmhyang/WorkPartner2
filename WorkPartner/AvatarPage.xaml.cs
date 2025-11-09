@@ -28,7 +28,6 @@ namespace WorkPartner
         private HslColorPicker _hslPicker;
         private AvatarPageHelpers _avatarHelpers;
 
-        // ✨ [추가] HSL 피커가 어떤 그룹에 연결되었는지 추적
         private string _currentPickerGroup = "Item"; // "Item", "Hair", "Skin"
 
 
@@ -39,7 +38,6 @@ namespace WorkPartner
             _hslPicker = FindName("ItemHslPicker") as HslColorPicker;
             _avatarHelpers = new AvatarPageHelpers();
 
-            // ✨ [수정] _hslPicker의 이벤트를 '공용' 핸들러 1개로 연결
             if (_hslPicker != null)
             {
                 _hslPicker.ColorChanged += OnHslPicker_ColorChanged;
@@ -79,8 +77,8 @@ namespace WorkPartner
             CategoryPanel.Children.Clear();
             var categories = _allItems.Select(i => i.Type).Distinct().OrderBy(t => GetCategoryOrder(t));
 
-            // ✨ [수정] 피부색 변경을 위해 Head, Scalp만 제외
-            var basicPartsToExclude = new[] { ItemType.Scalp, ItemType.Head };
+            // ✨ [수정] 'Scalp'(두피) 파츠만 숨깁니다.
+            var basicPartsToExclude = new[] { ItemType.Scalp };
 
             foreach (var category in categories)
             {
@@ -117,7 +115,7 @@ namespace WorkPartner
                 _selectedCategoryButton = button;
 
                 UpdateItemList();
-                UpdateControlsVisibility(); // ✨ HSL 피커 로직이 이 안에 포함됨
+                UpdateControlsVisibility();
             }
         }
 
@@ -171,7 +169,7 @@ namespace WorkPartner
             }
             else
             {
-                var coinIcon = new Image { Source = LoadBitmapImageOnLoad("/images/coin.png"), Width = 10, Height = 10 };
+                var coinIcon = new Image { Source = LoadBitmapImageOnLoad("/images/coin.svg"), Width = 10, Height = 10 };
                 var priceLabel = new TextBlock { Text = item.Price.ToString("N0"), FontSize = 9, Margin = new Thickness(3, 0, 0, 0), Foreground = (Brush)FindResource("PrimaryTextBrush") };
                 pricePanel.Children.Add(coinIcon);
                 pricePanel.Children.Add(priceLabel);
@@ -212,7 +210,7 @@ namespace WorkPartner
             _selectedItemBorder = border;
 
             ApplyPreview(selectedItem);
-            UpdateControlsVisibility(); // ✨ HSL 피커 로직이 이 안에 포함됨
+            UpdateControlsVisibility();
         }
 
         private void ApplyPreview(ShopItem itemToEquip)
@@ -227,7 +225,6 @@ namespace WorkPartner
             {
                 _previewSettings.EquippedParts.TryGetValue(itemToEquip.Type, out var oldItem);
 
-                // ✨ [수정] 새 아이템을 장착할 때, 현재 그룹 색상을 가져와서 적용
                 if (IsHairCategory(_selectedCategory))
                 {
                     currentHex = GetGroupColorHex("Hair");
@@ -238,7 +235,6 @@ namespace WorkPartner
                 }
                 else
                 {
-                    // (기존 로직)
                     currentHex = oldItem?.ColorHex;
                 }
 
@@ -249,26 +245,18 @@ namespace WorkPartner
             UpdateItemList();
         }
 
-        /// ✨ [수정] HSL 피커 공용 이벤트 핸들러
         private void OnHslPicker_ColorChanged(object sender, Color newColor)
         {
             string newColorHex = newColor.ToString();
 
-            // 1. 현재 HSL 피커가 연결된 그룹에 따라 색상 적용
             if (_currentPickerGroup == "Hair")
             {
-                // 1-1. (미리보기) CharacterDisplay의 그룹 함수 즉시 호출
                 CharacterPreview.SetPartColor("Hair", newColor);
-
-                // 1-2. (저장용) _previewSettings의 모든 "Hair" 파츠 색상 업데이트
                 UpdateGroupColorHex("Hair", newColorHex);
             }
             else if (_currentPickerGroup == "Skin")
             {
-                // 2-1. (미리보기)
                 CharacterPreview.SetPartColor("Skin", newColor);
-
-                // 2-2. (저장용)
                 UpdateGroupColorHex("Skin", newColorHex);
             }
             else // "Item" (기존 로직)
@@ -281,16 +269,16 @@ namespace WorkPartner
                 if (itemInfo != null)
                 {
                     itemInfo.ColorHex = newColorHex;
-                    // (그룹이 아니므로 개별 아이템만 새로고침)
                     CharacterPreview.UpdateCharacter(_previewSettings);
                 }
             }
         }
 
-        /// ✨ [수정] HSL 피커 표시/숨김 및 그룹 연결 로직
         private void UpdateControlsVisibility()
         {
             if (_hslPicker == null) return;
+
+            _hslPicker.Visibility = Visibility.Visible;
 
             string currentHex = null;
             Color currentColor = Colors.White;
@@ -298,36 +286,28 @@ namespace WorkPartner
             // 1. "Hair" 그룹 카테고리인지 확인
             if (IsHairCategory(_selectedCategory))
             {
-                _hslPicker.Visibility = Visibility.Visible;
-                _currentPickerGroup = "Hair"; // HSL 피커를 "Hair" 그룹에 연결
-
-                // 대표 색상 가져오기
+                _currentPickerGroup = "Hair";
                 currentHex = GetGroupColorHex("Hair");
             }
             // 2. "Skin" 그룹 카테고리인지 확인
             else if (IsSkinCategory(_selectedCategory))
             {
-                _hslPicker.Visibility = Visibility.Visible;
-                _currentPickerGroup = "Skin"; // HSL 피커를 "Skin" 그룹에 연결
-
-                // 대표 색상 가져오기
+                _currentPickerGroup = "Skin";
                 currentHex = GetGroupColorHex("Skin");
             }
             // 3. (기존 로직) 개별 아이템 색상 변경
             else if (_selectedShopItem != null && _selectedShopItem.CanChangeColor && IsItemEquippedInPreview(_selectedShopItem))
             {
-                _hslPicker.Visibility = Visibility.Visible;
-                _currentPickerGroup = "Item"; // HSL 피커를 "Item" (개별)에 연결
+                _currentPickerGroup = "Item";
 
                 _previewSettings.EquippedParts.TryGetValue(_selectedShopItem.Type, out var itemInfo);
                 currentHex = itemInfo?.ColorHex;
             }
-            // 4. HSL 피커 숨기기
+            // 4. 비활성 상태 (얼굴 표정 등)
             else
             {
-                _hslPicker.Visibility = Visibility.Collapsed;
-                _currentPickerGroup = "Item"; // 기본값 복귀
-                return;
+                _currentPickerGroup = "Item";
+                currentHex = "#FFFFFF"; // 기본 흰색
             }
 
             // HSL 피커의 현재 색상 설정
@@ -407,7 +387,7 @@ namespace WorkPartner
 
         #region 유틸리티 메서드
 
-        // ✨ [추가] 색상 그룹 헬퍼
+        // ✨ [수정] 색상 그룹 헬퍼 (Face -> Head)
         private bool IsHairCategory(ItemType category)
         {
             return category == ItemType.FrontHair || category == ItemType.BackHair || category == ItemType.Scalp;
@@ -415,13 +395,14 @@ namespace WorkPartner
 
         private bool IsSkinCategory(ItemType category)
         {
-            return category == ItemType.Face || category == ItemType.Upper || category == ItemType.Lower;
+            return category == ItemType.Head || category == ItemType.Upper || category == ItemType.Lower;
         }
 
-        // ✨ [추가] _previewSettings에서 그룹의 대표 색상을 가져오는 헬퍼
+        // ✨ [수정] 그룹 대표 색상 헬퍼 (Face -> Head)
         private string GetGroupColorHex(string groupType)
         {
-            ItemType representativePart = (groupType == "Hair") ? ItemType.BackHair : ItemType.Face;
+            // 피부색은 'Head', 머리색은 'BackHair'를 기준으로 색을 가져옴
+            ItemType representativePart = (groupType == "Skin") ? ItemType.Head : ItemType.BackHair;
 
             if (_previewSettings.EquippedParts.TryGetValue(representativePart, out var itemInfo) && itemInfo != null)
             {
@@ -430,7 +411,7 @@ namespace WorkPartner
             return null; // (기본 흰색이 적용됨)
         }
 
-        // ✨ [추가] _previewSettings에 그룹 색상을 저장하는 헬퍼
+        // ✨ [수정] 그룹 색상 저장 헬퍼 (Face -> Head)
         private void UpdateGroupColorHex(string groupType, string newColorHex)
         {
             List<ItemType> typesToUpdate = new List<ItemType>();
@@ -440,7 +421,7 @@ namespace WorkPartner
             }
             else if (groupType == "Skin")
             {
-                typesToUpdate = new List<ItemType> { ItemType.Face, ItemType.Upper, ItemType.Lower };
+                typesToUpdate = new List<ItemType> { ItemType.Head, ItemType.Upper, ItemType.Lower };
             }
 
             foreach (var type in typesToUpdate)
@@ -459,11 +440,12 @@ namespace WorkPartner
 
         private string GetCategoryDisplayName(ItemType itemType)
         {
+            // ✨ [수정] 카테고리 이름 명확화
             return itemType switch
             {
                 ItemType.FrontHair => "앞머리",
                 ItemType.BackHair => "뒷머리",
-                ItemType.Face => "얼굴", // (피부)
+                ItemType.Face => "얼굴(표정)", // ✨ 수정
                 ItemType.Top => "상의",
                 ItemType.Outerwear => "아우터",
                 ItemType.Bottom => "하의",
@@ -472,10 +454,10 @@ namespace WorkPartner
                 ItemType.AnimalEar => "동물귀",
                 ItemType.Shoes => "신발",
                 ItemType.Background => "배경",
-                ItemType.Scalp => "두피",
-                ItemType.Head => "머리",
-                ItemType.Upper => "상체", // (피부)
-                ItemType.Lower => "하체", // (피부)
+                ItemType.Scalp => "두피", // (어차피 숨겨짐)
+                ItemType.Head => "머리(피부)", // ✨ 수정
+                ItemType.Upper => "상체(피부)", // ✨ 수정
+                ItemType.Lower => "하체(피부)", // ✨ 수정
                 _ => itemType.ToString(),
             };
         }
@@ -491,10 +473,10 @@ namespace WorkPartner
                 ItemType.Upper => 5, // 피부
                 ItemType.Top => 6,
                 ItemType.Outerwear => 7,
-                ItemType.Head => 8,
-                ItemType.Scalp => 9, // 머리
+                ItemType.Head => 8, // 피부
+                ItemType.Scalp => 9, // 머리 (숨김)
                 ItemType.BackHair => 10, // 머리
-                ItemType.Face => 11, // 피부
+                ItemType.Face => 11, // 얼굴(표정) ✨
                 ItemType.AnimalEar => 12,
                 ItemType.FrontHair => 13, // 머리
                 ItemType.Accessory => 14,

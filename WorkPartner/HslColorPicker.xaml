@@ -3,26 +3,66 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
-             mc:Ignorable="d"
-             d:DesignHeight="140" d:DesignWidth="200">
-    <StackPanel>
-        <TextBlock Text="Hue (색상)" FontSize="10" Foreground="{DynamicResource SecondaryTextBrush}"/>
-        <Slider x:Name="HueSlider" Minimum="0" Maximum="360" 
-                ValueChanged="Slider_ValueChanged"/>
+             mc:Ignorable="d" 
+             d:DesignHeight="180" d:DesignWidth="200">
+    <Grid>
+        <Slider x:Name="HueSlider"
+                Minimum="0" Maximum="360"
+                Orientation="Vertical"
+                HorizontalAlignment="Right"
+                Margin="0,0,5,25" Width="15"
+                ValueChanged="HueSlider_ValueChanged"
+                IsMoveToPointEnabled="True"/>
 
-        <TextBlock Text="Saturation (채도)" FontSize="10" Margin="0,5,0,0" Foreground="{DynamicResource SecondaryTextBrush}"/>
-        <Slider x:Name="SaturationSlider" Minimum="0" Maximum="1" Value="1"
-                ValueChanged="Slider_ValueChanged"/>
+        <Grid Margin="0,0,25,25">
 
-        <TextBlock Text="Lightness (명도)" FontSize="10" Margin="0,5,0,0" Foreground="{DynamicResource SecondaryTextBrush}"/>
-        <Slider x:Name="LightnessSlider" Minimum="0" Maximum="1" Value="0.5"
-                ValueChanged="Slider_ValueChanged"/>
+            <Grid.Background>
+                <SolidColorBrush x:Name="HueBrush" Color="Red" />
+            </Grid.Background>
 
-        <Rectangle x:Name="PreviewRectangle" Height="20" Margin="0,5,0,0" Stroke="{DynamicResource BorderBrush}" StrokeThickness="1" RadiusX="3" RadiusY="3">
+            <Rectangle x:Name="SaturationOverlay">
+                <Rectangle.Fill>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                        <GradientStop Color="White" Offset="0" />
+                        <GradientStop Color="Transparent" Offset="1" />
+                    </LinearGradientBrush>
+                </Rectangle.Fill>
+            </Rectangle>
+
+            <Rectangle x:Name="ValueOverlay">
+                <Rectangle.Fill>
+                    <LinearGradientBrush StartPoint="0,1" EndPoint="0,0">
+                        <GradientStop Color="Black" Offset="0" />
+                        <GradientStop Color="Transparent" Offset="1" />
+                    </LinearGradientBrush>
+                </Rectangle.Fill>
+            </Rectangle>
+
+            <Canvas x:Name="ColorPlaneCanvas"
+                    MouseLeftButtonDown="ColorPlane_MouseInteraction"
+                    MouseMove="ColorPlane_MouseInteraction"
+                    Cursor="Cross"
+                    Background="Transparent">
+                <Ellipse x:Name="SelectorThumb"
+                         Width="10" Height="10"
+                         Stroke="White" StrokeThickness="2"
+                         Fill="Transparent"
+                         RenderTransformOrigin="0.5,0.5"
+                         Canvas.Left="-5" Canvas.Top="-5">
+                    <Ellipse.RenderTransform>
+                        <TranslateTransform X="0" Y="0" />
+                    </Ellipse.RenderTransform>
+                </Ellipse>
+            </Canvas>
+        </Grid>
+
+        <Rectangle x:Name="PreviewRectangle" 
+                   Height="20" Margin="0,0,25,0"
+                   Stroke="{DynamicResource BorderBrush}" StrokeThickness="1" RadiusX="3" RadiusY="3"
+                   VerticalAlignment="Bottom">
             <Rectangle.Fill>
                 <SolidColorBrush x:Name="PreviewBrush" Color="White" />
             </Rectangle.Fill>
         </Rectangle>
-
-    </StackPanel>
+    </Grid>
 </UserControl>
