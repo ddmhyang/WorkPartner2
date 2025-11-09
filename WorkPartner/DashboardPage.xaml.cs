@@ -265,18 +265,26 @@ namespace WorkPartner
             var newTask = new TaskItem { Text = newTaskText };
             TaskItems.Add(newTask);
 
-            // ✨ [진짜 수정] ColorPalette(UserControl)를 호스팅할 새 Window를 만듭니다.
-            var palette = new ColorPalette();
+            // 🎯 수정 후
+            var palette = new HslColorPicker(); // 
             var window = new Window
             {
                 Title = "과목 색상 선택",
                 Content = palette,
-                Width = 260, // 팔레트 크기에 맞게 조절
-                Height = 180,
+                Width = 280, // HSL 피커에 맞게 너비 조절
+                Height = 350, // HSL 피커에 맞게 높이 조절
                 WindowStyle = WindowStyle.ToolWindow,
                 ResizeMode = ResizeMode.NoResize,
                 WindowStartupLocation = WindowStartupLocation.CenterOwner,
                 Owner = Window.GetWindow(this)
+            };
+
+            // ✨ [수정] HslColorPicker의 ColorChanged 이벤트를 사용합니다. (로직 동일)
+            palette.ColorChanged += (s, newColor) =>
+            {
+                _settings.TaskColors[newTask.Text] = newColor.ToString();
+                SaveSettings();
+                window.Close(); // 색상 선택 시 창 닫기
             };
 
             // ✨ [진짜 수정] 팔레트에서 색을 선택하면(ColorChanged) 창을 닫고 저장합니다.
@@ -607,30 +615,35 @@ private void UpdateMainTimeDisplay()
 
         private void RenderTimeTable()
         {
-            // --- 이전 기록 블록 삭제 ---
-            // 이전에 그린 '기록 블록'(Tag가 TimeLogEntry인 Border)만 찾아서 삭제합니다.
+            // 이전 블록 삭제
             var bordersToRemove = SelectionCanvas.Children.OfType<Border>()
-                                             .Where(b => b.Tag is TimeLogEntry)
-                                             .ToList();
-            // ✨ 디버깅 로그: 삭제할 블록 수 확인
-            Debug.WriteLine($"RenderTimeTable: Removing {bordersToRemove.Count} previous log blocks.");
-            foreach (var border in bordersToRemove)
-            {
-                SelectionCanvas.Children.Remove(border);
-            }
+                                         .Where(b => b.Tag is TimeLogEntry)
+                                         .ToList();
+            foreach (var border in bordersToRemove) SelectionCanvas.Children.Remove(border);
 
-            // --- 배경 눈금 그리기 (StackPanel 방식, WorkPartner2-3 복원 버전) ---
-            // 배경은 매번 새로 그립니다 (Clear 후 다시 그림).
+            // 배경 그리기
             TimeTableContainer.Children.Clear();
-            double blockWidth = 35, blockHeight = 17, hourLabelWidth = 30;
-            double verticalMargin = 1; // 행 상하 마진
-            double horizontalMargin = 1; // 블록 좌우 마진
-            double rowHeight = blockHeight + (verticalMargin * 2); // 실제 행 높이 (19)
-            double cellWidth = blockWidth + (horizontalMargin * 2); // 실제 셀 너비 (37)
+
+            double blockWidth = 35, blockHeight = 17;
+            double hourLabelWidth = 30;
+            double verticalMargin = 1, horizontalMargin = 1;
+
+            // --- 중요한 보정값: Border 두께(실제 XAML에서 설정한 값과 일치시킬 것) ---
+            double borderLeftThickness = 1;   // blockWithBorder Border의 Left 두께 (코드에서 new Thickness(1,0,...)로 설정됨)
+            double borderBottomThickness = 1; // Border의 Bottom 두께 (new Thickness(...,1) 로 설정됨)
+
+            // 행 높이와 셀 너비는 실제 렌더링 차이를 반영
+            double rowHeight = blockHeight + (verticalMargin * 2) + borderBottomThickness;
+            double cellWidth = blockWidth + (horizontalMargin * 2) + borderLeftThickness;
 
             for (int hour = 0; hour < 24; hour++)
             {
-                var hourRowPanel = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, verticalMargin, 0, verticalMargin) };
+                var hourRowPanel = new StackPanel
+                {
+                    Orientation = Orientation.Horizontal,
+                    Margin = new Thickness(0, verticalMargin, 0, verticalMargin)
+                };
+
                 var hourLabel = new TextBlock
                 {
                     Text = $"{hour:00}",
@@ -645,123 +658,114 @@ private void UpdateMainTimeDisplay()
 
                 for (int minuteBlock = 0; minuteBlock < 6; minuteBlock++)
                 {
-                    var blockContainer = new Grid { Width = blockWidth, Height = blockHeight, Background = BlockBackgroundBrush, Margin = new Thickness(horizontalMargin, 0, horizontalMargin, 0) };
-                    // BorderThickness 수정: 이전 버전 실수 보완 (Bottom=1)
-                    var blockWithBorder = new Border { BorderBrush = BlockBorderBrush, BorderThickness = new Thickness(1, 0, (minuteBlock + 1) % 6 == 0 ? 1 : 0, 1), Child = blockContainer };
+                    var blockContainer = new Grid
+                    {
+                        Width = blockWidth,
+                        Height = blockHeight,
+                        Background = BlockBackgroundBrush,
+                        Margin = new Thickness(horizontalMargin, 0, horizontalMargin, 0)
+                    };
+
+                    var blockWithBorder = new Border
+                    {
+                        BorderBrush = BlockBorderBrush,
+                        BorderThickness = new Thickness(1, 0, (minuteBlock + 1) % 6 == 0 ? 1 : 0, 1),
+                        Child = blockContainer
+                    };
+
                     hourRowPanel.Children.Add(blockWithBorder);
                 }
+
                 TimeTableContainer.Children.Add(hourRowPanel);
             }
-            // ✨ 디버깅 로그: 배경 그리기 완료 확인
-            Debug.WriteLine("RenderTimeTable: Background grid rendered.");
 
+            // (디버그) 한셀 계산값 출력 — 실제로 얼마로 계산되는지 확인 가능
+            Debug.WriteLine($"RenderTimeTable: blockWidth={blockWidth}, cellWidth={cellWidth}, rowHeight={rowHeight}, hourLabelWidth={hourLabelWidth}");
 
-            // --- 시간 기록 블록 그리기 (✨ [수정됨] 줄바꿈 로직 적용) ---
+            // 로그 블록 그리기
             var logsForSelectedDate = TimeLogEntries
                 .Where(log => log.StartTime.Date == _currentDateForTimeline.Date)
                 .OrderBy(l => l.StartTime)
                 .ToList();
 
-            // ✨ 디버깅 로그: 해당 날짜의 로그 데이터 개수 확인
-            Debug.WriteLine($"RenderTimeTable: Processing {logsForSelectedDate.Count} logs for date {_currentDateForTimeline.Date}.");
-
-            if (!logsForSelectedDate.Any())
-            {
-                Debug.WriteLine("RenderTimeTable: No logs found for this date. Skipping block rendering.");
-            }
-
             foreach (var logEntry in logsForSelectedDate)
             {
-                // ✨ [수정 시작] 
-                // 이 로직은 하나의 로그를 시간대별로 "조각(Chunk)"내어 그립니다.
-
                 DateTime currentChunkStartTime = logEntry.StartTime;
                 DateTime logEndTime = logEntry.EndTime;
-
-                // 로그 종료 시간이 24:00를 넘어가면 23:59:59로 잘라냅니다.
                 if (logEndTime.Date > currentChunkStartTime.Date)
-                {
                     logEndTime = currentChunkStartTime.Date.AddDays(1).AddTicks(-1);
-                }
 
                 while (currentChunkStartTime < logEndTime)
                 {
-                    // 1. 현재 조각의 끝 시간을 계산합니다.
-                    //    (다음 정시) 또는 (로그의 실제 종료 시간) 중 더 빠른 시간입니다.
                     DateTime endOfCurrentHour = currentChunkStartTime.Date.AddHours(currentChunkStartTime.Hour + 1);
                     DateTime currentChunkEndTime = (logEndTime < endOfCurrentHour) ? logEndTime : endOfCurrentHour;
 
-                    TimeSpan chunkStart = currentChunkStartTime.TimeOfDay;
-                    TimeSpan chunkEnd = currentChunkEndTime.TimeOfDay;
-                    TimeSpan duration = chunkEnd - chunkStart;
-
-                    // 2. 유효성 검사 1: Duration
-                    if (duration.TotalSeconds <= 0)
+                    DateTime blockIterator = currentChunkStartTime;
+                    while (blockIterator < currentChunkEndTime)
                     {
-                        // (예: 10:00에 시작하는 다음 조각이 10:00에 끝나면) 루프 종료
-                        break;
+                        DateTime blockStart = blockIterator;
+                        DateTime nextTenMinMark = blockStart.Date
+                            .AddHours(blockStart.Hour)
+                            .AddMinutes(Math.Floor(blockStart.Minute / 10.0) * 10)
+                            .AddMinutes(10);
+                        DateTime blockEnd = (nextTenMinMark < currentChunkEndTime) ? nextTenMinMark : currentChunkEndTime;
+
+                        TimeSpan blockDuration = blockEnd - blockStart;
+                        if (blockDuration.TotalSeconds <= 0) break;
+
+                        // 좌표 계산 (Border & Margin 고려)
+                        TimeSpan blockStartOffsetInHour = blockStart.TimeOfDay;
+                        double topOffset = Math.Floor(blockStartOffsetInHour.TotalHours) * rowHeight + verticalMargin;
+                        // leftOffset: hourLabel + n * cellWidth + (insideBlock offset)
+                        // 안쪽 그리드의 시작은 borderLeftThickness + horizontalMargin 지점임.
+                        double leftOffset = hourLabelWidth
+                                            + (blockStartOffsetInHour.Minutes / 10.0) * cellWidth
+                                            + borderLeftThickness
+                                            + horizontalMargin;
+
+                        double calculatedWidth = (blockDuration.TotalMinutes / 10.0) * cellWidth;
+                        double barWidth = calculatedWidth - (horizontalMargin * 2) - borderLeftThickness;
+                        // 위에서 bar가 보일 영역은 inner grid 너비에 맞춰야 함 (borderLeft이 차지하는 부분 제외)
+
+                        if (barWidth <= 0 || double.IsNaN(topOffset) || double.IsNaN(leftOffset))
+                        {
+                            Debug.WriteLine($"Skipping invalid chunk: {logEntry.TaskText} at {blockStart}");
+                            blockIterator = blockEnd;
+                            continue;
+                        }
+
+                        var coloredBar = new Border
+                        {
+                            Width = barWidth,
+                            Height = blockHeight,
+                            Background = GetColorForTask(logEntry.TaskText),
+                            CornerRadius = new CornerRadius(2),
+                            Tag = logEntry,
+                            Cursor = Cursors.Hand,
+                            ToolTip = new ToolTip { Content = $"{logEntry.TaskText}\n{logEntry.StartTime:HH:mm} ~ {logEntry.EndTime:HH:mm}" }
+                        };
+                        coloredBar.MouseLeftButtonDown += TimeLogRect_MouseLeftButtonDown;
+
+                        Canvas.SetLeft(coloredBar, leftOffset);
+                        Canvas.SetTop(coloredBar, topOffset);
+                        Panel.SetZIndex(coloredBar, 1);
+                        SelectionCanvas.Children.Add(coloredBar);
+
+                        blockIterator = blockEnd;
                     }
 
-                    // 3. 기존 계산 로직을 "조각"에 대해 그대로 적용합니다.
-                    var topOffset = Math.Floor(chunkStart.TotalHours) * rowHeight;
-                    var leftOffset = hourLabelWidth + (chunkStart.Minutes / 10.0) * cellWidth;
-
-                    double calculatedWidth = (duration.TotalMinutes / 10.0) * cellWidth;
-                    var barWidth = calculatedWidth - (horizontalMargin * 2);
-
-                    // 4. 유효성 검사 (기존 코드 유지)
-                    if (barWidth <= 0)
-                    {
-                        Debug.WriteLine($"--> Skipping log chunk (width <= 0): {logEntry.TaskText} at {currentChunkStartTime}, Duration={duration}, Calculated Width before margin: {calculatedWidth:F2}, Final Width: {barWidth:F2}");
-                        currentChunkStartTime = currentChunkEndTime; // 다음 조각으로 이동
-                        continue;
-                    }
-                    if (double.IsNaN(topOffset) || double.IsNaN(leftOffset) || double.IsInfinity(topOffset) || double.IsInfinity(leftOffset))
-                    {
-                        Debug.WriteLine($"--> Skipping log chunk (Invalid coordinates): {logEntry.TaskText} at {currentChunkStartTime}");
-                        currentChunkStartTime = currentChunkEndTime; // 다음 조각으로 이동
-                        continue;
-                    }
-
-                    // 5. 조각(Border) 생성
-                    var coloredBar = new Border
-                    {
-                        Width = barWidth,
-                        Height = blockHeight, // 높이는 17
-                        Background = GetColorForTask(logEntry.TaskText),
-                        CornerRadius = new CornerRadius(2),
-                        ToolTip = new ToolTip { Content = $"{logEntry.TaskText}\n{logEntry.StartTime:HH:mm} ~ {logEntry.EndTime:HH:mm}\n\n클릭하여 수정 또는 삭제" },
-                        // ✨ [중요] Tag에는 원본 로그(logEntry)를 넣어야 수정/삭제가 정상 작동합니다.
-                        Tag = logEntry,
-                        Cursor = Cursors.Hand
-                    };
-                    coloredBar.MouseLeftButtonDown += TimeLogRect_MouseLeftButtonDown;
-
-                    // 6. Canvas에 배치
-                    Canvas.SetLeft(coloredBar, leftOffset);
-                    Canvas.SetTop(coloredBar, topOffset);
-                    Panel.SetZIndex(coloredBar, 1); // Z-Index 설정
-                    SelectionCanvas.Children.Add(coloredBar); // Canvas에 추가
-
-                    // 7. 다음 조각의 시작 시간을 설정
                     currentChunkStartTime = currentChunkEndTime;
                 }
-                // ✨ [수정 종료] 
             }
 
-            // ✨ [복원 및 필수] Canvas 높이 설정 코드를 다시 추가합니다.
-            double requiredCanvasHeight = 24 * rowHeight;
-            SelectionCanvas.Height = requiredCanvasHeight;
+            // Canvas 높이 보정
+            SelectionCanvas.Height = (24 * rowHeight) + verticalMargin;
 
-            // 선택 상자(_selectionBox) Z-Index 설정
-            if (_selectionBox != null)
-            {
-                Panel.SetZIndex(_selectionBox, 100);
-            }
+            if (_selectionBox != null) Panel.SetZIndex(_selectionBox, 100);
 
-            // ✨ 디버깅 로그: 최종 Canvas 자식 수 및 높이 확인
-            Debug.WriteLine($"RenderTimeTable: Finished. Total elements in SelectionCanvas: {SelectionCanvas.Children.Count}. Canvas Height: {SelectionCanvas.Height}.");
+            Debug.WriteLine($"RenderTimeTable: Done. SelectionCanvas.Children={SelectionCanvas.Children.Count}, Height={SelectionCanvas.Height}");
         }
+
 
         private void UpdateCharacterInfoPanel(string status = null)
         {
@@ -955,19 +959,67 @@ private void UpdateMainTimeDisplay()
             }
         }
 
+        // 🎯 WorkPartner/DashboardPage.xaml.cs 파일의 맨 끝 (클래스 닫는 괄호 '}' 바로 전)에 추가하세요.
+
+        private (double H, double S, double L) WpfColorToHsl(Color wpfColor)
+        {
+            double r = wpfColor.R / 255.0;
+            double g = wpfColor.G / 255.0;
+            double b = wpfColor.B / 255.0;
+
+            double max = Math.Max(r, Math.Max(g, b));
+            double min = Math.Min(r, Math.Min(g, b));
+
+            double h = 0, s = 0, l = (max + min) / 2.0;
+
+            if (max == min)
+            {
+                h = s = 0; // 회색조
+            }
+            else
+            {
+                double delta = max - min;
+                s = l > 0.5 ? delta / (2.0 - max - min) : delta / (max + min);
+
+                if (max == r)
+                {
+                    h = (g - b) / delta + (g < b ? 6.0 : 0.0);
+                }
+                else if (max == g)
+                {
+                    h = (b - r) / delta + 2.0;
+                }
+                else // max == b
+                {
+                    h = (r - g) / delta + 4.0;
+                }
+
+                h /= 6.0; // 0-1 범위로 정규화
+            }
+
+            return (h * 360.0, s, l); // H(0-360), S(0-1), L(0-1)
+        }
+
+        // 🎯 수정 후
         private void ChangeTaskColor_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             if (sender is not Border { Tag: TaskItem selectedTask }) return;
 
             TaskListBox.SelectedItem = selectedTask;
 
-            // ✨ [진짜 수정] ColorPalette(UserControl)를 호스팅할 새 Window를 만듭니다.
-            var palette = new ColorPalette();
+            // ✨ [수정] HslColorPicker(UserControl)를 호스팅할 새 Window를 만듭니다.
+            var palette = new HslColorPicker();
 
             // (이미 저장된 색이 있으면 팔레트에 설정)
             if (_settings.TaskColors.TryGetValue(selectedTask.Text, out var hex))
             {
-                try { palette.SelectedColor = (Color)ColorConverter.ConvertFromString(hex); }
+                try
+                {
+                    // ✨ [수정] HSL 피커는 SetHsl() 메서드를 사용해 초기 색상을 설정해야 합니다.
+                    var currentColor = (Color)ColorConverter.ConvertFromString(hex);
+                    (double H, double S, double L) hsl = WpfColorToHsl(currentColor);
+                    palette.SetHsl(hsl.H, hsl.S, hsl.L);
+                }
                 catch { /* ignore invalid hex */ }
             }
 
@@ -975,15 +1027,15 @@ private void UpdateMainTimeDisplay()
             {
                 Title = "과목 색상 변경",
                 Content = palette,
-                Width = 260, // 팔레트 크기에 맞게 조절
-                Height = 180,
+                Width = 280, // HSL 피커에 맞게 너비 조절
+                Height = 350, // HSL 피커에 맞게 높이 조절
                 WindowStyle = WindowStyle.ToolWindow,
                 ResizeMode = ResizeMode.NoResize,
                 WindowStartupLocation = WindowStartupLocation.CenterOwner,
                 Owner = Window.GetWindow(this)
             };
 
-            // ✨ [진짜 수정] 팔레트에서 색을 선택하면(ColorChanged) 창을 닫고 저장합니다.
+            // ✨ [수정] 팔레트에서 색을 선택하면(ColorChanged) 창을 닫고 저장합니다. (이 로직은 동일)
             palette.ColorChanged += (s, newColor) =>
             {
                 _settings.TaskColors[selectedTask.Text] = newColor.ToString();
