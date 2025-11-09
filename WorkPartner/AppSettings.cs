@@ -33,7 +33,6 @@ namespace WorkPartner
         /// <summary>
         /// 장신구 파츠. (여러 개 중복 착용 가능)
         /// </summary>
-        public List<EquippedItemInfo> EquippedAccessories { get; set; }
 
 
         // --- 새로 추가된 개인 설정 ---
@@ -71,7 +70,6 @@ namespace WorkPartner
 
             // ✨ [수정] 새 구조체로 초기화합니다.
             EquippedParts = new Dictionary<ItemType, EquippedItemInfo>();
-            EquippedAccessories = new List<EquippedItemInfo>();
 
             // 사용자가 장착한 아이템이 없을 때만 기본 아이템 장착
             if (EquippedParts.Count == 0)

@@ -25,7 +25,6 @@ namespace WorkPartner
         private ShopItem _selectedShopItem; // 현재 상점에서 선택한 아이템
         private Border _selectedItemBorder; // 현재 상점에서 선택한 아이템의 테두리
 
-        // ✨ [수정] ColorPalette -> HslColorPicker
         private HslColorPicker _hslPicker;
         private AvatarPageHelpers _avatarHelpers;
 
@@ -34,15 +33,12 @@ namespace WorkPartner
         {
             InitializeComponent();
 
-            // ✨ [수정] FindName 대상을 XAML의 새 이름("ItemHslPicker")으로 변경
             _hslPicker = FindName("ItemHslPicker") as HslColorPicker;
             _avatarHelpers = new AvatarPageHelpers();
 
-            // ✨ [수정] _hslPicker의 이벤트 구독
             if (_hslPicker != null)
             {
-                // ✨ [수정] HslColorPicker의 이벤트 핸들러로 연결
-                _hslPicker.ColorChanged += ColorPalette_ColorChanged; // (함수 이름은 재사용)
+                _hslPicker.ColorChanged += ColorPalette_ColorChanged;
             }
 
             LoadData();
@@ -155,7 +151,6 @@ namespace WorkPartner
             var image = new Image { Width = 40, Height = 40, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, 5, 0, 0) };
             if (!string.IsNullOrEmpty(item.IconPath))
             {
-                // ✨ [수정] 경로 오류 방지를 위해 LoadBitmapImageOnLoad 헬퍼 사용
                 try { image.Source = LoadBitmapImageOnLoad(item.IconPath); }
                 catch { /* Image not found */ }
             }
@@ -170,7 +165,6 @@ namespace WorkPartner
             }
             else
             {
-                // ✨ [수정] 경로 오류 방지를 위해 LoadBitmapImageOnLoad 헬퍼 사용
                 var coinIcon = new Image { Source = LoadBitmapImageOnLoad("/images/coin.png"), Width = 10, Height = 10 };
                 var priceLabel = new TextBlock { Text = item.Price.ToString("N0"), FontSize = 9, Margin = new Thickness(3, 0, 0, 0), Foreground = (Brush)FindResource("PrimaryTextBrush") };
                 pricePanel.Children.Add(coinIcon);
@@ -219,54 +213,33 @@ namespace WorkPartner
         {
             string currentHex = null;
 
-            if (itemToEquip.Type == ItemType.Accessory)
+            // ✨ [수정] 장신구(Accessory) 관련 if문 삭제
+            // (이제 장신구도 다른 파츠와 동일하게 이 로직을 따릅니다)
+            if (_previewSettings.EquippedParts.TryGetValue(itemToEquip.Type, out var current) && current.ItemId == itemToEquip.Id)
             {
-                var existing = _previewSettings.EquippedAccessories.FirstOrDefault(e => e.ItemId == itemToEquip.Id);
-                if (existing != null)
-                {
-                    _previewSettings.EquippedAccessories.Remove(existing);
-                }
-                else
-                {
-                    _previewSettings.EquippedAccessories.Add(new EquippedItemInfo(itemToEquip.Id, null));
-                }
+                _previewSettings.EquippedParts.Remove(itemToEquip.Type);
             }
             else
             {
-                if (_previewSettings.EquippedParts.TryGetValue(itemToEquip.Type, out var current) && current.ItemId == itemToEquip.Id)
-                {
-                    _previewSettings.EquippedParts.Remove(itemToEquip.Type);
-                }
-                else
-                {
-                    _previewSettings.EquippedParts.TryGetValue(itemToEquip.Type, out var oldItem);
-                    currentHex = oldItem?.ColorHex;
+                _previewSettings.EquippedParts.TryGetValue(itemToEquip.Type, out var oldItem);
+                currentHex = oldItem?.ColorHex;
 
-                    _previewSettings.EquippedParts[itemToEquip.Type] = new EquippedItemInfo(itemToEquip.Id, currentHex);
-                }
+                _previewSettings.EquippedParts[itemToEquip.Type] = new EquippedItemInfo(itemToEquip.Id, currentHex);
             }
 
             CharacterPreview.UpdateCharacter(_previewSettings);
             UpdateItemList();
         }
 
-        // ✨ [수정] HslColorPicker의 이벤트 핸들러로 사용
         private void ColorPalette_ColorChanged(object sender, Color newColor)
         {
             if (_selectedShopItem == null || !IsItemEquippedInPreview(_selectedShopItem)) return;
 
-            // 미리보기(Preview)에 즉시 적용
             string newColorHex = newColor.ToString();
             EquippedItemInfo itemInfo = null;
 
-            if (_selectedShopItem.Type == ItemType.Accessory)
-            {
-                itemInfo = _previewSettings.EquippedAccessories.FirstOrDefault(i => i.ItemId == _selectedShopItem.Id);
-            }
-            else
-            {
-                _previewSettings.EquippedParts.TryGetValue(_selectedShopItem.Type, out itemInfo);
-            }
+            // ✨ [수정] 장신구 관련 if문 삭제
+            _previewSettings.EquippedParts.TryGetValue(_selectedShopItem.Type, out itemInfo);
 
             if (itemInfo != null)
             {
@@ -277,23 +250,17 @@ namespace WorkPartner
 
         private void UpdateControlsVisibility()
         {
-            // ✨ [수정] _hslPicker로 변경
             if (_hslPicker == null) return;
 
             if (_selectedShopItem != null && _selectedShopItem.CanChangeColor && IsItemEquippedInPreview(_selectedShopItem))
             {
-                // ✨ [수정] _hslPicker로 변경
                 _hslPicker.Visibility = Visibility.Visible;
 
                 EquippedItemInfo itemInfo = null;
-                if (_selectedShopItem.Type == ItemType.Accessory)
-                    itemInfo = _previewSettings.EquippedAccessories.FirstOrDefault(i => i.ItemId == _selectedShopItem.Id);
-                else
-                    _previewSettings.EquippedParts.TryGetValue(_selectedShopItem.Type, out itemInfo);
+                // ✨ [수정] 장신구 관련 if문 삭제
+                _previewSettings.EquippedParts.TryGetValue(_selectedShopItem.Type, out itemInfo);
 
                 string currentHex = itemInfo?.ColorHex;
-
-                // ✨ [수정] HSL 피커에 현재 색상을 설정하는 로직
                 Color currentColor = Colors.White; // 기본값
                 if (!string.IsNullOrEmpty(currentHex))
                 {
@@ -301,14 +268,11 @@ namespace WorkPartner
                     catch { /* 기본값 White 사용 */ }
                 }
 
-                // WpfColor -> HSL로 변환
                 (double H, double S, double L) hsl = WpfColorToHsl(currentColor);
-                // HSL 피커의 슬라이더 값 설정
                 _hslPicker.SetHsl(hsl.H, hsl.S, hsl.L);
             }
             else
             {
-                // ✨ [수정] _hslPicker로 변경
                 _hslPicker.Visibility = Visibility.Collapsed;
             }
         }
@@ -323,6 +287,7 @@ namespace WorkPartner
             var itemsToBuy = new List<ShopItem>();
 
             // 1. 구매할 아이템 목록 계산 (파츠)
+            // (✨ 이제 이 루프가 장신구도 함께 처리합니다)
             foreach (var previewPart in _previewSettings.EquippedParts.Values)
             {
                 if (previewPart != null && !_savedSettings.OwnedItemIds.Contains(previewPart.ItemId))
@@ -336,19 +301,8 @@ namespace WorkPartner
                 }
             }
 
-            // 2. 구매할 아이템 목록 계산 (장신구)
-            foreach (var previewAccessory in _previewSettings.EquippedAccessories)
-            {
-                if (previewAccessory != null && !_savedSettings.OwnedItemIds.Contains(previewAccessory.ItemId))
-                {
-                    var shopItem = _allItems.FirstOrDefault(i => i.Id == previewAccessory.ItemId);
-                    if (shopItem != null)
-                    {
-                        itemsToBuy.Add(shopItem);
-                        totalCost += shopItem.Price;
-                    }
-                }
-            }
+            // 2. ✨ [수정] 장신구(Accessory) 관련 루프 삭제
+            // (위의 파츠 루프에 통합됨)
 
             itemsToBuy = itemsToBuy.Distinct().ToList();
             totalCost = itemsToBuy.Sum(i => i.Price);
@@ -377,10 +331,10 @@ namespace WorkPartner
 
             // 4. _savedSettings에 _previewSettings를 덮어쓰기 (DeepClone)
             _savedSettings.EquippedParts = DeepClone(_previewSettings.EquippedParts);
-            _savedSettings.EquippedAccessories = DeepClone(_previewSettings.EquippedAccessories);
+            // ✨ [수정] 장신구 관련 DeepClone 삭제
 
             // 5. 저장 및 UI 갱신
-            DataManager.SaveSettings(_savedSettings); // (이제 이 한 줄로 색상까지 모두 저장됩니다)
+            DataManager.SaveSettings(_savedSettings);
             CoinDisplay.Text = _savedSettings.Coins.ToString("N0");
             UpdateItemList();
             MessageBox.Show("성공적으로 저장되었습니다!", "저장 완료");
@@ -399,14 +353,8 @@ namespace WorkPartner
         #region 유틸리티 메서드
         private bool IsItemEquippedInPreview(ShopItem item)
         {
-            if (item.Type == ItemType.Accessory)
-            {
-                return _previewSettings.EquippedAccessories.Any(e => e.ItemId == item.Id);
-            }
-            else
-            {
-                return _previewSettings.EquippedParts.TryGetValue(item.Type, out var equipped) && equipped.ItemId == item.Id;
-            }
+            // ✨ [수정] 장신구 관련 if문 삭제
+            return _previewSettings.EquippedParts.TryGetValue(item.Type, out var equipped) && equipped.ItemId == item.Id;
         }
 
         private string GetCategoryDisplayName(ItemType itemType)
@@ -461,7 +409,6 @@ namespace WorkPartner
             return JsonConvert.DeserializeObject<T>(json);
         }
 
-        // ✨ [추가] 경로 오류 방지용 헬퍼 (CreateItemView에서 사용)
         private BitmapImage LoadBitmapImageOnLoad(string relativePath)
         {
             if (string.IsNullOrEmpty(relativePath)) return null;
@@ -489,7 +436,6 @@ namespace WorkPartner
             }
         }
 
-        // ✨ [추가] WpfColor -> HSL 변환 헬퍼 (UpdateControlsVisibility에서 사용)
         private (double H, double S, double L) WpfColorToHsl(Color wpfColor)
         {
             double r = wpfColor.R / 255.0;

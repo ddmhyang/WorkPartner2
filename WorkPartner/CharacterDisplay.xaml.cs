@@ -113,42 +113,9 @@ namespace WorkPartner
             SetImagePart(Part_BackHair, settings.EquippedParts.GetValueOrDefault(ItemType.BackHair));
             SetImagePart(Part_Face, settings.EquippedParts.GetValueOrDefault(ItemType.Face));
             SetImagePart(Part_AnimalEar, settings.EquippedParts.GetValueOrDefault(ItemType.AnimalEar));
+            SetImagePart(Part_Accessory, settings.EquippedParts.GetValueOrDefault(ItemType.Accessory));
             SetImagePart(Part_FrontHair, settings.EquippedParts.GetValueOrDefault(ItemType.FrontHair));
 
-            // 2. 장신구(Accessories) 렌더링
-            var accessoryViewModels = new List<object>();
-            foreach (var accessoryInfo in settings.EquippedAccessories)
-            {
-                var shopItem = _allItemsCache.FirstOrDefault(i => i.Id == accessoryInfo.ItemId);
-                if (shopItem != null && shopItem.Type == ItemType.Accessory)
-                {
-                    try
-                    {
-                        // ✨ [수정] Pack URI + OnLoad 헬퍼 사용
-                        BitmapImage originalAccessory = LoadBitmapImageOnLoad(shopItem.ImagePath);
-
-                        Color tintColor = Colors.White;
-                        if (shopItem.CanChangeColor && !string.IsNullOrEmpty(accessoryInfo.ColorHex))
-                        {
-                            try { tintColor = (Color)ColorConverter.ConvertFromString(accessoryInfo.ColorHex); }
-                            catch { /* ignore invalid hex */ }
-                        }
-
-                        // ✨ [수정] ImageProcessor.ApplyColor (색상화) 호출
-                        BitmapSource finalAccessory = ImageProcessor.ApplyColor(originalAccessory, tintColor);
-
-                        accessoryViewModels.Add(new
-                        {
-                            ImagePath = finalAccessory
-                        });
-                    }
-                    catch (Exception ex)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"장신구 이미지 로드 실패 {shopItem.ImagePath}: {ex.Message}");
-                    }
-                }
-            }
-            Part_Accessories.ItemsSource = accessoryViewModels;
         }
 
         /// <summary>
@@ -173,7 +140,6 @@ namespace WorkPartner
 
             try
             {
-                // ✨ [수정] Pack URI + OnLoad 헬퍼 사용
                 BitmapImage originalImage = LoadBitmapImageOnLoad(shopItem.ImagePath);
 
                 Color finalColor = Colors.White; // 기본값 (색 변경 안 함)
@@ -183,7 +149,6 @@ namespace WorkPartner
                     catch { /* ignore invalid hex */ }
                 }
 
-                // ✨ [수정] "원본" 헤어 경로(string)와 현재 "색상" 저장
                 if (imageControl == Part_BackHair)
                 {
                     _originalBackHairUriPath = shopItem.ImagePath;
@@ -195,7 +160,6 @@ namespace WorkPartner
                     _currentHairColor = finalColor;
                 }
 
-                // ✨ [수정] ImageProcessor.ApplyColor (색상화) 호출
                 BitmapSource finalImage = ImageProcessor.ApplyColor(originalImage, finalColor);
 
                 imageControl.Source = finalImage;
@@ -206,7 +170,6 @@ namespace WorkPartner
                 imageControl.Source = null;
             }
 
-            // (중요) Effect 속성은 항상 null로 유지
             imageControl.Effect = null;
         }
 
@@ -219,18 +182,14 @@ namespace WorkPartner
                 // 1. 뒷머리 변경 (저장된 "원본" string 경로 사용)
                 if (!string.IsNullOrEmpty(_originalBackHairUriPath))
                 {
-                    // ✨ [수정] Pack URI + OnLoad 헬퍼 사용
                     BitmapImage originalBack = LoadBitmapImageOnLoad(_originalBackHairUriPath);
-                    // ✨ [수정] ImageProcessor.ApplyColor (색상화) 호출
                     Part_BackHair.Source = ImageProcessor.ApplyColor(originalBack, color);
                 }
 
                 // 2. 앞머리 변경 (저장된 "원본" string 경로 사용)
                 if (!string.IsNullOrEmpty(_originalFrontHairUriPath))
                 {
-                    // ✨ [수정] Pack URI + OnLoad 헬퍼 사용
                     BitmapImage originalFront = LoadBitmapImageOnLoad(_originalFrontHairUriPath);
-                    // ✨ [수정] ImageProcessor.ApplyColor (색상화) 호출
                     Part_FrontHair.Source = ImageProcessor.ApplyColor(originalFront, color);
                 }
 

@@ -20,15 +20,7 @@
         <Image x:Name="Part_BackHair" RenderOptions.BitmapScalingMode="NearestNeighbor" />
         <Image x:Name="Part_Face" RenderOptions.BitmapScalingMode="NearestNeighbor" />
         <Image x:Name="Part_AnimalEar" RenderOptions.BitmapScalingMode="NearestNeighbor" />
+        <Image x:Name="Part_Accessory" RenderOptions.BitmapScalingMode="NearestNeighbor" />
         <Image x:Name="Part_FrontHair" RenderOptions.BitmapScalingMode="NearestNeighbor" />
-
-        <ItemsControl x:Name="Part_Accessories">
-            <ItemsControl.ItemTemplate>
-                <DataTemplate>
-                    <Image Source="{Binding ImagePath}" 
-                       RenderOptions.BitmapScalingMode="NearestNeighbor" />
-                </DataTemplate>
-            </ItemsControl.ItemTemplate>
-        </ItemsControl>
     </Grid>
 </UserControl>
