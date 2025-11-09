@@ -78,23 +78,32 @@ namespace WorkPartner
             }
         }
 
+        // 파일: WorkPartner/DataManager.cs
+
         public static AppSettings LoadSettings()
         {
             if (!File.Exists(SettingsFilePath))
             {
                 var defaultSettings = new AppSettings();
-                WriteSettingsToFile(defaultSettings); // ✨ [수정]
+                WriteSettingsToFile(defaultSettings);
                 return defaultSettings;
             }
             try
             {
-                var json = File.ReadAllText(SettingsFilePath);
+                // ✨ [핵심 수정] 파일 잠금을 피하기 위해 FileShare.ReadWrite 옵션으로 읽습니다.
+                string json;
+                using (var stream = new FileStream(SettingsFilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                using (var reader = new StreamReader(stream))
+                {
+                    json = reader.ReadToEnd();
+                }
+
                 return JsonSerializer.Deserialize<AppSettings>(json, JsonOptions);
             }
             catch
             {
                 var backupSettings = new AppSettings();
-                WriteSettingsToFile(backupSettings); // ✨ [수정]
+                WriteSettingsToFile(backupSettings);
                 return backupSettings;
             }
         }
@@ -118,7 +127,18 @@ namespace WorkPartner
                 try
                 {
                     string json = JsonSerializer.Serialize(data, JsonOptions);
-                    File.WriteAllText(filePath, json);
+
+                    // [수정 전]
+                    // File.WriteAllText(filePath, json);
+
+                    // ✨ [핵심 수정]
+                    // File.WriteAllText 대신 FileStream을 사용하여
+                    // 다른 프로세스의 읽기를 허용(FileShare.Read)합니다.
+                    using (var stream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.Read))
+                    using (var writer = new StreamWriter(stream))
+                    {
+                        writer.Write(json);
+                    }
                 }
                 catch (Exception ex)
                 {

@@ -130,7 +130,7 @@ namespace WorkPartner
             {
                 try
                 {
-                    using (FileStream stream = File.OpenRead(_timeLogFilePath))
+                    await using (FileStream stream = new FileStream(_timeLogFilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite)) // ✨ [수정]
                     {
                         _allTimeLogs = await JsonSerializer.DeserializeAsync<List<TimeLogEntry>>(stream) ?? new List<TimeLogEntry>();
                     }
@@ -145,10 +145,9 @@ namespace WorkPartner
             {
                 try
                 {
-                    using (FileStream stream = File.OpenRead(_tasksFilePath))
+                    await using (FileStream stream = new FileStream(_tasksFilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite)) // ✨ [수정]
                     {
-                        var tasks = await JsonSerializer.DeserializeAsync<List<TaskItem>>(stream) ?? new List<TaskItem>();
-                        TaskPredictionComboBox.ItemsSource = tasks.Select(t => t.Text);
+                        var tasks = await JsonSerializer.DeserializeAsync<List<TaskItem>>(stream) ?? new List<TaskItem>(); TaskPredictionComboBox.ItemsSource = tasks.Select(t => t.Text);
                         if (tasks.Any()) TaskPredictionComboBox.SelectedIndex = 0;
                     }
                 }

@@ -61,6 +61,8 @@ namespace WorkPartner
             return TimeSpan.Zero;
         }
 
+        private const int ApiTimeoutMs = 200;
+
         /// <summary>
         /// 현재 활성화된 창의 프로세스 이름을 가져옵니다. (예: "chrome", "explorer")
         /// </summary>
@@ -109,7 +111,6 @@ namespace WorkPartner
             return processName;
         }
 
-        private const int ApiTimeoutMs = 200;
         /// <summary>
         /// 현재 활성화된 창의 제목을 가져옵니다.
         /// </summary>

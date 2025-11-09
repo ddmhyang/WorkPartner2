@@ -20,7 +20,7 @@ namespace WorkPartner.Services.Implementations
             }
             try
             {
-                await using var stream = File.OpenRead(_filePath);
+                await using var stream = new FileStream(_filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite); // ✨ [수정]
                 var logs = await JsonSerializer.DeserializeAsync<ObservableCollection<TimeLogEntry>>(stream);
                 return logs ?? new ObservableCollection<TimeLogEntry>();
             }
@@ -34,9 +34,10 @@ namespace WorkPartner.Services.Implementations
         {
             try
             {
-                await using var stream = File.Create(_filePath);
-                // DataManager에 정의된 공용 JsonOptions를 사용합니다.
-                await JsonSerializer.SerializeAsync(stream, timeLogs, DataManager.JsonOptions);
+                await using (var stream = new FileStream(_filePath, FileMode.Create, FileAccess.Write, FileShare.Read))
+                {
+                    await JsonSerializer.SerializeAsync(stream, timeLogs, DataManager.JsonOptions);
+                }
             }
             catch (Exception ex)
             {

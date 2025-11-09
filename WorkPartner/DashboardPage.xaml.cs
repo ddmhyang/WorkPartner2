@@ -142,7 +142,7 @@ namespace WorkPartner
             if (!File.Exists(_tasksFilePath)) return;
             try
             {
-                await using var stream = File.OpenRead(_tasksFilePath);
+                await using var stream = new FileStream(_tasksFilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite); // ✨ [수정]
                 var loadedTasks = await JsonSerializer.DeserializeAsync<List<TaskItem>>(stream);
                 if (loadedTasks == null) return;
 
@@ -173,7 +173,7 @@ namespace WorkPartner
             if (!File.Exists(_todosFilePath)) return;
             try
             {
-                await using var stream = File.OpenRead(_todosFilePath);
+                await using var stream = new FileStream(_todosFilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite); // ✨ [수정]
                 var loadedTodos = await JsonSerializer.DeserializeAsync<ObservableCollection<TodoItem>>(stream);
                 if (loadedTodos == null) return;
                 TodoItems.Clear();
@@ -193,7 +193,7 @@ namespace WorkPartner
             if (!File.Exists(_timeLogFilePath)) return;
             try
             {
-                await using var stream = File.OpenRead(_timeLogFilePath);
+                await using var stream = new FileStream(_timeLogFilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite); // ✨ [수정]
                 var loadedLogs = await JsonSerializer.DeserializeAsync<ObservableCollection<TimeLogEntry>>(stream);
                 if (loadedLogs == null) return;
                 TimeLogEntries.Clear();
@@ -212,7 +212,7 @@ namespace WorkPartner
             if (!File.Exists(_memosFilePath)) return;
             try
             {
-                await using var stream = File.OpenRead(_memosFilePath);
+                await using var stream = new FileStream(_memosFilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite); // ✨ [수정]
                 var loadedMemos = await JsonSerializer.DeserializeAsync<ObservableCollection<MemoItem>>(stream);
                 if (loadedMemos == null) return;
                 AllMemos.Clear();
