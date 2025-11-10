@@ -503,13 +503,39 @@ namespace WorkPartner
             // 1. VM 가져오기
             if (DataContext is not ViewModels.DashboardViewModel vm) return;
 
-            var win = new AddLogWindow(TaskItems) { Owner = Window.GetWindow(this) };
+            // --- ▼▼▼ [수정된 부분 시작] ▼▼▼ ---
+
+            // 2. [신규] 현재 타임라인 날짜를 기준으로 '임시 로그' 생성
+            // (시간은 현재 시간의 '시'를 가져오고, 분/초는 0으로)
+            var now = DateTime.Now;
+            var defaultStartTime = new DateTime(
+                _currentDateForTimeline.Year,
+                _currentDateForTimeline.Month,
+                _currentDateForTimeline.Day,
+                now.Hour,
+                now.Minute,
+                0
+            );
+
+            var templateLog = new TimeLogEntry
+            {
+                StartTime = defaultStartTime,
+                EndTime = defaultStartTime.AddHours(1), // 기본 1시간
+                TaskText = TaskItems.FirstOrDefault()?.Text ?? "과목 없음" // 첫 번째 과목 선택
+            };
+
+            // 3. [수정] '편집' 생성자를 사용하여 팝업을 띄웁니다.
+            var win = new AddLogWindow(TaskItems, templateLog) { Owner = Window.GetWindow(this) };
             if (win.ShowDialog() != true) return;
 
+            // 4. [신규] 사용자가 '삭제'를 눌러 템플릿 생성을 취소한 경우
+            if (win.IsDeleted) return;
+
+            // 5. [기존 로직] win.NewLogEntry에는 팝업에서 수정한 최종 결과가 담겨있음
             if (win.NewLogEntry != null)
             {
-                // 2. [핵심] Page 리스트(TimeLogEntries)가 아닌 VM의 public 메서드 호출
-                vm.AddManualLog(win.NewLogEntry); // ◀ (오류 370 수정)
+                // 6. [핵심] Page 리스트가 아닌 VM의 public 메서드 호출
+                vm.AddManualLog(win.NewLogEntry); // ◀ (오류 370 수정) - [기존 코드 재사용]
 
                 // (과목 선택 로직은 그대로 둠)
                 var addedTaskName = win.NewLogEntry.TaskText;
@@ -520,15 +546,11 @@ namespace WorkPartner
                 }
             }
 
-            // 3. [삭제] Page가 직접 저장/계산하지 않음
-            // DataManager.SaveTimeLogsImmediately(TimeLogEntries); // ◀ (오류 373, 377 수정)
+            // --- ▲▲▲ [수정된 부분 끝] ▲▲▲ ---
 
-            // 4. [수정] VM이 계산했으니, Page는 VM 리스트를 사용해 그리기만 함
+            // (기존 코드 재사용)
             RecalculateAllTotals();
             RenderTimeTable();
-
-            // 5. [삭제] VM은 이미 스스로 갱신했으므로 이 로직 필요 없음
-            // if (DataContext is ViewModels.DashboardViewModel vm) ...
         }
 
         private void TimeLogRect_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -582,24 +604,39 @@ namespace WorkPartner
 
         #region 화면 렌더링 및 UI 업데이트
 
+        // (약 510줄 근처)
+        // 
+        // ▼▼▼ 이 메서드 전체를 아래 코드로 교체하세요 ▼▼▼
+
         private void UpdateMainTimeDisplay()
         {
             // ▼▼▼ [수정] VM을 먼저 가져옵니다. ▼▼▼
             if (DataContext is not ViewModels.DashboardViewModel vm) return;
 
+            // 1. [수정] 현재 선택된 과목을 단순하게 가져옵니다.
             TaskItem selectedTask = TaskListBox.SelectedItem as TaskItem;
+
+            // 2. [!!! BUG FIX !!!]
+            // 선택이 null일 때 첫 번째 항목을 강제로 다시 선택하는
+            // "로직 폭탄" 코드를 완전히 제거합니다.
+            /*
             if (selectedTask == null && TaskItems.Any())
             {
-                selectedTask = TaskItems.FirstOrDefault();
+                selectedTask = TaskItems.FirstOrDefault(); 
                 if (TaskListBox.SelectedItem == null)
                 {
-                    TaskListBox.SelectedItem = selectedTask;
+                    TaskListBox.SelectedItem = selectedTask; 
                 }
             }
+            */
+            // [!!! BUG FIX 완료 !!!]
 
+
+            // 3. [수정] selectedTask가 null일 수 있으므로, null일 때는 0초를 표시
             TimeSpan timeToShow = TimeSpan.Zero;
             if (selectedTask != null)
             {
+                // (우리가 이전에 수정한 코드로 인해 TotalTime은 실시간으로 업데이트됨)
                 timeToShow = selectedTask.TotalTime;
             }
 
@@ -613,8 +650,6 @@ namespace WorkPartner
             // ▲▲▲
             var totalTimeToday = new TimeSpan(todayLogs.Sum(log => log.Duration.Ticks));
             SelectedTaskTotalTimeDisplay.Text = $"이날의 총 학습 시간: {(int)totalTimeToday.TotalHours}시간 {totalTimeToday.Minutes}분";
-
-            // (제거) ...
         }
 
         // ▼▼▼ [V6 수정] (오류 CS0103) VM 리스트 사용 ▼▼▼
@@ -940,10 +975,9 @@ namespace WorkPartner
             _selectionBox.Height = h;
         }
 
-        // 파일: DashboardPage.xaml.cs
-        // (약 925줄 근처)
+        // (약 924줄 근처)
+        // ▼▼▼ 이 메서드 전체를 아래 코드로 교체하세요 ▼▼▼
 
-        // (약 925줄 근처)
         private void SelectionCanvas_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
             // ▼▼▼ [수정] VM을 먼저 가져옵니다. ▼▼▼
@@ -976,6 +1010,12 @@ namespace WorkPartner
             if (!selectedLogs.Any()) return;
 
             var distinctLogs = selectedLogs.Distinct().OrderBy(l => l.StartTime).ToList();
+
+            // --- ▼▼▼ [수정된 부분 시작] ▼▼▼ ---
+            // [롤백] '하나씩' 수정하는 팝업 대신,
+            // [롤백] '한 번에' 수정하는 'BulkEditLogsWindow' 팝업을 띄웁니다.
+            // (이 로직은 원본 DashboardPage.xaml.cs 파일에 있던 로직입니다.)
+
             var bulkEditWindow = new BulkEditLogsWindow(distinctLogs, TaskItems) { Owner = Window.GetWindow(this) };
 
             if (bulkEditWindow.ShowDialog() != true) return;
@@ -1005,7 +1045,7 @@ namespace WorkPartner
                     vm.DeleteLog(log); // VM에 삭제 요청 (오류 983 수정)
                 }
             }
-            // ▲▲▲ [수정 완료] ▲▲▲
+            // --- ▲▲▲ [수정된 부분 끝] ▲▲▲ ---
 
             // [삭제] VM이 직접 저장하므로 이 줄 삭제
             // SaveTimeLogs(); 
