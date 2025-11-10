@@ -321,6 +321,70 @@ namespace WorkPartner.ViewModels
                 return;
             }
 
+            try
+            {
+                // 1. 이번 세션에서 작업한 시간(분)을 가져옵니다.
+                double minutesWorked = _stopwatch.Elapsed.TotalMinutes;
+
+                // 2. 이전에 저장된 자투리 시간과 합칩니다.
+                double totalPendingMinutes = _settings.PendingWorkMinutes + minutesWorked;
+
+                // 3. 레벨업에 필요한 변수들을 정의합니다.
+                int currentLevel = _settings.Level;
+                int minutesPerXpChunk = currentLevel; // (n레벨일 때 n분)
+                int xpPerChunk = 10;                  // (10xp 획득)
+                int xpToLevelUp = 100;
+                int coinsPerLevel = 50;
+
+                // 4. 경험치를 획득할 만큼 충분히 작업했는지 확인
+                if (totalPendingMinutes >= minutesPerXpChunk)
+                {
+                    // 5. 몇 개의 경험치 덩어리(Chunk)를 획득했는지 계산
+                    int chunksEarned = (int)Math.Floor(totalPendingMinutes / minutesPerXpChunk);
+                    int xpGained = chunksEarned * xpPerChunk;
+
+                    // 6. 다음 계산을 위해 남은 자투리 시간을 계산
+                    double remainingMinutes = totalPendingMinutes % minutesPerXpChunk;
+
+                    _settings.Experience += xpGained;
+                    _settings.PendingWorkMinutes = remainingMinutes; // 자투리 시간 저장
+
+                    // 7. 레벨업 체크 (100xp 이상일 경우)
+                    bool leveledUp = false;
+                    while (_settings.Experience >= xpToLevelUp)
+                    {
+                        _settings.Level++;
+                        _settings.Experience -= xpToLevelUp; // 100xp 차감
+                        _settings.Coins += coinsPerLevel;    // 50코인 보상
+                        leveledUp = true;
+                    }
+
+                    // 8. 레벨업 했을 경우 알림 표시
+                    if (leveledUp)
+                    {
+                        // _dialogService는 생성자에서 주입받은 서비스입니다.
+                        _dialogService.ShowAlert(
+                            $"🎉 축하합니다! 레벨 업! 🎉\n\n레벨 {_settings.Level}이(가) 되었습니다.\n보상으로 {coinsPerLevel}코인을 획득했습니다!",
+                            "레벨 업!"
+                        );
+                    }
+                }
+                else
+                {
+                    // 9. 경험치를 얻기엔 시간이 부족하면, 누적 시간에 합산만 함
+                    _settings.PendingWorkMinutes = totalPendingMinutes;
+                }
+
+                // 10. (중요) 경험치/레벨/코인 변경 사항을 설정 파일에 저장
+                _settingsService.SaveSettings(_settings);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[Error] Level Up Logic Failed: {ex.Message}");
+                // 레벨업 로직이 실패해도 기본 기능(시간 저장)은 동작해야 함
+            }
+            // ▲▲▲ [레벨업 로직 추가 끝] ▲▲▲
+
             var entry = new TimeLogEntry
             {
                 StartTime = _sessionStartTime,

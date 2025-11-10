@@ -444,6 +444,7 @@ namespace WorkPartner
             if (e.Key == Key.Enter) AddTodoButton_Click(sender, e);
         }
 
+        // (약 432줄 근처)
         private void SaveTodos_Event(object sender, RoutedEventArgs e)
         {
             if (sender is CheckBox { DataContext: TodoItem todoItem })
@@ -456,6 +457,17 @@ namespace WorkPartner
                     SaveSettings();
                     SoundPlayer.PlayCompleteSound();
                 }
+                // ▼▼▼ [이 블록 전체 추가] ▼▼▼
+                else if (!todoItem.IsCompleted && todoItem.HasBeenRewarded)
+                {
+                    // 완료를 취소했고, 이전에 보상을 받았다면
+                    _settings.Coins -= 10; // 코인 회수 (마이너스 가능)
+                    todoItem.HasBeenRewarded = false; // 보상 상태 리셋
+                    UpdateCoinDisplay();
+                    SaveSettings();
+                    // (필요하다면 여기에 '취소' 효과음 추가)
+                }
+                // ▲▲▲ [여기까지 추가] ▲▲▲
             }
             SaveTodos();
         }
@@ -1125,21 +1137,22 @@ namespace WorkPartner
             e.Handled = true;
         }
 
+        // (약 1137줄 근처)
         private void DashboardPage_DataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
         {
             if (e.OldValue is ViewModels.DashboardViewModel oldVm)
             {
                 oldVm.TimeUpdated -= OnViewModelTimeUpdated;
-                // ✨ [수정] 이전 ViewModel에서 구독 해제
                 oldVm.TimerStoppedAndSaved -= OnViewModelTimerStopped;
                 oldVm.CurrentTaskChanged -= OnViewModelTaskChanged;
+                oldVm.PropertyChanged -= OnViewModelPropertyChanged; // ◀◀ [이 줄 추가]
             }
             if (e.NewValue is ViewModels.DashboardViewModel newVm)
             {
                 newVm.TimeUpdated += OnViewModelTimeUpdated;
-                // ✨ [수정] 새 ViewModel에 구독 추가
                 newVm.TimerStoppedAndSaved += OnViewModelTimerStopped;
                 newVm.CurrentTaskChanged += OnViewModelTaskChanged;
+                newVm.PropertyChanged += OnViewModelPropertyChanged; // ◀◀ [이 줄 추가]
             }
         }
         // ✨ [전체 추가] ViewModel에서 타이머가 중지되고 저장이 완료되었을 때 호출될 메서드
@@ -1175,7 +1188,7 @@ namespace WorkPartner
                 MainTimeDisplay.Text = newTime;
             });
         }
-        
+
         private void OnViewModelPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
             // 오늘 날짜가 아니면 VM 업데이트 무시

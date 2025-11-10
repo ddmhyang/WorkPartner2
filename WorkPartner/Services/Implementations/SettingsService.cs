@@ -15,7 +15,13 @@ namespace WorkPartner.Services.Implementations
             var settings = DataManager.LoadSettings();
             settings.TaskColors[taskName] = colorHex;
             DataManager.SaveSettings(settings);
-            return Task.CompletedTask; // 간단한 작업이므로 비동기 작업이 완료되었음을 바로 반환
+            return Task.CompletedTask;
+        }
+
+        // ▼▼▼ [이 메서드 전체 추가] ▼▼▼
+        public void SaveSettings(AppSettings settings)
+        {
+            DataManager.SaveSettings(settings);
         }
     }
 }

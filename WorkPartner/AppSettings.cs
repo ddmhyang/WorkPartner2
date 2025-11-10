@@ -14,6 +14,7 @@ namespace WorkPartner
         public string Username { get; set; } = "사용자";
         public int Level { get; set; } = 1;
         public int Experience { get; set; } = 0;
+        public double PendingWorkMinutes { get; set; } = 0; // ◀◀ [이 줄 추가]
         public string CurrentTask { get; set; } = "없음";
 
         // ✨ [삭제] 기존 아이템 속성을 삭제합니다.

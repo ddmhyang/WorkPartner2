@@ -158,12 +158,32 @@ namespace WorkPartner
 
         public static void SaveTasks(IEnumerable<TaskItem> tasks)
         {
-            DebounceSave(TasksFilePath, tasks);
+            // DebounceSave(TasksFilePath, tasks); // <- 주석 처리
+            // ▼ [즉시 저장 코드로 변경]
+            try
+            {
+                string json = JsonSerializer.Serialize(tasks, JsonOptions);
+                File.WriteAllText(TasksFilePath, json);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error saving {Path.GetFileName(TasksFilePath)}: {ex.Message}");
+            }
         }
 
         public static void SaveTodos(IEnumerable<TodoItem> todos)
         {
-            DebounceSave(TodosFilePath, todos);
+            // DebounceSave(TodosFilePath, todos); // <- 주석 처리
+            // ▼ [즉시 저장 코드로 변경]
+            try
+            {
+                string json = JsonSerializer.Serialize(todos, JsonOptions);
+                File.WriteAllText(TodosFilePath, json);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error saving {Path.GetFileName(TodosFilePath)}: {ex.Message}");
+            }
         }
 
 

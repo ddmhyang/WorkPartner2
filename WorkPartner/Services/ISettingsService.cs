@@ -5,8 +5,8 @@ namespace WorkPartner.Services
 {
     public interface ISettingsService
     {
-        // ▼▼▼ 누락되었던 정의 추가 ▼▼▼
         Task SetTaskColorAsync(string taskName, string colorHex);
         AppSettings LoadSettings();
+        void SaveSettings(AppSettings settings); // ◀◀ [이 줄 추가]
     }
 }
