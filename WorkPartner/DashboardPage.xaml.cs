@@ -103,9 +103,6 @@ namespace WorkPartner
 
         private void InitializeData()
         {
-            TaskItems = new ObservableCollection<TaskItem>();
-            TaskListBox.ItemsSource = TaskItems;
-
             TodoItems = new ObservableCollection<TodoItem>();
             FilteredTodoItems = new ObservableCollection<TodoItem>();
             TodoTreeView.ItemsSource = FilteredTodoItems;
@@ -1180,6 +1177,13 @@ namespace WorkPartner
                 newVm.TimerStoppedAndSaved += OnViewModelTimerStopped;
                 newVm.CurrentTaskChanged += OnViewModelTaskChanged;
                 newVm.PropertyChanged += OnViewModelPropertyChanged; // ◀◀ [이 줄 추가]
+
+            // ▼▼▼ [이 두 줄을 여기에 추가!] ▼▼▼
+            // 1. '화면'의 리스트가 '두뇌'의 리스트를 가리키게 합니다.
+            this.TaskItems = newVm.TaskItems;
+            // 2. 'TaskListBox'가 '두뇌'의 리스트를 직접 바라보게 합니다.
+            TaskListBox.ItemsSource = this.TaskItems;
+            // ▲▲▲ [여기까지 추가] ▲▲▲
             }
         }
         private void OnViewModelTimerStopped(object sender, EventArgs e)
@@ -1197,6 +1201,7 @@ namespace WorkPartner
             });
         }
 
+        // (약 1157줄 근처)
         private void OnViewModelTimeUpdated(string newTime)
         {
             // 1. 미니 타이머는 "항상" 오늘의 실시간 데이터로 업데이트합니다.
@@ -1216,6 +1221,27 @@ namespace WorkPartner
                 // 1. 메인 타이머 업데이트
                 MainTimeDisplay.Text = newTime;
             });
+
+            // ▼▼▼ [이 코드 블록을 여기에 추가하세요!] ▼▼▼
+            // 3. (중요) '두뇌'(ViewModel)의 리스트와 '화면'(Page)의 리스트를 동기화합니다.
+            if (DataContext is ViewModels.DashboardViewModel vm)
+            {
+                // '두뇌'의 실시간 업데이트된 과목 리스트를 순회합니다.
+                foreach (var vmTask in vm.TaskItems)
+                {
+                    // '화면'의 리스트(TaskItems)에서 일치하는 과목을 찾습니다.
+                    var pageTask = this.TaskItems.FirstOrDefault(t => t.Text == vmTask.Text);
+
+                    // '화면'에 과목이 존재하고, '두뇌'의 시간과 다르다면
+                    if (pageTask != null && pageTask.TotalTime != vmTask.TotalTime)
+                    {
+                        // '화면'의 시간을 '두뇌'의 시간으로 덮어씁니다.
+                        // (TaskItem.cs가 이 변경을 감지하고 UI를 갱신합니다)
+                        pageTask.TotalTime = vmTask.TotalTime;
+                    }
+                }
+            }
+            // ▲▲▲ [여기까지 추가] ▲▲▲
         }
         private void OnViewModelPropertyChanged(object sender, PropertyChangedEventArgs e)
         {

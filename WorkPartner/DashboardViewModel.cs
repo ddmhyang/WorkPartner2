@@ -374,12 +374,14 @@ namespace WorkPartner.ViewModels
             TimerStoppedAndSaved?.Invoke(this, EventArgs.Empty);
 
             _stopwatch.Reset(); // ◀ (중요) 모든 계산이 끝난 후 리셋
+            DataManager.SaveTimeLogsImmediately(TimeLogEntries);
         }
 
         private void UpdateLiveTimeDisplays()
         {
             var totalTimeToday = _totalTimeTodayFromLogs;
-            if (_stopwatch.IsRunning)
+            // (이전 수정) 스톱워치가 실행 중이거나, 유예 기간 중일 때
+            if (_stopwatch.IsRunning || _isInGracePeriod)
             {
                 totalTimeToday += _stopwatch.Elapsed;
             }
@@ -391,7 +393,8 @@ namespace WorkPartner.ViewModels
                 timeForSelectedTask = storedTime;
             }
 
-            if (_stopwatch.IsRunning && _currentWorkingTask == SelectedTaskItem)
+            // (이전 수정) 스톱워치가 실행 중이거나 유예 기간 중이고 + 현재 선택된 과목일 때
+            if ((_stopwatch.IsRunning || _isInGracePeriod) && _currentWorkingTask == SelectedTaskItem)
             {
                 timeForSelectedTask += _stopwatch.Elapsed;
             }
@@ -400,6 +403,30 @@ namespace WorkPartner.ViewModels
             MainTimeDisplayText = newTime;
 
             TimeUpdated?.Invoke(newTime);
+
+
+            // ▼▼▼ [이 코드 블록을 여기에 추가하세요] ▼▼▼
+            // (1초마다 모든 과목 목록의 시간을 실시간으로 업데이트)
+            foreach (var task in TaskItems)
+            {
+                // 1. 저장된 로그에서 기본 시간 가져오기
+                TimeSpan taskTotalTime = TimeSpan.Zero;
+                if (_dailyTaskTotals.TryGetValue(task.Text, out var storedTaskTime))
+                {
+                    taskTotalTime = storedTaskTime;
+                }
+
+                // 2. 이 과목이 현재 실행 중인 과목이라면, 실시간 스톱워치 시간을 더하기
+                if ((_stopwatch.IsRunning || _isInGracePeriod) && _currentWorkingTask == task)
+                {
+                    taskTotalTime += _stopwatch.Elapsed;
+                }
+
+                // 3. TaskItem의 TotalTime 속성을 업데이트합니다.
+                //    (이 속성이 변경되면 TaskItem.cs가 자동으로 UI를 갱신합니다)
+                task.TotalTime = taskTotalTime;
+            }
+            // ▲▲▲ [여기까지 추가] ▲▲▲
         }
 
         #region --- Public CRUD Methods for Page ---
