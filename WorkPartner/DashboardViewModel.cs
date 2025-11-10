@@ -348,13 +348,18 @@ namespace WorkPartner.ViewModels
             TimerStoppedAndSaved?.Invoke(this, EventArgs.Empty);
         }
 
+        // 🎯 [수정] 368줄의 UpdateLiveTimeDisplays 메서드 전체를 이 코드로 교체하세요.
+
         private void UpdateLiveTimeDisplays()
         {
             var totalTimeToday = _totalTimeTodayFromLogs;
-            if (_stopwatch.IsRunning)
-            {
-                totalTimeToday += _stopwatch.Elapsed;
-            }
+
+            // ✨ [수정] 
+            // 스톱워치가 멈춰있어도(IsRunning=false) 
+            // 현재 스톱워치에 기록된 시간(_stopwatch.Elapsed)을 더해줘야
+            // 일시정지 상태에서 시간이 0으로 돌아가지 않습니다.
+            totalTimeToday += _stopwatch.Elapsed;
+
             TotalTimeTodayDisplayText = $"오늘의 작업 시간 | {totalTimeToday:hh\\:mm\\:ss}";
 
             var timeForSelectedTask = TimeSpan.Zero;
@@ -363,7 +368,11 @@ namespace WorkPartner.ViewModels
                 timeForSelectedTask = storedTime;
             }
 
-            if (_stopwatch.IsRunning && _currentWorkingTask == SelectedTaskItem)
+            // ✨ [수정] 
+            // 스톱워치가 멈춰있어도(IsRunning=false) 
+            // 현재 스톱워치에 기록된 시간(_stopwatch.Elapsed)을 더해줘야
+            // 일시정지 상태에서 시간이 0으로 돌아가지 않습니다.
+            if (_currentWorkingTask == SelectedTaskItem)
             {
                 timeForSelectedTask += _stopwatch.Elapsed;
             }

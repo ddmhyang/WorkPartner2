@@ -547,13 +547,28 @@ namespace WorkPartner
 
             // ✨ [오류 수정] vm 변수를 한 번만 선언하고,
             // ViewModel의 리스트와 총계를 모두 업데이트합니다.
+            // 🎯 594줄부터 601줄까지의 코드를 아래 코드로 교체하세요.
+
             if (DataContext is ViewModels.DashboardViewModel vm)
             {
                 if (win.IsDeleted)
                 {
-                    vm.TimeLogEntries.Remove(log); // VM 리스트 동기화
+                    // ✨ [수정] vm.TimeLogEntries.Remove(log)는 실패하므로,
+                    // ViewModel의 리스트에서 StartTime, EndTime, TaskText가 모두 일치하는
+                    // "동일한 로그"를 찾아서 삭제합니다.
+                    var logInViewModel = vm.TimeLogEntries.FirstOrDefault(l =>
+                        l.StartTime == log.StartTime &&
+                        l.EndTime == log.EndTime &&
+                        l.TaskText == log.TaskText);
+
+                    if (logInViewModel != null)
+                    {
+                        vm.TimeLogEntries.Remove(logInViewModel); // ViewModel 리스트에서 삭제
+                    }
                 }
-                vm.RecalculateAllTotalsFromLogs(); // VM 내부 총계 즉시 갱신
+
+                // 이제 ViewModel의 리스트가 갱신되었으므로, 총계를 다시 계산합니다.
+                vm.RecalculateAllTotalsFromLogs();
             }
         }
         #endregion
@@ -914,6 +929,8 @@ namespace WorkPartner
             _selectionBox.Height = h;
         }
 
+        // 🎯 [수정 3] DashboardPage.xaml.cs (931줄)
+
         private void SelectionCanvas_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
             if (!_isDragging) return;
@@ -930,7 +947,9 @@ namespace WorkPartner
             {
                 if (child.Tag is TimeLogEntry logEntry)
                 {
-                    var logRect = new Rect(child.Margin.Left, child.Margin.Top, child.ActualWidth, child.ActualHeight);
+                    // ✨ [수정] Margin.Left/Top 대신 Canvas.GetLeft/GetTop을 사용합니다.
+                    var logRect = new Rect(Canvas.GetLeft(child), Canvas.GetTop(child), child.ActualWidth, child.ActualHeight);
+
                     if (selectionRect.IntersectsWith(logRect))
                     {
                         selectedLogs.Add(logEntry);

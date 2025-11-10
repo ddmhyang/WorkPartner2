@@ -121,7 +121,10 @@
                     <ScrollViewer Canvas.Left="0" Canvas.Top="38" Width="262" Height="264" VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled">
                         <Grid UseLayoutRounding="True" SnapsToDevicePixels="True">
                             <StackPanel x:Name="TimeTableContainer" />
-                            <Canvas x:Name="SelectionCanvas" Background="Transparent" IsHitTestVisible="True" />
+                            <Canvas x:Name="SelectionCanvas" Background="Transparent" IsHitTestVisible="True"
+        MouseLeftButtonDown="SelectionCanvas_MouseLeftButtonDown"
+        MouseMove="SelectionCanvas_MouseMove"
+        MouseLeftButtonUp="SelectionCanvas_MouseLeftButtonUp" />
                         </Grid>
                     </ScrollViewer>
 
