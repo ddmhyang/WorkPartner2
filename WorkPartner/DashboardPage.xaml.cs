@@ -569,42 +569,35 @@ namespace WorkPartner
             if (selectedTask == null && TaskItems.Any())
             {
                 selectedTask = TaskItems.FirstOrDefault();
-                // ViewModel을 사용하지 않으므로 직접 선택 항목을 설정합니다.
                 if (TaskListBox.SelectedItem == null)
                 {
                     TaskListBox.SelectedItem = selectedTask;
                 }
             }
 
-            // 🎯 수정 후
             TimeSpan timeToShow = TimeSpan.Zero;
             if (selectedTask != null)
             {
-                // ✨ [수정] RecalculateAllTotals()에서 이미 계산한 값을 사용합니다.
                 timeToShow = selectedTask.TotalTime;
             }
 
-            // ✨ [추가] 미니 타이머로 보낼 문자열을 미리 준비합니다.
-            string timeString = timeToShow.ToString(@"hh\:mm\:ss");
-            string taskString = selectedTask != null ? selectedTask.Text : "과목을 선택하세요";
+            // ✨ [수정] 
+            // 이 메서드는 이제 ViewModel이 아닌,
+            // *사용자가 선택한 날짜*(_currentDateForTimeline)의 시간만 계산합니다.
 
-            // 메인 타이머 업데이트
-            MainTimeDisplay.Text = timeString;
+            // 1. 메인 타이머 업데이트
+            // (오늘 날짜가 아니면, OnViewModelTimeUpdated가 덮어쓰지 않으므로
+            //  선택한 날짜의 총 시간이 여기에 표시됩니다.)
+            MainTimeDisplay.Text = timeToShow.ToString(@"hh\:mm\:ss");
 
-            // 현재 과목 이름 업데이트
-            CurrentTaskDisplay.Text = taskString;
-
-            // 하단 총 학습 시간 업데이트
+            // 2. 하단 총 학습 시간 업데이트
             var todayLogs = TimeLogEntries.Where(log => log.StartTime.Date == _currentDateForTimeline.Date).ToList();
             var totalTimeToday = new TimeSpan(todayLogs.Sum(log => log.Duration.Ticks));
             SelectedTaskTotalTimeDisplay.Text = $"이날의 총 학습 시간: {(int)totalTimeToday.TotalHours}시간 {totalTimeToday.Minutes}분";
-            
-            // ✨ [추가] 미니 타이머가 켜져있다면, 모든 정보를 새 UpdateData 메서드로 전달합니다.
-            if (_miniTimer != null && _miniTimer.IsVisible)
-            {
-                // _settings 필드는 LoadAllDataAsync()에서 이미 로드되었습니다.
-                _miniTimer.UpdateData(_settings, taskString, timeString);
-            }
+
+            // ✨ [제거]
+            // CurrentTaskDisplay.Text 설정 로직을 제거합니다. (OnViewModelTaskChanged가 담당)
+            // _miniTimer.UpdateData 로직을 제거합니다. (OnViewModelTimeUpdated가 담당)
         }
 
         /// <summary>
@@ -1118,14 +1111,16 @@ namespace WorkPartner
             if (e.OldValue is ViewModels.DashboardViewModel oldVm)
             {
                 oldVm.TimeUpdated -= OnViewModelTimeUpdated;
-                // ✨ [추가] ViewModel이 변경되면 이전 이벤트 구독 해제
-                if (oldVm != null) oldVm.TimerStoppedAndSaved -= OnViewModelTimerStopped;
+                // ✨ [수정] 이전 ViewModel에서 구독 해제
+                oldVm.TimerStoppedAndSaved -= OnViewModelTimerStopped;
+                oldVm.CurrentTaskChanged -= OnViewModelTaskChanged;
             }
             if (e.NewValue is ViewModels.DashboardViewModel newVm)
             {
                 newVm.TimeUpdated += OnViewModelTimeUpdated;
-                // ✨ [추가] 새 ViewModel의 타이머 중지 이벤트 구독
+                // ✨ [수정] 새 ViewModel에 구독 추가
                 newVm.TimerStoppedAndSaved += OnViewModelTimerStopped;
+                newVm.CurrentTaskChanged += OnViewModelTaskChanged;
             }
         }
         // ✨ [전체 추가] ViewModel에서 타이머가 중지되고 저장이 완료되었을 때 호출될 메서드
@@ -1180,23 +1175,28 @@ namespace WorkPartner
             }
         }
 
-        // [추가] ViewModel에서 과목이 (AI 태그 등으로) 변경될 때
         private void OnViewModelTaskChanged(string newTaskName)
         {
-            // 1. 미니 타이머가 참조하는 'CurrentTaskDisplay.Text'는 "항상" 업데이트합니다.
+            // 1. 메인 과목 텍스트(CurrentTaskDisplay)는 "항상" ViewModel의 값을 따릅니다.
+            //    (이 값은 OnViewModelTimeUpdated가 참조하여 미니 타이머로 전달됩니다)
             Dispatcher.Invoke(() =>
             {
                 CurrentTaskDisplay.Text = newTaskName;
             });
 
-            // 2. 메인 대시보드 UI(과목 목록 선택)는 "오늘 날짜를 볼 때만" 업데이트합니다.
+            // 2. 메인 대시보드 UI(TaskListBox)는 "오늘 날짜를 볼 때만" 동기화합니다.
             if (_currentDateForTimeline.Date != DateTime.Today.Date) return;
 
             Dispatcher.Invoke(() =>
             {
+                // ✨ [추가] 
+                // AI가 과목을 변경했을 때, TaskListBox의 UI 선택도 강제로 변경합니다.
                 var foundTask = TaskItems.FirstOrDefault(t => t.Text == newTaskName);
                 if (foundTask != null && TaskListBox.SelectedItem != foundTask)
                 {
+                    // 이 구문은 SelectionChanged 이벤트를 발생시키지만,
+                    // 1단계에서 UpdateMainTimeDisplay의 충돌 코드를 제거했으므로
+                    // 더 이상 문제를 일으키지 않습니다.
                     TaskListBox.SelectedItem = foundTask;
                 }
             });

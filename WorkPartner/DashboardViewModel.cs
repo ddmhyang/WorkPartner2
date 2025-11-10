@@ -231,11 +231,12 @@ namespace WorkPartner.ViewModels
                 (!string.IsNullOrEmpty(activeTitle) && activeTitle.Contains(p))
             );
 
-            // 5. "자리 비움" 상태인지 판단 (수동 앱은 자리비움 감지 안 함)
+            // 5. "자리 비움" 상태인지 판단 (수동 앱(isPassiveApp)은 감지 안 함)
             bool isCurrentlyIdle = false;
-            if (_settings.IsIdleDetectionEnabled && !isPassiveApp)
+
+            if (!isPassiveApp)
             {
-                isCurrentlyIdle = ActiveWindowHelper.GetIdleTime().TotalSeconds > _settings.IdleTimeoutSeconds;
+                isCurrentlyIdle = ActiveWindowHelper.GetIdleTime().TotalSeconds >= 10;
             }
 
             // 6. 최종 "작업 상태" 정의: (작업 앱이거나 수동 앱) 그리고 (자리 비움이 아님)
