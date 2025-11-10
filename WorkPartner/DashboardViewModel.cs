@@ -1,4 +1,5 @@
-﻿using System;
+﻿// 파일: DashboardViewModel.cs
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -92,7 +93,7 @@ namespace WorkPartner.ViewModels
         public DashboardViewModel(ITaskService taskService, IDialogService dialogService, ISettingsService settingsService, ITimerService timerService, ITimeLogService timeLogService)
         {
             _taskService = taskService;
-            _dialogService = dialogService; // ✨ [버그 2-2 수정] dialogService를 멤버 변수에 저장합니다.
+            _dialogService = dialogService;
             _settingsService = settingsService;
             _timerService = timerService;
             _timeLogService = timeLogService;
@@ -103,16 +104,13 @@ namespace WorkPartner.ViewModels
 
             _timerService.Tick += OnTimerTick;
 
-            // ✨ [버그 2 수정] DataManager의 설정 업데이트 이벤트를 구독합니다.
             DataManager.SettingsUpdated += OnSettingsUpdated;
 
             LoadInitialDataAsync();
         }
 
-        // ✨ [버그 2 수정] 파일의 아무 곳에나 이 메서드를 추가하세요 (예: LoadInitialDataAsync 근처)
         private void OnSettingsUpdated()
         {
-            // ISettingsService를 통해 최신 설정을 다시 로드합니다.
             _settings = _settingsService.LoadSettings();
             System.Diagnostics.Debug.WriteLine("DashboardViewModel: Settings reloaded.");
         }
@@ -126,8 +124,10 @@ namespace WorkPartner.ViewModels
             var loadedTasks = await _taskService.LoadTasksAsync();
             foreach (var task in loadedTasks) TaskItems.Add(task);
 
+            // ▼▼▼ [수정] 원본 로직으로 되돌립니다. ▼▼▼
             var loadedLogs = await _timeLogService.LoadTimeLogsAsync();
             foreach (var log in loadedLogs) TimeLogEntries.Add(log);
+            // ▲▲▲ [수정 완료] ▲▲▲
 
             RecalculateDailyTotals();
             UpdateLiveTimeDisplays();
@@ -157,7 +157,7 @@ namespace WorkPartner.ViewModels
                 if (_stopwatch.IsRunning)
                 {
                     LogWorkSession();
-                    _stopwatch.Reset();
+                    // _stopwatch.Reset(); // ◀ LogWorkSession에서 Reset하므로 여기서 제거
                 }
                 _currentWorkingTask = newSelectedTask;
             }
@@ -169,12 +169,10 @@ namespace WorkPartner.ViewModels
             UpdateLiveTimeDisplays();
         }
 
-        // ✨ [추가] AI 태그 규칙을 검사하고 현재 과목을 자동 변경하는 메서드
         private void CheckTagRules(string activeTitle, string activeUrl)
         {
             if (_settings.TagRules == null || _settings.TagRules.Count == 0) return;
 
-            // 창 제목과 URL을 합쳐서 키워드 검사
             string combinedText = (activeTitle + " " + activeUrl).ToLower();
 
             foreach (var rule in _settings.TagRules)
@@ -184,7 +182,6 @@ namespace WorkPartner.ViewModels
                 {
                     string targetTaskName = rule.Value;
 
-                    // 현재 선택된 과목과 규칙이 일치하는 과목이 다를 경우에만 변경
                     if (SelectedTaskItem == null || !SelectedTaskItem.Text.Equals(targetTaskName, StringComparison.OrdinalIgnoreCase))
                     {
                         var foundTask = TaskItems.FirstOrDefault(t => t.Text.Equals(targetTaskName, StringComparison.OrdinalIgnoreCase));
@@ -192,34 +189,24 @@ namespace WorkPartner.ViewModels
                         {
                             SelectedTaskItem = foundTask;
                             Debug.WriteLine($"AI Tag Rule applied: '{rule.Key}' -> '{targetTaskName}'");
-                            break; // 첫 번째 일치하는 규칙만 적용
+                            break;
                         }
                     }
                 }
             }
         }
 
-        // 파일: WorkPartner/DashboardViewModel.cs
-        // (메서드 전체를 교체하세요)
 
-        /// <summary>
-        /// 1초마다 호출되며, 현재 활성 창을 기준으로 타이머(스톱워치)를
-        /// 시작, 일시정지, 또는 유예 시간 후 저장할지 결정하는 핵심 메서드입니다.
-        /// </summary>
         private void HandleStopwatchMode()
         {
-            // 1. 설정 확인
             if (_settings == null) return;
 
-            // 2. 현재 활성 창 정보 가져오기
             string activeProcess = ActiveWindowHelper.GetActiveProcessName().ToLower();
             string activeUrl = ActiveWindowHelper.GetActiveBrowserTabUrl()?.ToLower() ?? string.Empty;
             string activeTitle = ActiveWindowHelper.GetActiveWindowTitle()?.ToLower() ?? string.Empty;
 
-            // 3. AI 태그 규칙 검사
             CheckTagRules(activeTitle, activeUrl);
 
-            // 4. "작업 상태"인지 판단
             bool isWorkApp = _settings.WorkProcesses.Any(p =>
                 activeProcess.Contains(p) ||
                 (!string.IsNullOrEmpty(activeUrl) && activeUrl.Contains(p)) ||
@@ -231,7 +218,6 @@ namespace WorkPartner.ViewModels
                 (!string.IsNullOrEmpty(activeTitle) && activeTitle.Contains(p))
             );
 
-            // 5. "자리 비움" 상태인지 판단 (수동 앱(isPassiveApp)은 감지 안 함)
             bool isCurrentlyIdle = false;
 
             if (!isPassiveApp)
@@ -239,26 +225,21 @@ namespace WorkPartner.ViewModels
                 isCurrentlyIdle = ActiveWindowHelper.GetIdleTime().TotalSeconds >= 10;
             }
 
-            // 6. 최종 "작업 상태" 정의: (작업 앱이거나 수동 앱) 그리고 (자리 비움이 아님)
             bool isWorkState = (isWorkApp || isPassiveApp) && !isCurrentlyIdle;
 
-            // 7. 로직 분기
             if (isWorkState)
             {
-                // --- 시나리오 A: 사용자가 현재 "작업 중" ---
-                // A-1. (복귀) 유예 시간(2분) 중에 작업 앱으로 복귀한 경우
                 if (_isInGracePeriod)
                 {
-                    _isInGracePeriod = false; // 유예 시간을 취소합니다.
-                    _stopwatch.Start();       // 멈췄던 스톱워치를 다시 *이어갑니다.*
+                    _isInGracePeriod = false;
+                    _stopwatch.Start();
                 }
-                // A-2. (새 작업) 유예 시간이 아니었고, 스톱워치가 멈춰있던 경우
                 else if (!_stopwatch.IsRunning)
                 {
                     _currentWorkingTask = SelectedTaskItem ?? TaskItems.FirstOrDefault();
                     if (_currentWorkingTask != null)
                     {
-                        _sessionStartTime = DateTime.Now; // 새 세션 시작 시간 기록
+                        _sessionStartTime = DateTime.Now;
                         _stopwatch.Start();
                         IsRunningChanged?.Invoke(true);
                         CurrentTaskDisplayText = _currentWorkingTask.Text;
@@ -268,32 +249,24 @@ namespace WorkPartner.ViewModels
             }
             else
             {
-                // --- 시나리오 B: 사용자가 현재 "작업 중이 아님" ---
-                // B-1. (이탈 시작) 방금 전까지 스톱워치가 실행 중이었던 경우
                 if (_stopwatch.IsRunning)
                 {
-                    _stopwatch.Stop();          // 스톱워치를 *일시 정지*합니다. (로그 저장 안 함)
-                    _isInGracePeriod = true;    // "유예 시간"을 시작합니다.
+                    _stopwatch.Stop();
+                    _isInGracePeriod = true;
                     _gracePeriodStartTime = DateTime.Now;
                 }
-                // B-2. (이탈 지속) 이미 유예 시간이 진행 중이던 경우
                 else if (_isInGracePeriod)
                 {
-                    // B-3. (유예 시간 만료) 유예 시간이 초과되었는지 확인
                     if ((DateTime.Now - _gracePeriodStartTime).TotalSeconds > GracePeriodSeconds)
                     {
-                        // 유예 시간(2분)이 지났습니다. "진짜 휴식"으로 간주합니다.
-                        LogWorkSession(); // ✨ 이때 비로소 일시 정지했던 세션을 "저장"합니다.
-                        _stopwatch.Reset();
+                        LogWorkSession();
+                        // _stopwatch.Reset(); // ◀ LogWorkSession에서 Reset
                         IsRunningChanged?.Invoke(false);
-                        _isInGracePeriod = false; // 유예 시간을 완전히 종료합니다.
+                        _isInGracePeriod = false;
                     }
-                    // (else) 유예 시간이 아직 남았다면 -> 아무것도 안 하고 다음 1초 틱을 대기합니다.
                 }
-                // B-4. (완전 비작업) 원래부터 작업 중이 아니었고 유예 시간도 아닌 경우
                 else
                 {
-                    // (기존의 "방해 앱 경고" 로직은 여기에 해당합니다)
                     bool isDistraction = _settings.DistractionProcesses.Any(p =>
                         activeProcess.Contains(p) ||
                         (!string.IsNullOrEmpty(activeUrl) && activeUrl.Contains(p)) ||
@@ -321,48 +294,37 @@ namespace WorkPartner.ViewModels
                 return;
             }
 
+            // ▼▼▼ [레벨업 로직 추가 시작] ▼▼▼
             try
             {
-                // 1. 이번 세션에서 작업한 시간(분)을 가져옵니다.
                 double minutesWorked = _stopwatch.Elapsed.TotalMinutes;
-
-                // 2. 이전에 저장된 자투리 시간과 합칩니다.
                 double totalPendingMinutes = _settings.PendingWorkMinutes + minutesWorked;
-
-                // 3. 레벨업에 필요한 변수들을 정의합니다.
                 int currentLevel = _settings.Level;
-                int minutesPerXpChunk = currentLevel; // (n레벨일 때 n분)
-                int xpPerChunk = 10;                  // (10xp 획득)
+                int minutesPerXpChunk = currentLevel;
+                int xpPerChunk = 10;
                 int xpToLevelUp = 100;
                 int coinsPerLevel = 50;
 
-                // 4. 경험치를 획득할 만큼 충분히 작업했는지 확인
                 if (totalPendingMinutes >= minutesPerXpChunk)
                 {
-                    // 5. 몇 개의 경험치 덩어리(Chunk)를 획득했는지 계산
                     int chunksEarned = (int)Math.Floor(totalPendingMinutes / minutesPerXpChunk);
                     int xpGained = chunksEarned * xpPerChunk;
-
-                    // 6. 다음 계산을 위해 남은 자투리 시간을 계산
                     double remainingMinutes = totalPendingMinutes % minutesPerXpChunk;
 
                     _settings.Experience += xpGained;
-                    _settings.PendingWorkMinutes = remainingMinutes; // 자투리 시간 저장
+                    _settings.PendingWorkMinutes = remainingMinutes;
 
-                    // 7. 레벨업 체크 (100xp 이상일 경우)
                     bool leveledUp = false;
                     while (_settings.Experience >= xpToLevelUp)
                     {
                         _settings.Level++;
-                        _settings.Experience -= xpToLevelUp; // 100xp 차감
-                        _settings.Coins += coinsPerLevel;    // 50코인 보상
+                        _settings.Experience -= xpToLevelUp;
+                        _settings.Coins += coinsPerLevel;
                         leveledUp = true;
                     }
 
-                    // 8. 레벨업 했을 경우 알림 표시
                     if (leveledUp)
                     {
-                        // _dialogService는 생성자에서 주입받은 서비스입니다.
                         _dialogService.ShowAlert(
                             $"🎉 축하합니다! 레벨 업! 🎉\n\n레벨 {_settings.Level}이(가) 되었습니다.\n보상으로 {coinsPerLevel}코인을 획득했습니다!",
                             "레벨 업!"
@@ -371,20 +333,20 @@ namespace WorkPartner.ViewModels
                 }
                 else
                 {
-                    // 9. 경험치를 얻기엔 시간이 부족하면, 누적 시간에 합산만 함
                     _settings.PendingWorkMinutes = totalPendingMinutes;
                 }
 
-                // 10. (중요) 경험치/레벨/코인 변경 사항을 설정 파일에 저장
+                // (중요) 서비스 주입을 사용하여 저장
                 _settingsService.SaveSettings(_settings);
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"[Error] Level Up Logic Failed: {ex.Message}");
-                // 레벨업 로직이 실패해도 기본 기능(시간 저장)은 동작해야 함
             }
             // ▲▲▲ [레벨업 로직 추가 끝] ▲▲▲
 
+
+            // --- (기존 시간 저장 로직) ---
             var entry = new TimeLogEntry
             {
                 StartTime = _sessionStartTime,
@@ -393,8 +355,9 @@ namespace WorkPartner.ViewModels
             };
 
             TimeLogEntries.Insert(0, entry);
-            // ✨ [오류 수정] .ToList()를 제거하여 올바른 타입으로 데이터를 넘겨줍니다.
+            // ▼▼▼ [수정] 비동기 저장을 호출
             _timeLogService.SaveTimeLogsAsync(TimeLogEntries);
+            // ▲▲▲
 
             TaskStoppedAndSaved?.Invoke();
 
@@ -408,22 +371,18 @@ namespace WorkPartner.ViewModels
                 _dailyTaskTotals[entry.TaskText] = duration;
             }
             _totalTimeTodayFromLogs += duration;
-            // ✨ [추가] 모든 저장이 끝났으니, 이 이벤트를 구독하는 모든 곳(DashboardPage)에 신호를 보냅니다.
             TimerStoppedAndSaved?.Invoke(this, EventArgs.Empty);
-        }
 
-        // 🎯 [수정] 368줄의 UpdateLiveTimeDisplays 메서드 전체를 이 코드로 교체하세요.
+            _stopwatch.Reset(); // ◀ (중요) 모든 계산이 끝난 후 리셋
+        }
 
         private void UpdateLiveTimeDisplays()
         {
             var totalTimeToday = _totalTimeTodayFromLogs;
-
-            // ✨ [수정] 
-            // 스톱워치가 멈춰있어도(IsRunning=false) 
-            // 현재 스톱워치에 기록된 시간(_stopwatch.Elapsed)을 더해줘야
-            // 일시정지 상태에서 시간이 0으로 돌아가지 않습니다.
-            totalTimeToday += _stopwatch.Elapsed;
-
+            if (_stopwatch.IsRunning)
+            {
+                totalTimeToday += _stopwatch.Elapsed;
+            }
             TotalTimeTodayDisplayText = $"오늘의 작업 시간 | {totalTimeToday:hh\\:mm\\:ss}";
 
             var timeForSelectedTask = TimeSpan.Zero;
@@ -432,11 +391,7 @@ namespace WorkPartner.ViewModels
                 timeForSelectedTask = storedTime;
             }
 
-            // ✨ [수정] 
-            // 스톱워치가 멈춰있어도(IsRunning=false) 
-            // 현재 스톱워치에 기록된 시간(_stopwatch.Elapsed)을 더해줘야
-            // 일시정지 상태에서 시간이 0으로 돌아가지 않습니다.
-            if (_currentWorkingTask == SelectedTaskItem)
+            if (_stopwatch.IsRunning && _currentWorkingTask == SelectedTaskItem)
             {
                 timeForSelectedTask += _stopwatch.Elapsed;
             }
@@ -446,6 +401,76 @@ namespace WorkPartner.ViewModels
 
             TimeUpdated?.Invoke(newTime);
         }
+
+        #region --- Public CRUD Methods for Page ---
+
+        /// <summary>
+        /// (Page에서 호출) 새 수동 로그를 VM 리스트에 추가하고 즉시 저장합니다.
+        /// </summary>
+        public void AddManualLog(TimeLogEntry newLog)
+        {
+            if (newLog == null) return;
+
+            TimeLogEntries.Add(newLog);
+
+            // 2. VM 리스트를 파일에 '즉시' 저장 (DataManager 직접 사용)
+            DataManager.SaveTimeLogsImmediately(TimeLogEntries);
+
+            RecalculateDailyTotals();
+            UpdateLiveTimeDisplays();
+        }
+
+        /// <summary>
+        /// (Page에서 호출) 기존 로그를 찾아 삭제하고 즉시 저장합니다.
+        /// </summary>
+        public void DeleteLog(TimeLogEntry logFromPage)
+        {
+            if (logFromPage == null) return;
+
+            // 1. VM 리스트에서 '내용'이 같은 원본 객체를 찾습니다.
+            var logInVm = TimeLogEntries.FirstOrDefault(l =>
+                l.StartTime == logFromPage.StartTime &&
+                l.TaskText == logFromPage.TaskText &&
+                l.EndTime == logFromPage.EndTime
+            );
+
+            if (logInVm != null)
+            {
+                TimeLogEntries.Remove(logInVm);
+                DataManager.SaveTimeLogsImmediately(TimeLogEntries);
+                RecalculateDailyTotals();
+                UpdateLiveTimeDisplays();
+            }
+        }
+
+        /// <summary>
+        /// (Page에서 호출) 기존 로그를 찾아 수정하고 즉시 저장합니다.
+        /// </summary>
+        public void UpdateLog(TimeLogEntry originalLog, TimeLogEntry updatedLog)
+        {
+            if (originalLog == null || updatedLog == null) return;
+
+            var logInVm = TimeLogEntries.FirstOrDefault(l =>
+                l.StartTime == originalLog.StartTime &&
+                l.TaskText == originalLog.TaskText &&
+                l.EndTime == originalLog.EndTime
+            );
+
+            if (logInVm != null)
+            {
+                logInVm.StartTime = updatedLog.StartTime;
+                logInVm.EndTime = updatedLog.EndTime;
+                logInVm.TaskText = updatedLog.TaskText;
+                logInVm.FocusScore = updatedLog.FocusScore;
+
+                DataManager.SaveTimeLogsImmediately(TimeLogEntries);
+
+                RecalculateDailyTotals();
+                UpdateLiveTimeDisplays();
+            }
+        }
+
+        #endregion
 
         #region --- INotifyPropertyChanged 구현 ---
         public event PropertyChangedEventHandler PropertyChanged;
@@ -459,11 +484,40 @@ namespace WorkPartner.ViewModels
         #endregion
 
 
-        // ✨ [버그 1-1 수정] 이 public 메서드를 DashboardViewModel.cs에 새로 추가하세요.
         public void RecalculateAllTotalsFromLogs()
         {
-            RecalculateDailyTotals(); // 1. VM의 내부 합계(Dictionary)를 다시 계산합니다.
-            UpdateLiveTimeDisplays(); // 2. VM의 UI 속성(Text)을 새 합계로 업데이트합니다.
+            RecalculateDailyTotals();
+            UpdateLiveTimeDisplays();
+        }
+
+
+        // 파일: DashboardViewModel.cs
+        // (약 455줄 근처)
+
+        public void Shutdown()
+        {
+            if (_stopwatch.IsRunning || _isInGracePeriod)
+            {
+                // ▼▼▼ [수정] 비동기 저장을 동기(즉시) 저장으로 변경 ▼▼▼
+
+                // 1. 마지막 로그 항목 생성
+                var entry = new TimeLogEntry
+                {
+                    StartTime = _sessionStartTime,
+                    EndTime = DateTime.Now, // 종료 시점의 현재 시간
+                    TaskText = _currentWorkingTask.Text
+                };
+
+                // 2. VM 리스트에 추가
+                TimeLogEntries.Add(entry);
+
+                // 3. '즉시 저장' 호출
+                DataManager.SaveTimeLogsImmediately(TimeLogEntries);
+
+                // ▲▲▲ [수정 완료] ▲▲▲
+
+                Debug.WriteLine("VM Shutdown: Final session saved.");
+            }
         }
 
     }

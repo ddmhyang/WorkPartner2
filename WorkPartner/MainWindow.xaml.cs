@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System.ComponentModel;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -21,6 +22,17 @@ namespace WorkPartner
             MainFrame.Navigate(_dashboardPage);
 
             Loaded += MainWindow_Loaded; // <--- 이 줄을 추가합니다.
+            this.Closing += MainWindow_Closing;
+        }
+
+        private void MainWindow_Closing(object sender, CancelEventArgs e)
+        {
+            // 대시보드 페이지에 연결된 ViewModel(두뇌)을 가져옵니다.
+            if (_dashboardPage.DataContext is ViewModels.DashboardViewModel vm)
+            {
+                // ViewModel에게 "지금 종료하니 마지막 작업 저장해!"라고 알립니다.
+                vm.Shutdown();
+            }
         }
 
         private async void NavButton_Click(object sender, RoutedEventArgs e)

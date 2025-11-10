@@ -1,4 +1,5 @@
-﻿using System;
+﻿// 파일: DashboardPage.xaml.cs
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
@@ -13,7 +14,7 @@ using System.Windows.Media;
 using System.Windows.Shapes;
 using System.Windows.Threading;
 using WorkPartner.AI;
-using System.ComponentModel; // PropertyChangedEventArgs 클래스를 사용하기 위해 필요
+using System.ComponentModel;
 
 namespace WorkPartner
 {
@@ -28,7 +29,7 @@ namespace WorkPartner
         public ObservableCollection<TaskItem> TaskItems { get; set; }
         public ObservableCollection<TodoItem> TodoItems { get; set; }
         public ObservableCollection<TodoItem> FilteredTodoItems { get; set; }
-        public ObservableCollection<TimeLogEntry> TimeLogEntries { get; set; }
+        //public ObservableCollection<TimeLogEntry> TimeLogEntries { get; set; } // ◀◀ [이 줄 삭제 또는 주석 처리]
         public ObservableCollection<MemoItem> AllMemos { get; set; }
 
         private MainWindow _parentWindow;
@@ -49,8 +50,6 @@ namespace WorkPartner
         private static readonly SolidColorBrush BlockBackgroundBrush = new SolidColorBrush(Color.FromRgb(0xF5, 0xF5, 0xF5));
         private static readonly SolidColorBrush BlockBorderBrush = Brushes.White;
 
-
-        // ✨ [추가] 타이머가 중지되고 저장이 완료되었음을 알리는 이벤트를 선언합니다.
         #endregion
 
         public DashboardPage()
@@ -111,7 +110,7 @@ namespace WorkPartner
             FilteredTodoItems = new ObservableCollection<TodoItem>();
             TodoTreeView.ItemsSource = FilteredTodoItems;
 
-            TimeLogEntries = new ObservableCollection<TimeLogEntry>();
+            // TimeLogEntries = new ObservableCollection<TimeLogEntry>(); // ◀◀ [이 줄 삭제]
             AllMemos = new ObservableCollection<MemoItem>();
         }
 
@@ -142,7 +141,7 @@ namespace WorkPartner
             if (!File.Exists(_tasksFilePath)) return;
             try
             {
-                await using var stream = new FileStream(_tasksFilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite); // ✨ [수정]
+                await using var stream = new FileStream(_tasksFilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
                 var loadedTasks = await JsonSerializer.DeserializeAsync<List<TaskItem>>(stream);
                 if (loadedTasks == null) return;
 
@@ -173,7 +172,7 @@ namespace WorkPartner
             if (!File.Exists(_todosFilePath)) return;
             try
             {
-                await using var stream = new FileStream(_todosFilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite); // ✨ [수정]
+                await using var stream = new FileStream(_todosFilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
                 var loadedTodos = await JsonSerializer.DeserializeAsync<ObservableCollection<TodoItem>>(stream);
                 if (loadedTodos == null) return;
                 TodoItems.Clear();
@@ -188,23 +187,28 @@ namespace WorkPartner
             DataManager.SaveTodos(TodoItems);
         }
 
+        // ▼▼▼ [오류 327] 이 메서드는 OnViewModelTimerStopped에서 사용되므로, VM 리스트를 채우도록 수정 ▼▼▼
         private async Task LoadTimeLogsAsync()
         {
             if (!File.Exists(_timeLogFilePath)) return;
             try
             {
-                await using var stream = new FileStream(_timeLogFilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite); // ✨ [수정]
+                await using var stream = new FileStream(_timeLogFilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
                 var loadedLogs = await JsonSerializer.DeserializeAsync<ObservableCollection<TimeLogEntry>>(stream);
                 if (loadedLogs == null) return;
-                TimeLogEntries.Clear();
-                foreach (var log in loadedLogs) TimeLogEntries.Add(log);
+
+                if (DataContext is ViewModels.DashboardViewModel vm)
+                {
+                    vm.TimeLogEntries.Clear(); // ◀ (오류 327 수정)
+                    foreach (var log in loadedLogs) vm.TimeLogEntries.Add(log);
+                }
             }
             catch (Exception ex) { Debug.WriteLine($"Error loading time logs: {ex.Message}"); }
         }
 
         private void SaveTimeLogs()
         {
-            DataManager.SaveTimeLogsImmediately(TimeLogEntries);
+            // DataManager.SaveTimeLogsImmediately(TimeLogEntries); // ◀ (오류 342 수정)
         }
 
         private async Task LoadMemosAsync()
@@ -227,7 +231,6 @@ namespace WorkPartner
             LoadSettings();
             await LoadTasksAsync();
             await LoadTodosAsync();
-            await LoadTimeLogsAsync();
             await LoadMemosAsync();
             UpdateCharacterInfoPanel();
             RecalculateAllTotals();
@@ -306,6 +309,9 @@ namespace WorkPartner
 
         private void EditTaskButton_Click(object sender, RoutedEventArgs e)
         {
+            // ▼▼▼ [V6 수정] VM에서 TimeLogEntries를 가져와야 함 ▼▼▼
+            if (DataContext is not ViewModels.DashboardViewModel vm) return;
+
             if (TaskListBox.SelectedItem is not TaskItem selectedTask)
             {
                 MessageBox.Show("수정할 과목을 목록에서 선택해주세요.", "알림", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -324,7 +330,8 @@ namespace WorkPartner
                 return;
             }
 
-            foreach (var log in TimeLogEntries.Where(l => l.TaskText == oldName))
+            // ▼▼▼ [V6 수정] vm.TimeLogEntries 사용 ▼▼▼
+            foreach (var log in vm.TimeLogEntries.Where(l => l.TaskText == oldName))
             {
                 log.TaskText = newName;
             }
@@ -339,7 +346,8 @@ namespace WorkPartner
             selectedTask.Text = newName;
 
             SaveTasks();
-            SaveTimeLogs();
+            // ▼▼▼ [V6 수정] VM의 리스트를 즉시 저장 ▼▼▼
+            DataManager.SaveTimeLogsImmediately(vm.TimeLogEntries);
             SaveSettings();
 
             TaskListBox.Items.Refresh();
@@ -348,6 +356,9 @@ namespace WorkPartner
 
         private void DeleteTaskButton_Click(object sender, RoutedEventArgs e)
         {
+            // ▼▼▼ [V6 수정] VM에서 TimeLogEntries를 가져와야 함 ▼▼▼
+            if (DataContext is not ViewModels.DashboardViewModel vm) return;
+
             if (TaskListBox.SelectedItem is not TaskItem selectedTask)
             {
                 MessageBox.Show("삭제할 과목을 목록에서 선택해주세요.", "알림", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -367,14 +378,16 @@ namespace WorkPartner
                 SaveSettings();
             }
 
-            var logsToRemove = TimeLogEntries.Where(l => l.TaskText == taskNameToDelete).ToList();
+            // ▼▼▼ [V6 수정] vm.TimeLogEntries 사용 ▼▼▼
+            var logsToRemove = vm.TimeLogEntries.Where(l => l.TaskText == taskNameToDelete).ToList();
             foreach (var log in logsToRemove)
             {
-                TimeLogEntries.Remove(log);
+                vm.TimeLogEntries.Remove(log);
             }
 
             SaveTasks();
-            SaveTimeLogs();
+            // ▼▼▼ [V6 수정] VM의 리스트를 즉시 저장 ▼▼▼
+            DataManager.SaveTimeLogsImmediately(vm.TimeLogEntries);
             RenderTimeTable();
             RecalculateAllTotals();
         }
@@ -444,7 +457,6 @@ namespace WorkPartner
             if (e.Key == Key.Enter) AddTodoButton_Click(sender, e);
         }
 
-        // (약 432줄 근처)
         private void SaveTodos_Event(object sender, RoutedEventArgs e)
         {
             if (sender is CheckBox { DataContext: TodoItem todoItem })
@@ -465,7 +477,6 @@ namespace WorkPartner
                     todoItem.HasBeenRewarded = false; // 보상 상태 리셋
                     UpdateCoinDisplay();
                     SaveSettings();
-                    // (필요하다면 여기에 '취소' 효과음 추가)
                 }
                 // ▲▲▲ [여기까지 추가] ▲▲▲
             }
@@ -490,17 +501,20 @@ namespace WorkPartner
             }
         }
 
-        // 🎯 [수정 1] DashboardPage.xaml.cs (AddManualLogButton_Click 메서드)
         private void AddManualLogButton_Click(object sender, RoutedEventArgs e)
         {
+            // 1. VM 가져오기
+            if (DataContext is not ViewModels.DashboardViewModel vm) return;
+
             var win = new AddLogWindow(TaskItems) { Owner = Window.GetWindow(this) };
             if (win.ShowDialog() != true) return;
 
             if (win.NewLogEntry != null)
             {
-                TimeLogEntries.Add(win.NewLogEntry); // 1. Page 리스트에 추가
+                // 2. [핵심] Page 리스트(TimeLogEntries)가 아닌 VM의 public 메서드 호출
+                vm.AddManualLog(win.NewLogEntry); // ◀ (오류 370 수정)
 
-                // (기존 코드) 과목 선택 로직
+                // (과목 선택 로직은 그대로 둠)
                 var addedTaskName = win.NewLogEntry.TaskText;
                 var taskToSelect = TaskItems.FirstOrDefault(t => t.Text == addedTaskName);
                 if (taskToSelect != null)
@@ -509,42 +523,46 @@ namespace WorkPartner
                 }
             }
 
-            DataManager.SaveTimeLogsImmediately(TimeLogEntries); // 2. 파일에 즉시 저장
-            RecalculateAllTotals(); // 3. Page의 UI(목록) 총계 계산
-            RenderTimeTable(); // 4. 타임라인 다시 그리기
+            // 3. [삭제] Page가 직접 저장/계산하지 않음
+            // DataManager.SaveTimeLogsImmediately(TimeLogEntries); // ◀ (오류 373, 377 수정)
 
-            // ✨ [오류 수정] vm 변수를 한 번만 선언하고,
-            // ViewModel의 리스트와 총계를 모두 업데이트합니다.
-            if (DataContext is ViewModels.DashboardViewModel vm)
-            {
-                if (win.NewLogEntry != null)
-                {
-                    vm.TimeLogEntries.Add(win.NewLogEntry); // VM 리스트 동기화
-                }
-                vm.RecalculateAllTotalsFromLogs(); // VM 내부 총계 즉시 갱신
-            }
+            // 4. [수정] VM이 계산했으니, Page는 VM 리스트를 사용해 그리기만 함
+            RecalculateAllTotals();
+            RenderTimeTable();
+
+            // 5. [삭제] VM은 이미 스스로 갱신했으므로 이 로직 필요 없음
+            // if (DataContext is ViewModels.DashboardViewModel vm) ...
         }
 
-        // 🎯 [수정 2] DashboardPage.xaml.cs (TimeLogRect_MouseLeftButtonDown 메서드)
         private void TimeLogRect_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             if ((sender as FrameworkElement)?.Tag is not TimeLogEntry log) return;
+            // 1. VM 가져오기
+            if (DataContext is not ViewModels.DashboardViewModel vm) return;
 
-            var win = new AddLogWindow(TaskItems, log) { Owner = Window.GetWindow(this) };
+            // [중요] 수정 시 VM에 있는 '원본' 객체를 전달해야 함
+            var originalLog = vm.TimeLogEntries.FirstOrDefault(l =>
+                l.StartTime == log.StartTime &&
+                l.TaskText == log.TaskText &&
+                l.EndTime == log.EndTime
+            );
+            // (만약 못찾으면 Page의 log 객체라도 사용)
+            if (originalLog == null) originalLog = log;
+
+            var win = new AddLogWindow(TaskItems, originalLog) { Owner = Window.GetWindow(this) };
             if (win.ShowDialog() != true) return;
 
             if (win.IsDeleted)
             {
-                TimeLogEntries.Remove(log); // 1. Page 리스트에서 삭제
+                // 2. [핵심] Page 리스트가 아닌 VM의 public 메서드 호출
+                vm.DeleteLog(originalLog);
             }
             else
             {
-                // (수정 로직)
-                log.StartTime = win.NewLogEntry.StartTime;
-                log.EndTime = win.NewLogEntry.EndTime;
-                log.TaskText = win.NewLogEntry.TaskText;
-                log.FocusScore = win.NewLogEntry.FocusScore;
+                // 2. [핵심] Page 리스트가 아닌 VM의 public 메서드 호출
+                vm.UpdateLog(originalLog, win.NewLogEntry);
 
+                // (과목 선택 로직은 그대로 둠)
                 var editedTaskName = win.NewLogEntry.TaskText;
                 var taskToSelect = TaskItems.FirstOrDefault(t => t.Text == editedTaskName);
                 if (taskToSelect != null)
@@ -553,45 +571,25 @@ namespace WorkPartner
                 }
             }
 
-            DataManager.SaveTimeLogsImmediately(TimeLogEntries); // 2. 파일에 즉시 저장
-            RecalculateAllTotals(); // 3. Page의 UI(목록) 총계 계산
-            RenderTimeTable(); // 4. 타임라인 다시 그리기
+            // 3. [삭제] Page가 직접 저장/계산하지 않음
+            // DataManager.SaveTimeLogsImmediately(TimeLogEntries);
 
-            // ✨ [오류 수정] vm 변수를 한 번만 선언하고,
-            // ViewModel의 리스트와 총계를 모두 업데이트합니다.
-            // 🎯 594줄부터 601줄까지의 코드를 아래 코드로 교체하세요.
+            // 4. [수정] VM이 계산했으니, Page는 VM 리스트를 사용해 그리기만 함
+            RecalculateAllTotals();
+            RenderTimeTable();
 
-            if (DataContext is ViewModels.DashboardViewModel vm)
-            {
-                if (win.IsDeleted)
-                {
-                    // ✨ [수정] vm.TimeLogEntries.Remove(log)는 실패하므로,
-                    // ViewModel의 리스트에서 StartTime, EndTime, TaskText가 모두 일치하는
-                    // "동일한 로그"를 찾아서 삭제합니다.
-                    var logInViewModel = vm.TimeLogEntries.FirstOrDefault(l =>
-                        l.StartTime == log.StartTime &&
-                        l.EndTime == log.EndTime &&
-                        l.TaskText == log.TaskText);
-
-                    if (logInViewModel != null)
-                    {
-                        vm.TimeLogEntries.Remove(logInViewModel); // ViewModel 리스트에서 삭제
-                    }
-                }
-
-                // 이제 ViewModel의 리스트가 갱신되었으므로, 총계를 다시 계산합니다.
-                vm.RecalculateAllTotalsFromLogs();
-            }
+            // 5. [삭제] VM은 이미 스스로 갱신했으므로 이 로직 필요 없음
+            // if (DataContext is ViewModels.DashboardViewModel vm) ...
         }
         #endregion
 
         #region 화면 렌더링 및 UI 업데이트
 
-        /// <summary>
-        /// ✨ [REVISED] 메인 타이머와 과목 이름, 하단 총 시간을 모두 업데이트합니다.
-        /// </summary>
         private void UpdateMainTimeDisplay()
         {
+            // ▼▼▼ [수정] VM을 먼저 가져옵니다. ▼▼▼
+            if (DataContext is not ViewModels.DashboardViewModel vm) return;
+
             TaskItem selectedTask = TaskListBox.SelectedItem as TaskItem;
             if (selectedTask == null && TaskItems.Any())
             {
@@ -608,31 +606,30 @@ namespace WorkPartner
                 timeToShow = selectedTask.TotalTime;
             }
 
-            // ✨ [수정] 
-            // 이 메서드는 이제 ViewModel이 아닌,
-            // *사용자가 선택한 날짜*(_currentDateForTimeline)의 시간만 계산합니다.
-
             // 1. 메인 타이머 업데이트
-            // (오늘 날짜가 아니면, OnViewModelTimeUpdated가 덮어쓰지 않으므로
-            //  선택한 날짜의 총 시간이 여기에 표시됩니다.)
             MainTimeDisplay.Text = timeToShow.ToString(@"hh\:mm\:ss");
 
             // 2. 하단 총 학습 시간 업데이트
-            var todayLogs = TimeLogEntries.Where(log => log.StartTime.Date == _currentDateForTimeline.Date).ToList();
+            // ▼▼▼ [핵심 수정] Page의 리스트가 아닌 VM의 리스트(vm.TimeLogEntries)를 사용
+            var todayLogs = vm.TimeLogEntries
+                .Where(log => log.StartTime.Date == _currentDateForTimeline.Date).ToList();
+            // ▲▲▲
             var totalTimeToday = new TimeSpan(todayLogs.Sum(log => log.Duration.Ticks));
             SelectedTaskTotalTimeDisplay.Text = $"이날의 총 학습 시간: {(int)totalTimeToday.TotalHours}시간 {totalTimeToday.Minutes}분";
 
-            // ✨ [제거]
-            // CurrentTaskDisplay.Text 설정 로직을 제거합니다. (OnViewModelTaskChanged가 담당)
-            // _miniTimer.UpdateData 로직을 제거합니다. (OnViewModelTimeUpdated가 담당)
+            // (제거) ...
         }
 
-        /// <summary>
-        /// ✨ [REVISED] 과목별 시간만 계산하고, UI 업데이트는 UpdateMainTimeDisplay에 맡깁니다.
-        /// </summary>
+        // ▼▼▼ [V6 수정] (오류 CS0103) VM 리스트 사용 ▼▼▼
         private void RecalculateAllTotals()
         {
-            var todayLogs = TimeLogEntries.Where(log => log.StartTime.Date == _currentDateForTimeline.Date).ToList();
+            // ▼▼▼ [수정] VM을 먼저 가져옵니다. ▼▼▼
+            if (DataContext is not ViewModels.DashboardViewModel vm) return;
+
+            // ▼▼▼ [핵심 수정] Page의 리스트가 아닌 VM의 리스트(vm.TimeLogEntries)를 사용
+            var todayLogs = vm.TimeLogEntries
+                .Where(log => log.StartTime.Date == _currentDateForTimeline.Date).ToList();
+            // ▲▲▲
 
             foreach (var task in TaskItems)
             {
@@ -679,6 +676,9 @@ namespace WorkPartner
 
         private void RenderTimeTable()
         {
+            // ▼▼▼ [수정] VM을 먼저 가져옵니다. (오류 747 'vm' 해결) ▼▼▼
+            if (DataContext is not ViewModels.DashboardViewModel vm) return;
+
             // 이전 블록 삭제
             var bordersToRemove = SelectionCanvas.Children.OfType<Border>()
                                          .Where(b => b.Tag is TimeLogEntry)
@@ -747,10 +747,12 @@ namespace WorkPartner
             Debug.WriteLine($"RenderTimeTable: blockWidth={blockWidth}, cellWidth={cellWidth}, rowHeight={rowHeight}, hourLabelWidth={hourLabelWidth}");
 
             // 로그 블록 그리기
-            var logsForSelectedDate = TimeLogEntries
+            // ▼▼▼ [핵심 수정] Page의 리스트가 아닌 VM의 리스트(vm.TimeLogEntries)를 사용
+            var logsForSelectedDate = vm.TimeLogEntries
                 .Where(log => log.StartTime.Date == _currentDateForTimeline.Date)
                 .OrderBy(l => l.StartTime)
                 .ToList();
+            // ▲▲▲
 
             foreach (var logEntry in logsForSelectedDate)
             {
@@ -941,10 +943,15 @@ namespace WorkPartner
             _selectionBox.Height = h;
         }
 
-        // 🎯 [수정 3] DashboardPage.xaml.cs (931줄)
+        // 파일: DashboardPage.xaml.cs
+        // (약 925줄 근처)
 
+        // (약 925줄 근처)
         private void SelectionCanvas_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
+            // ▼▼▼ [수정] VM을 먼저 가져옵니다. ▼▼▼
+            if (DataContext is not ViewModels.DashboardViewModel vm) return;
+
             if (!_isDragging) return;
             _isDragging = false;
             SelectionCanvas.ReleaseMouseCapture();
@@ -959,9 +966,9 @@ namespace WorkPartner
             {
                 if (child.Tag is TimeLogEntry logEntry)
                 {
-                    // ✨ [수정] Margin.Left/Top 대신 Canvas.GetLeft/GetTop을 사용합니다.
+                    // ▼▼▼ [수정] Margin 대신 Canvas.GetLeft/Top 사용 ▼▼▼
                     var logRect = new Rect(Canvas.GetLeft(child), Canvas.GetTop(child), child.ActualWidth, child.ActualHeight);
-
+                    // ▲▲▲
                     if (selectionRect.IntersectsWith(logRect))
                     {
                         selectedLogs.Add(logEntry);
@@ -976,16 +983,36 @@ namespace WorkPartner
 
             if (bulkEditWindow.ShowDialog() != true) return;
 
+            // ▼▼▼ [핵심 수정] VM의 메서드를 호출하도록 변경 ▼▼▼
             if (bulkEditWindow.Result == BulkEditResult.ChangeTask)
             {
                 string newText = bulkEditWindow.SelectedTask.Text;
-                foreach (var log in distinctLogs) log.TaskText = newText;
+                foreach (var log in distinctLogs)
+                {
+                    // 수정된 새 객체 생성 (기존 객체 복사)
+                    var updatedLog = new TimeLogEntry
+                    {
+                        StartTime = log.StartTime,
+                        EndTime = log.EndTime,
+                        TaskText = newText, // 과목만 변경
+                        FocusScore = log.FocusScore,
+                        BreakActivities = log.BreakActivities
+                    };
+                    vm.UpdateLog(log, updatedLog); // VM에 수정 요청 (오류 983 수정)
+                }
             }
             else if (bulkEditWindow.Result == BulkEditResult.Delete)
             {
-                foreach (var log in distinctLogs) TimeLogEntries.Remove(log);
+                foreach (var log in distinctLogs)
+                {
+                    vm.DeleteLog(log); // VM에 삭제 요청 (오류 983 수정)
+                }
             }
-            SaveTimeLogs();
+            // ▲▲▲ [수정 완료] ▲▲▲
+
+            // [삭제] VM이 직접 저장하므로 이 줄 삭제
+            // SaveTimeLogs(); 
+
             RecalculateAllTotals();
             RenderTimeTable();
         }
@@ -1155,16 +1182,18 @@ namespace WorkPartner
                 newVm.PropertyChanged += OnViewModelPropertyChanged; // ◀◀ [이 줄 추가]
             }
         }
-        // ✨ [전체 추가] ViewModel에서 타이머가 중지되고 저장이 완료되었을 때 호출될 메서드
         private void OnViewModelTimerStopped(object sender, EventArgs e)
         {
-            // ViewModel이 방금 새 로그를 저장했으므로, 
-            // 디스크에서 TimeLogs를 다시 로드하고 UI를 전부 새로고침합니다.
-            Dispatcher.Invoke(async () =>
+            // ViewModel이 방금 새 로그를 저장했으므로 (VM.List가 변경됨)
+            // Page는 VM의 총계를 다시 계산하고 타임라인을 다시 그리기만 하면 됨.
+
+            // [중요] LoadTimeLogsAsync()를 호출하면 안 됨! (객체 참조가 꼬임)
+
+            Dispatcher.Invoke(() =>
             {
-                await LoadTimeLogsAsync();    // 1. 파일에서 다시 로드
-                RecalculateAllTotals(); // 2. 총 시간 다시 계산
-                RenderTimeTable();      // 3. 타임라인 다시 그리기
+                // await LoadTimeLogsAsync();    // 1. ◀◀ [이 줄 삭제 또는 주석 처리]
+                RecalculateAllTotals(); // 2. 총 시간 다시 계산 (VM 리스트 사용)
+                RenderTimeTable();      // 3. 타임라인 다시 그리기 (VM 리스트 사용)
             });
         }
 
@@ -1188,7 +1217,6 @@ namespace WorkPartner
                 MainTimeDisplay.Text = newTime;
             });
         }
-
         private void OnViewModelPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
             // 오늘 날짜가 아니면 VM 업데이트 무시
@@ -1235,33 +1263,38 @@ namespace WorkPartner
         }
         #endregion
 
-        // ✨ [4단계-추가] '이날의 집중도 평가' 버튼 클릭 이벤트 핸들러
-        private void EvaluateDayButton_Click(object sender, RoutedEventArgs e)
+        // 파일: DashboardPage.xaml.cs
+        // (약 1238줄 근처)
+private void EvaluateDayButton_Click(object sender, RoutedEventArgs e)
         {
+            // ▼▼▼ [수정] VM을 먼저 가져옵니다. ▼▼▼
+            if (DataContext is not ViewModels.DashboardViewModel vm) return;
+            
             DateTime targetDate = _currentDateForTimeline.Date;
 
             // 1. 이 날짜의 현재 저장된 점수를 찾습니다.
-            // (어차피 점수는 일괄 적용되므로 첫 번째 값 = 그날의 점수입니다)
-            var firstRatedLog = TimeLogEntries.FirstOrDefault(log =>
+            // ▼▼▼ [핵심 수정] VM 리스트(vm.TimeLogEntries) 사용
+            var firstRatedLog = vm.TimeLogEntries.FirstOrDefault(log => // (오류 1245 수정)
                 log.StartTime.Date == targetDate && log.FocusScore > 0);
+            // ▲▲▲
 
             int currentScore = firstRatedLog?.FocusScore ?? 0; // 없으면 0점
 
-            // 2. [3단계]에서 만든 새 팝업 창을 띄웁니다.
-            // (DailyFocusRatingWindow.xaml.cs가 프로젝트에 포함되어 있어야 합니다)
+            // 2. 팝업 창을 띄웁니다.
             var ratingWindow = new DailyFocusRatingWindow(currentScore)
             {
                 Owner = Window.GetWindow(this)
             };
 
-            // 3. 팝업 창에서 "저장" 버튼을 누른 경우에만
+            // 3. 팝업 창에서 "저장" 버튼을 누른 경우
             if (ratingWindow.ShowDialog() == true)
             {
-                // 4. 팝업 창에 저장된 새 점수를 가져옵니다.
                 int newScore = ratingWindow.SelectedScore;
 
                 // 5. 이 날짜의 모든 로그를 찾습니다.
-                var logsForDay = TimeLogEntries.Where(log => log.StartTime.Date == targetDate).ToList();
+                // ▼▼▼ [핵심 수정] VM 리스트(vm.TimeLogEntries) 사용
+                var logsForDay = vm.TimeLogEntries.Where(log => log.StartTime.Date == targetDate).ToList(); // (오류 1264 수정)
+                // ▲▲▲
 
                 if (!logsForDay.Any())
                 {
@@ -1284,7 +1317,9 @@ namespace WorkPartner
                 // 7. 변경된 경우에만 파일에 "즉시" 저장합니다.
                 if (isChanged)
                 {
-                    DataManager.SaveTimeLogsImmediately(TimeLogEntries);
+                    // ▼▼▼ [핵심 수정] VM 리스트(vm.TimeLogEntries)를 저장
+                    DataManager.SaveTimeLogsImmediately(vm.TimeLogEntries); // (오류 1287 수정)
+                    // ▲▲▲
                     MessageBox.Show($"'{targetDate:yyyy-MM-dd}'의 모든 기록에 집중도 {newScore}점을 적용했습니다.", "저장 완료");
                 }
             }
