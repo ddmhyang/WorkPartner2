@@ -1205,5 +1205,60 @@ namespace WorkPartner
             });
         }
         #endregion
+
+        // ✨ [4단계-추가] '이날의 집중도 평가' 버튼 클릭 이벤트 핸들러
+        private void EvaluateDayButton_Click(object sender, RoutedEventArgs e)
+        {
+            DateTime targetDate = _currentDateForTimeline.Date;
+
+            // 1. 이 날짜의 현재 저장된 점수를 찾습니다.
+            // (어차피 점수는 일괄 적용되므로 첫 번째 값 = 그날의 점수입니다)
+            var firstRatedLog = TimeLogEntries.FirstOrDefault(log =>
+                log.StartTime.Date == targetDate && log.FocusScore > 0);
+
+            int currentScore = firstRatedLog?.FocusScore ?? 0; // 없으면 0점
+
+            // 2. [3단계]에서 만든 새 팝업 창을 띄웁니다.
+            // (DailyFocusRatingWindow.xaml.cs가 프로젝트에 포함되어 있어야 합니다)
+            var ratingWindow = new DailyFocusRatingWindow(currentScore)
+            {
+                Owner = Window.GetWindow(this)
+            };
+
+            // 3. 팝업 창에서 "저장" 버튼을 누른 경우에만
+            if (ratingWindow.ShowDialog() == true)
+            {
+                // 4. 팝업 창에 저장된 새 점수를 가져옵니다.
+                int newScore = ratingWindow.SelectedScore;
+
+                // 5. 이 날짜의 모든 로그를 찾습니다.
+                var logsForDay = TimeLogEntries.Where(log => log.StartTime.Date == targetDate).ToList();
+
+                if (!logsForDay.Any())
+                {
+                    MessageBox.Show("이날에는 적용할 학습 기록이 없습니다.", "알림");
+                    return;
+                }
+
+                bool isChanged = false;
+
+                // 6. 모든 로그의 FocusScore를 새 점수로 덮어씁니다.
+                foreach (var log in logsForDay)
+                {
+                    if (log.FocusScore != newScore)
+                    {
+                        log.FocusScore = newScore;
+                        isChanged = true;
+                    }
+                }
+
+                // 7. 변경된 경우에만 파일에 "즉시" 저장합니다.
+                if (isChanged)
+                {
+                    DataManager.SaveTimeLogsImmediately(TimeLogEntries);
+                    MessageBox.Show($"'{targetDate:yyyy-MM-dd}'의 모든 기록에 집중도 {newScore}점을 적용했습니다.", "저장 완료");
+                }
+            }
+        }
     }
 }

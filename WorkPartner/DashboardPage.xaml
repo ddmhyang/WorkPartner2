@@ -100,7 +100,10 @@
 
             <!-- 타임라인 영역 -->
             <Border Canvas.Left="19" Canvas.Top="173" Width="388" Height="331" BorderBrush="#f0f0f0" BorderThickness="2" CornerRadius="10">
-                <Canvas>
+                <Canvas Margin="0,0,0,-3">
+
+                    <Button x:Name="EvaluateDayButton" Click="EvaluateDayButton_Click" Canvas.Left="19" Canvas.Top="12" Content=" 집중도 평가 " Height="17" Width="60" FontSize="8" Foreground="White" Style="{StaticResource RoundedButtonStyle}" Background="#FF2195F2" HorizontalAlignment="Left" VerticalAlignment="Center"/>
+
                     <Grid Canvas.Left="135" Canvas.Top="11" Width="120" Height="20">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>

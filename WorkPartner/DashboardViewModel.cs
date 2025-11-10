@@ -26,6 +26,10 @@ namespace WorkPartner.ViewModels
         private readonly Stopwatch _stopwatch;
         private AppSettings _settings;
 
+        private bool _isInGracePeriod = false;
+        private DateTime _gracePeriodStartTime;
+        private const int GracePeriodSeconds = 120; // 👈 2분(120초)간의 유예 시간 (이 시간은 조절 가능)
+
         private TaskItem _currentWorkingTask;
         private DateTime _sessionStartTime;
         private bool _isPausedForIdle = false;
@@ -195,119 +199,116 @@ namespace WorkPartner.ViewModels
             }
         }
 
-        // 🎯 [수정] DashboardViewModel.cs (HandleStopwatchMode 메서드)
-        // 기존 HandleStopwatchMode 메서드 전체를 아래 코드로 교체하세요.
+        // 파일: WorkPartner/DashboardViewModel.cs
+        // (메서드 전체를 교체하세요)
 
+        /// <summary>
+        /// 1초마다 호출되며, 현재 활성 창을 기준으로 타이머(스톱워치)를
+        /// 시작, 일시정지, 또는 유예 시간 후 저장할지 결정하는 핵심 메서드입니다.
+        /// </summary>
         private void HandleStopwatchMode()
         {
             // 1. 설정 확인
-            if (_settings == null)
-            {
-                return;
-            }
+            if (_settings == null) return;
 
             // 2. 현재 활성 창 정보 가져오기
             string activeProcess = ActiveWindowHelper.GetActiveProcessName().ToLower();
             string activeUrl = ActiveWindowHelper.GetActiveBrowserTabUrl()?.ToLower() ?? string.Empty;
             string activeTitle = ActiveWindowHelper.GetActiveWindowTitle()?.ToLower() ?? string.Empty;
 
-            // 3. (AI 태그 규칙 검사 - 기존 코드)
+            // 3. AI 태그 규칙 검사
             CheckTagRules(activeTitle, activeUrl);
 
-            // 4. 타이머 중지 및 저장을 위한 람다 (기존 코드)
-            Action stopAndLogAction = () =>
-            {
-                if (_stopwatch.IsRunning || _isPausedForIdle)
-                {
-                    LogWorkSession(_isPausedForIdle ? _sessionStartTime.Add(_stopwatch.Elapsed) : null);
-                    _stopwatch.Reset();
-                    IsRunningChanged?.Invoke(false);
-                }
-                _isPausedForIdle = false;
-            };
-
-            // 5. '방해 앱'인지 확인
-            bool isDistraction = _settings.DistractionProcesses.Any(p =>
+            // 4. "작업 상태"인지 판단
+            bool isWorkApp = _settings.WorkProcesses.Any(p =>
+                activeProcess.Contains(p) ||
+                (!string.IsNullOrEmpty(activeUrl) && activeUrl.Contains(p)) ||
+                (!string.IsNullOrEmpty(activeTitle) && activeTitle.Contains(p))
+            );
+            bool isPassiveApp = _settings.PassiveProcesses.Any(p =>
                 activeProcess.Contains(p) ||
                 (!string.IsNullOrEmpty(activeUrl) && activeUrl.Contains(p)) ||
                 (!string.IsNullOrEmpty(activeTitle) && activeTitle.Contains(p))
             );
 
-            if (isDistraction)
+            // 5. "자리 비움" 상태인지 판단 (수동 앱은 자리비움 감지 안 함)
+            bool isCurrentlyIdle = false;
+            if (_settings.IsIdleDetectionEnabled && !isPassiveApp)
             {
-                // 6. '집중 모드'가 켜져 있는지 확인
-                if (_settings.IsFocusModeEnabled)
-                {
-                    var elapsedSinceLastNag = (DateTime.Now - _lastFocusNagTime).TotalSeconds;
-
-                    // 7. 경고창 스팸 방지 시간 확인
-                    if (elapsedSinceLastNag > _settings.FocusModeNagIntervalSeconds)
-                    {
-                        _lastFocusNagTime = DateTime.Now;
-                        _dialogService.ShowAlert(_settings.FocusModeNagMessage, "집중 모드 경고");
-                    }
-                }
-
-                // 8. 방해 앱이므로 타이머 중지
-                stopAndLogAction();
-                return;
+                isCurrentlyIdle = ActiveWindowHelper.GetIdleTime().TotalSeconds > _settings.IdleTimeoutSeconds;
             }
 
-            // 9. '작업 앱'인지 확인 (기존 코드)
-            if (_settings.WorkProcesses.Any(p => activeProcess.Contains(p) ||
-                                                  (!string.IsNullOrEmpty(activeUrl) && activeUrl.Contains(p)) ||
-                                                  (!string.IsNullOrEmpty(activeTitle) && activeTitle.Contains(p))))
-            {
-                // (자리 비움 감지 로직...)
-                bool isPassive = _settings.PassiveProcesses.Any(p => activeProcess.Contains(p));
-                bool isCurrentlyIdle = _settings.IsIdleDetectionEnabled && !isPassive && ActiveWindowHelper.GetIdleTime().TotalSeconds > _settings.IdleTimeoutSeconds;
+            // 6. 최종 "작업 상태" 정의: (작업 앱이거나 수동 앱) 그리고 (자리 비움이 아님)
+            bool isWorkState = (isWorkApp || isPassiveApp) && !isCurrentlyIdle;
 
-                if (isCurrentlyIdle)
+            // 7. 로직 분기
+            if (isWorkState)
+            {
+                // --- 시나리오 A: 사용자가 현재 "작업 중" ---
+                // A-1. (복귀) 유예 시간(2분) 중에 작업 앱으로 복귀한 경우
+                if (_isInGracePeriod)
                 {
-                    if (_stopwatch.IsRunning)
+                    _isInGracePeriod = false; // 유예 시간을 취소합니다.
+                    _stopwatch.Start();       // 멈췄던 스톱워치를 다시 *이어갑니다.*
+                }
+                // A-2. (새 작업) 유예 시간이 아니었고, 스톱워치가 멈춰있던 경우
+                else if (!_stopwatch.IsRunning)
+                {
+                    _currentWorkingTask = SelectedTaskItem ?? TaskItems.FirstOrDefault();
+                    if (_currentWorkingTask != null)
                     {
-                        _stopwatch.Stop();
-                        _isPausedForIdle = true;
-                        _idleStartTime = DateTime.Now;
-                    }
-                    else if (_isPausedForIdle && (DateTime.Now - _idleStartTime).TotalSeconds > IdleGraceSeconds)
-                    {
-                        LogWorkSession(_sessionStartTime.Add(_stopwatch.Elapsed));
-                        _stopwatch.Reset();
-                        _isPausedForIdle = false;
+                        _sessionStartTime = DateTime.Now; // 새 세션 시작 시간 기록
+                        _stopwatch.Start();
+                        IsRunningChanged?.Invoke(true);
+                        CurrentTaskDisplayText = _currentWorkingTask.Text;
+                        CurrentTaskChanged?.Invoke(CurrentTaskDisplayText);
                     }
                 }
+            }
+            else
+            {
+                // --- 시나리오 B: 사용자가 현재 "작업 중이 아님" ---
+                // B-1. (이탈 시작) 방금 전까지 스톱워치가 실행 중이었던 경우
+                if (_stopwatch.IsRunning)
+                {
+                    _stopwatch.Stop();          // 스톱워치를 *일시 정지*합니다. (로그 저장 안 함)
+                    _isInGracePeriod = true;    // "유예 시간"을 시작합니다.
+                    _gracePeriodStartTime = DateTime.Now;
+                }
+                // B-2. (이탈 지속) 이미 유예 시간이 진행 중이던 경우
+                else if (_isInGracePeriod)
+                {
+                    // B-3. (유예 시간 만료) 유예 시간이 초과되었는지 확인
+                    if ((DateTime.Now - _gracePeriodStartTime).TotalSeconds > GracePeriodSeconds)
+                    {
+                        // 유예 시간(2분)이 지났습니다. "진짜 휴식"으로 간주합니다.
+                        LogWorkSession(); // ✨ 이때 비로소 일시 정지했던 세션을 "저장"합니다.
+                        _stopwatch.Reset();
+                        IsRunningChanged?.Invoke(false);
+                        _isInGracePeriod = false; // 유예 시간을 완전히 종료합니다.
+                    }
+                    // (else) 유예 시간이 아직 남았다면 -> 아무것도 안 하고 다음 1초 틱을 대기합니다.
+                }
+                // B-4. (완전 비작업) 원래부터 작업 중이 아니었고 유예 시간도 아닌 경우
                 else
                 {
-                    if (_isPausedForIdle)
-                    {
-                        _isPausedForIdle = false;
-                        _stopwatch.Start();
-                    }
-                    else if (!_stopwatch.IsRunning)
-                    {
-                        // (타이머 시작 로직...)
-                        _currentWorkingTask = SelectedTaskItem;
-                        if (_currentWorkingTask == null && TaskItems.Any())
-                        {
-                            SelectedTaskItem = TaskItems.First();
-                            _currentWorkingTask = SelectedTaskItem;
-                        }
+                    // (기존의 "방해 앱 경고" 로직은 여기에 해당합니다)
+                    bool isDistraction = _settings.DistractionProcesses.Any(p =>
+                        activeProcess.Contains(p) ||
+                        (!string.IsNullOrEmpty(activeUrl) && activeUrl.Contains(p)) ||
+                        (!string.IsNullOrEmpty(activeTitle) && activeTitle.Contains(p))
+                    );
 
-                        if (_currentWorkingTask != null)
+                    if (isDistraction && _settings.IsFocusModeEnabled)
+                    {
+                        var elapsedSinceLastNag = (DateTime.Now - _lastFocusNagTime).TotalSeconds;
+                        if (elapsedSinceLastNag > _settings.FocusModeNagIntervalSeconds)
                         {
-                            _sessionStartTime = DateTime.Now;
-                            _stopwatch.Start();
-                            IsRunningChanged?.Invoke(true);
-                            CurrentTaskDisplayText = _currentWorkingTask.Text;
-                            CurrentTaskChanged?.Invoke(CurrentTaskDisplayText);
+                            _lastFocusNagTime = DateTime.Now;
+                            _dialogService.ShowAlert(_settings.FocusModeNagMessage, "집중 모드 경고");
                         }
                     }
                 }
-            }
-            else // 10. '작업 앱'도 '방해 앱'도 아닌 경우
-            {
-                stopAndLogAction();
             }
         }
 
