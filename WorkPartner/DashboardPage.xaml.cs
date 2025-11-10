@@ -478,22 +478,17 @@ namespace WorkPartner
             }
         }
 
-        // 🎯 수정 후
+        // 🎯 [수정 1] DashboardPage.xaml.cs (AddManualLogButton_Click 메서드)
         private void AddManualLogButton_Click(object sender, RoutedEventArgs e)
         {
             var win = new AddLogWindow(TaskItems) { Owner = Window.GetWindow(this) };
             if (win.ShowDialog() != true) return;
+
             if (win.NewLogEntry != null)
             {
-                TimeLogEntries.Add(win.NewLogEntry); // 1. Page의 리스트에 추가
+                TimeLogEntries.Add(win.NewLogEntry); // 1. Page 리스트에 추가
 
-                // ✨ [버그 1 수정] ViewModel의 리스트에도 동기화
-                if (DataContext is ViewModels.DashboardViewModel vm)
-                {
-                    vm.TimeLogEntries.Add(win.NewLogEntry);
-                }
-
-                // ✨ [버그 1 수정] (기존 코드 유지)
+                // (기존 코드) 과목 선택 로직
                 var addedTaskName = win.NewLogEntry.TaskText;
                 var taskToSelect = TaskItems.FirstOrDefault(t => t.Text == addedTaskName);
                 if (taskToSelect != null)
@@ -501,16 +496,24 @@ namespace WorkPartner
                     TaskListBox.SelectedItem = taskToSelect;
                 }
             }
-            // DataManager.SaveTimeLogsImmediately()는 ViewModel이 덮어쓸 것이므로, 
-            // DataManager.SaveTimeLogsImmediately(TimeLogEntries); // <- 이 줄은 삭제해도 무방하나, 만약을 위해 유지해도 됩니다.
-            // 하지만 ViewModel의 리스트가 동기화되었으므로 덮어써도 안전합니다.
-            DataManager.SaveTimeLogsImmediately(TimeLogEntries); // (유지)
 
-            RecalculateAllTotals();
-            RenderTimeTable();
+            DataManager.SaveTimeLogsImmediately(TimeLogEntries); // 2. 파일에 즉시 저장
+            RecalculateAllTotals(); // 3. Page의 UI(목록) 총계 계산
+            RenderTimeTable(); // 4. 타임라인 다시 그리기
+
+            // ✨ [오류 수정] vm 변수를 한 번만 선언하고,
+            // ViewModel의 리스트와 총계를 모두 업데이트합니다.
+            if (DataContext is ViewModels.DashboardViewModel vm)
+            {
+                if (win.NewLogEntry != null)
+                {
+                    vm.TimeLogEntries.Add(win.NewLogEntry); // VM 리스트 동기화
+                }
+                vm.RecalculateAllTotalsFromLogs(); // VM 내부 총계 즉시 갱신
+            }
         }
 
-        // 🎯 수정 후
+        // 🎯 [수정 2] DashboardPage.xaml.cs (TimeLogRect_MouseLeftButtonDown 메서드)
         private void TimeLogRect_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             if ((sender as FrameworkElement)?.Tag is not TimeLogEntry log) return;
@@ -520,24 +523,16 @@ namespace WorkPartner
 
             if (win.IsDeleted)
             {
-                TimeLogEntries.Remove(log); // 1. Page의 리스트에서 삭제
-
-                // ✨ [버그 1 수정] ViewModel의 리스트에서도 동기화
-                if (DataContext is ViewModels.DashboardViewModel vm)
-                {
-                    vm.TimeLogEntries.Remove(log);
-                }
+                TimeLogEntries.Remove(log); // 1. Page 리스트에서 삭제
             }
             else
             {
-                // (수정 로직 - 이 부분은 'log' 객체 자체를 수정하므로
-                //  Page와 VM 양쪽에 동일한 참조가 있다면 자동으로 반영됩니다.)
+                // (수정 로직)
                 log.StartTime = win.NewLogEntry.StartTime;
                 log.EndTime = win.NewLogEntry.EndTime;
                 log.TaskText = win.NewLogEntry.TaskText;
                 log.FocusScore = win.NewLogEntry.FocusScore;
 
-                // ... (이하 동일)
                 var editedTaskName = win.NewLogEntry.TaskText;
                 var taskToSelect = TaskItems.FirstOrDefault(t => t.Text == editedTaskName);
                 if (taskToSelect != null)
@@ -546,9 +541,20 @@ namespace WorkPartner
                 }
             }
 
-            DataManager.SaveTimeLogsImmediately(TimeLogEntries); // (유지)
-            RecalculateAllTotals();
-            RenderTimeTable();
+            DataManager.SaveTimeLogsImmediately(TimeLogEntries); // 2. 파일에 즉시 저장
+            RecalculateAllTotals(); // 3. Page의 UI(목록) 총계 계산
+            RenderTimeTable(); // 4. 타임라인 다시 그리기
+
+            // ✨ [오류 수정] vm 변수를 한 번만 선언하고,
+            // ViewModel의 리스트와 총계를 모두 업데이트합니다.
+            if (DataContext is ViewModels.DashboardViewModel vm)
+            {
+                if (win.IsDeleted)
+                {
+                    vm.TimeLogEntries.Remove(log); // VM 리스트 동기화
+                }
+                vm.RecalculateAllTotalsFromLogs(); // VM 내부 총계 즉시 갱신
+            }
         }
         #endregion
 

@@ -300,10 +300,14 @@
             <Border Canvas.Left="19" Canvas.Top="606" Width="380" Height="81" BorderBrush="{DynamicResource BorderBrush}" Background="{DynamicResource MainBackgroundBrush}" BorderThickness="2" CornerRadius="10">
                 <StackPanel Margin="10">
                     <TextBlock Text="경고 메세지" FontSize="10" Foreground="{DynamicResource PrimaryTextBrush}"/>
-                    <TextBox Margin="0,2,0,5"/>
+                    <TextBox Margin="0,2,0,5"
+                 Text="{Binding Settings.FocusModeNagMessage, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                 LostFocus="Setting_Changed_LostFocus"/>
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="경고 간격 시간(초):" FontSize="10" Foreground="{DynamicResource PrimaryTextBrush}"/>
-                        <TextBox Width="24" Margin="5,0,0,0"/>
+                        <TextBox Width="24" Margin="5,0,0,0"
+                     Text="{Binding Settings.FocusModeNagIntervalSeconds, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                     LostFocus="Setting_Changed_LostFocus"/>
                     </StackPanel>
                 </StackPanel>
             </Border>

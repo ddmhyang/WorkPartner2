@@ -8,10 +8,11 @@ namespace WorkPartner
     /// </summary>
     public partial class AlertWindow : Window
     {
-        public AlertWindow(string message)
+        public AlertWindow(string message, string title)
         {
             InitializeComponent();
             MessageTextBlock.Text = message;
+            Title = title;
         }
 
         private void OkButton_Click(object sender, RoutedEventArgs e)

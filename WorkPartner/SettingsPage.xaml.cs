@@ -191,8 +191,8 @@ namespace WorkPartner
             }
         }
 
-        // ✨ [버그 3 수정] TextBox의 LostFocus 이벤트를 처리할 별도 핸들러 추가
-        // (XAML에서 LostFocus="Setting_Changed_LostFocus"로 연결)
+        // 🎯 [수정 4] SettingsPage.xaml.cs (Setting_Changed 메서드 다음)
+
         private void Setting_Changed_LostFocus(object sender, RoutedEventArgs e)
         {
             // 이 이벤트는 Text가 아닌, 포커스를 잃었을 때 발생합니다.

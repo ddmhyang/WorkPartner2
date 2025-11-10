@@ -20,6 +20,9 @@ namespace WorkPartner.ViewModels
         private readonly ITaskService _taskService;
         private readonly ITimeLogService _timeLogService;
 
+        private readonly IDialogService _dialogService;
+        private DateTime _lastFocusNagTime = DateTime.MinValue; // 경고 스팸 방지용
+
         private readonly Stopwatch _stopwatch;
         private AppSettings _settings;
 
@@ -85,6 +88,7 @@ namespace WorkPartner.ViewModels
         public DashboardViewModel(ITaskService taskService, IDialogService dialogService, ISettingsService settingsService, ITimerService timerService, ITimeLogService timeLogService)
         {
             _taskService = taskService;
+            _dialogService = dialogService; // ✨ [버그 2-2 수정] dialogService를 멤버 변수에 저장합니다.
             _settingsService = settingsService;
             _timerService = timerService;
             _timeLogService = timeLogService;
@@ -108,6 +112,8 @@ namespace WorkPartner.ViewModels
             _settings = _settingsService.LoadSettings();
             System.Diagnostics.Debug.WriteLine("DashboardViewModel: Settings reloaded.");
         }
+
+
 
         private async void LoadInitialDataAsync()
         {
@@ -225,59 +231,29 @@ namespace WorkPartner.ViewModels
             }
 
             // ✨ [수정] 작업 프로세스 검사에 창 제목(activeTitle)도 포함
-            if (_settings.WorkProcesses.Any(p => activeProcess.Contains(p) ||
-                                                  (!string.IsNullOrEmpty(activeUrl) && activeUrl.Contains(p)) ||
-                                                  (!string.IsNullOrEmpty(activeTitle) && activeTitle.Contains(p))))
-            {
-                bool isPassive = _settings.PassiveProcesses.Any(p => activeProcess.Contains(p));
-                bool isCurrentlyIdle = _settings.IsIdleDetectionEnabled && !isPassive && ActiveWindowHelper.GetIdleTime().TotalSeconds > _settings.IdleTimeoutSeconds;
 
-                if (isCurrentlyIdle)
+            if (_settings.DistractionProcesses.Any(p => activeProcess.Contains(p) ||
+                                                        (!string.IsNullOrEmpty(activeUrl) && activeUrl.Contains(p)) ||
+                                                        (!string.IsNullOrEmpty(activeTitle) && activeTitle.Contains(p))))
+            {
+                // 방해 앱/사이트가 감지됨
+
+                if (_settings.IsFocusModeEnabled)
                 {
-                    if (_stopwatch.IsRunning)
+                    // "집중 모드"가 켜져 있음
+
+                    // 경고 메시지 스팸 방지 (설정된 간격(초)마다 한 번만 표시)
+                    if ((DateTime.Now - _lastFocusNagTime).TotalSeconds > _settings.FocusModeNagIntervalSeconds)
                     {
-                        _stopwatch.Stop();
-                        _isPausedForIdle = true;
-                        _idleStartTime = DateTime.Now;
-                    }
-                    else if (_isPausedForIdle && (DateTime.Now - _idleStartTime).TotalSeconds > IdleGraceSeconds)
-                    {
-                        LogWorkSession(_sessionStartTime.Add(_stopwatch.Elapsed));
-                        _stopwatch.Reset();
-                        _isPausedForIdle = false;
+                        _lastFocusNagTime = DateTime.Now;
+                        // IDialogService를 사용해 경고창을 띄웁니다.
+                        _dialogService.ShowAlert(_settings.FocusModeNagMessage, "집중 모드 경고");
                     }
                 }
-                else
-                {
-                    if (_isPausedForIdle)
-                    {
-                        _isPausedForIdle = false;
-                        _stopwatch.Start();
-                    }
-                    else if (!_stopwatch.IsRunning)
-                    {
-                        // ✨ [수정] AI 태그 규칙에 의해 SelectedTaskItem이 이미 설정되었을 수 있습니다.
-                        _currentWorkingTask = SelectedTaskItem;
-                        if (_currentWorkingTask == null && TaskItems.Any())
-                        {
-                            SelectedTaskItem = TaskItems.First();
-                            _currentWorkingTask = SelectedTaskItem;
-                        }
 
-                        if (_currentWorkingTask != null)
-                        {
-                            _sessionStartTime = DateTime.Now;
-                            _stopwatch.Start();
-                            IsRunningChanged?.Invoke(true);
-                            CurrentTaskDisplayText = _currentWorkingTask.Text;
-                            CurrentTaskChanged?.Invoke(CurrentTaskDisplayText);
-                        }
-                    }
-                }
-            }
-            else
-            {
+                // 경고를 띄우든 띄우지 않든, 타이머는 중지하고 기록해야 함
                 stopAndLogAction();
+                return;
             }
         }
 
@@ -352,6 +328,14 @@ namespace WorkPartner.ViewModels
             return true;
         }
         #endregion
+
+
+        // ✨ [버그 1-1 수정] 이 public 메서드를 DashboardViewModel.cs에 새로 추가하세요.
+        public void RecalculateAllTotalsFromLogs()
+        {
+            RecalculateDailyTotals(); // 1. VM의 내부 합계(Dictionary)를 다시 계산합니다.
+            UpdateLiveTimeDisplays(); // 2. VM의 UI 속성(Text)을 새 합계로 업데이트합니다.
+        }
 
     }
 }
