@@ -157,36 +157,31 @@ namespace WorkPartner
             if (_isLoaded) SaveSettings();
         }
 
-        // 🎯 [수정 1] WorkPartner/SettingsPage.xaml.cs
-        // (약 144줄 근처의 Setting_Changed 메서드를 아래 코드로 완전히 교체하세요)
-
-        // 🎯 [수정 6] SettingsPage.xaml.cs (약 144줄)
-        // 기존 Setting_Changed(object sender, RoutedEventArgs e) 메서드를 
-        // 아래 코드로 통째로 교체합니다.
-
         private void Setting_Changed(object sender, RoutedEventArgs e)
         {
             if (!_isLoaded) return;
 
-            // --- ✨ [버그 4, 5 수정] 모든 CheckBox의 상태를 Settings 객체에 반영 ---
+            // --- ✨ 체크박스 상태 읽기 ---
 
-            // 1. 미니 타이머 (버그 5)
+            // 1. 미니 타이머
             Settings.IsMiniTimerEnabled = MiniTimerCheckBox.IsChecked ?? false;
             Settings.MiniTimerShowInfo = MiniTimerShowInfoCheckBox.IsChecked ?? false;
             Settings.MiniTimerShowCharacter = MiniTimerShowCharacterCheckBox.IsChecked ?? false;
             Settings.MiniTimerShowBackground = MiniTimerShowBackgroundCheckBox.IsChecked ?? false;
 
-            // 2. 자리 비움 감지 (버그 4)
-            // (방금 XAML에서 추가한 x:Name="IdleDetectionCheckBox" 참조)
-            Settings.IsIdleDetectionEnabled = IdleDetectionCheckBox.IsChecked ?? false;
+            // 2. ✨ [통합 수정] '집중 모드 활성화' 체크박스의 상태를 읽어옵니다.
+            bool isFocusModeEnabled = IdleDetectionCheckBox.IsChecked ?? false;
+
+            // 3. ✨ [통합 수정] '자리 비움 감지'와 '방해 앱 경고' 설정을 '동일한 값'으로 설정합니다.
+            Settings.IsIdleDetectionEnabled = isFocusModeEnabled;
+            Settings.IsFocusModeEnabled = isFocusModeEnabled;
 
             // --- 설정 저장 및 전파 ---
-            SaveSettings();
+            SaveSettings(); // 👈 모든 변경 사항을 파일에 저장
 
-            // 미니 타이머 토글은 즉시 MainWindow에 알려야 함
+            // (기존) 미니 타이머 토글 로직
             if (sender == MiniTimerCheckBox)
             {
-                // (MainWindow.xaml.cs는 이미 bool? 타입을 받도록 수정되었습니다)
                 _mainWindow?.ToggleMiniTimer(Settings.IsMiniTimerEnabled);
             }
         }

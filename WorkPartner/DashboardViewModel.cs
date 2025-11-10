@@ -203,7 +203,6 @@ namespace WorkPartner.ViewModels
             // 1. 설정 확인
             if (_settings == null)
             {
-                Debug.WriteLine("[FocusMode Debug] _settings가 null입니다. 로직을 중단합니다.");
                 return;
             }
 
@@ -211,8 +210,6 @@ namespace WorkPartner.ViewModels
             string activeProcess = ActiveWindowHelper.GetActiveProcessName().ToLower();
             string activeUrl = ActiveWindowHelper.GetActiveBrowserTabUrl()?.ToLower() ?? string.Empty;
             string activeTitle = ActiveWindowHelper.GetActiveWindowTitle()?.ToLower() ?? string.Empty;
-
-            Debug.WriteLine($"[FocusMode Debug] 활성 창 감지: P='{activeProcess}', U='{activeUrl}', T='{activeTitle}'");
 
             // 3. (AI 태그 규칙 검사 - 기존 코드)
             CheckTagRules(activeTitle, activeUrl);
@@ -222,7 +219,6 @@ namespace WorkPartner.ViewModels
             {
                 if (_stopwatch.IsRunning || _isPausedForIdle)
                 {
-                    Debug.WriteLine("[FocusMode Debug] stopAndLogAction: 타이머 중지 및 기록.");
                     LogWorkSession(_isPausedForIdle ? _sessionStartTime.Add(_stopwatch.Elapsed) : null);
                     _stopwatch.Reset();
                     IsRunningChanged?.Invoke(false);
@@ -239,31 +235,17 @@ namespace WorkPartner.ViewModels
 
             if (isDistraction)
             {
-                Debug.WriteLine("[FocusMode Debug] '방해 앱'이 감지되었습니다.");
-
                 // 6. '집중 모드'가 켜져 있는지 확인
                 if (_settings.IsFocusModeEnabled)
                 {
-                    Debug.WriteLine($"[FocusMode Debug] '집중 모드'가 활성화(true) 상태입니다. 경고 간격: {_settings.FocusModeNagIntervalSeconds}초");
-
                     var elapsedSinceLastNag = (DateTime.Now - _lastFocusNagTime).TotalSeconds;
-                    Debug.WriteLine($"[FocusMode Debug] 마지막 경고창 이후 {elapsedSinceLastNag:F1}초 지났습니다.");
 
                     // 7. 경고창 스팸 방지 시간 확인
                     if (elapsedSinceLastNag > _settings.FocusModeNagIntervalSeconds)
                     {
-                        Debug.WriteLine("[FocusMode Debug] ✅ 경고창 호출(_dialogService.ShowAlert)을 시도합니다!");
                         _lastFocusNagTime = DateTime.Now;
                         _dialogService.ShowAlert(_settings.FocusModeNagMessage, "집중 모드 경고");
                     }
-                    else
-                    {
-                        Debug.WriteLine("[FocusMode Debug] ❌ 경고 간격이 아직 안 되었습니다. (스팸 방지)");
-                    }
-                }
-                else
-                {
-                    Debug.WriteLine("[FocusMode Debug] '집중 모드'가 비활성화(false) 상태입니다. (경고창 호출 안 함)");
                 }
 
                 // 8. 방해 앱이므로 타이머 중지
@@ -276,8 +258,6 @@ namespace WorkPartner.ViewModels
                                                   (!string.IsNullOrEmpty(activeUrl) && activeUrl.Contains(p)) ||
                                                   (!string.IsNullOrEmpty(activeTitle) && activeTitle.Contains(p))))
             {
-                Debug.WriteLine("[FocusMode Debug] '작업 앱' 감지됨. (자리 비움/작업 로직 진입)");
-
                 // (자리 비움 감지 로직...)
                 bool isPassive = _settings.PassiveProcesses.Any(p => activeProcess.Contains(p));
                 bool isCurrentlyIdle = _settings.IsIdleDetectionEnabled && !isPassive && ActiveWindowHelper.GetIdleTime().TotalSeconds > _settings.IdleTimeoutSeconds;
@@ -286,7 +266,6 @@ namespace WorkPartner.ViewModels
                 {
                     if (_stopwatch.IsRunning)
                     {
-                        Debug.WriteLine("[FocusMode Debug] '자리 비움' 감지. 타이머 일시 중지.");
                         _stopwatch.Stop();
                         _isPausedForIdle = true;
                         _idleStartTime = DateTime.Now;
@@ -302,13 +281,11 @@ namespace WorkPartner.ViewModels
                 {
                     if (_isPausedForIdle)
                     {
-                        Debug.WriteLine("[FocusMode Debug] '자리 비움' 해제. 타이머 재시작.");
                         _isPausedForIdle = false;
                         _stopwatch.Start();
                     }
                     else if (!_stopwatch.IsRunning)
                     {
-                        Debug.WriteLine("[FocusMode Debug] '작G업 앱' 감지 및 타이머 시작.");
                         // (타이머 시작 로직...)
                         _currentWorkingTask = SelectedTaskItem;
                         if (_currentWorkingTask == null && TaskItems.Any())
@@ -330,7 +307,6 @@ namespace WorkPartner.ViewModels
             }
             else // 10. '작업 앱'도 '방해 앱'도 아닌 경우
             {
-                Debug.WriteLine("[FocusMode Debug] '작업 앱' 목록에 없는 앱입니다. 타이머를 중지합니다.");
                 stopAndLogAction();
             }
         }

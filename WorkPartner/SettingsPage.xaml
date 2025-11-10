@@ -212,14 +212,17 @@
             <Border Canvas.Left="494" Canvas.Top="95" Width="170" Height="130" BorderBrush="{DynamicResource BorderBrush}" Background="{DynamicResource MainBackgroundBrush}" BorderThickness="2" CornerRadius="10">
                 <StackPanel Margin="10">
                     <CheckBox x:Name="IdleDetectionCheckBox" 
-          Content="집중 모드" 
-          IsChecked="{Binding Settings.IsIdleDetectionEnabled, Mode=TwoWay}" 
-          Canvas.Left="19" Canvas.Top="558" 
-          Foreground="{DynamicResource PrimaryTextBrush}"
-          Click="Setting_Changed"/>
+            Content="집중 모드 활성화" 
+            IsChecked="{Binding Settings.IsIdleDetectionEnabled, Mode=TwoWay}" 
+            FontSize="10"
+            Foreground="{DynamicResource PrimaryTextBrush}"
+            Click="Setting_Changed"/>
+
                     <StackPanel Orientation="Horizontal" Margin="20,2,0,5">
                         <TextBlock Text="감지 시간(초):" FontSize="10" Foreground="{DynamicResource SecondaryTextBrush}"/>
-                        <TextBox x:Name="IdleTimeoutTextBox" Width="24" Margin="5,0,0,0" TextChanged="Setting_Changed"/>
+                        <TextBox x:Name="IdleTimeoutTextBox" Width="24" Margin="5,0,0,0"
+                     Text="{Binding Settings.IdleTimeoutSeconds, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                     LostFocus="Setting_Changed_LostFocus"/>
                     </StackPanel>
                     <CheckBox x:Name="MiniTimerCheckBox" Content="미니 타이머 사용" FontSize="10" Checked="Setting_Changed" Unchecked="Setting_Changed" Foreground="{DynamicResource PrimaryTextBrush}"/>
                     <StackPanel Margin="20,2,0,0">
