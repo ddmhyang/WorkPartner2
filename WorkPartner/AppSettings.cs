@@ -48,6 +48,7 @@ namespace WorkPartner
         public bool IsIdleDetectionEnabled { get; set; } = true;
         public int IdleTimeoutSeconds { get; set; } = 300;
         public bool IsMiniTimerEnabled { get; set; } = false;
+        public bool IsFocusModeEnabled { get; set; } = false;
         public string FocusModeNagMessage { get; set; } = "집중 모드 중입니다!";
         public int FocusModeNagIntervalSeconds { get; set; } = 60;
         public Dictionary<string, string> TagRules { get; set; } = new Dictionary<string, string>();

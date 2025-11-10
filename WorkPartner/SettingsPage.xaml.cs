@@ -158,26 +158,50 @@ namespace WorkPartner
         }
 
         // 🎯 [수정 1] WorkPartner/SettingsPage.xaml.cs
-        // (약 144줄 근처의 Setting_Changed 메서드를 교체하세요)
+        // (약 144줄 근처의 Setting_Changed 메서드를 아래 코드로 완전히 교체하세요)
+
+        // 🎯 [수정 6] SettingsPage.xaml.cs (약 144줄)
+        // 기존 Setting_Changed(object sender, RoutedEventArgs e) 메서드를 
+        // 아래 코드로 통째로 교체합니다.
 
         private void Setting_Changed(object sender, RoutedEventArgs e)
         {
             if (!_isLoaded) return;
 
-            // ✨ [버그 2 수정] 누락된 메인 토글 상태를 Settings 객체에 저장합니다.
-            Settings.IsMiniTimerEnabled = MiniTimerCheckBox.IsChecked ?? false;
+            // --- ✨ [버그 4, 5 수정] 모든 CheckBox의 상태를 Settings 객체에 반영 ---
 
-            // (기존 코드)
+            // 1. 미니 타이머 (버그 5)
+            Settings.IsMiniTimerEnabled = MiniTimerCheckBox.IsChecked ?? false;
             Settings.MiniTimerShowInfo = MiniTimerShowInfoCheckBox.IsChecked ?? false;
             Settings.MiniTimerShowCharacter = MiniTimerShowCharacterCheckBox.IsChecked ?? false;
             Settings.MiniTimerShowBackground = MiniTimerShowBackgroundCheckBox.IsChecked ?? false;
 
+            // 2. 자리 비움 감지 (버그 4)
+            // (방금 XAML에서 추가한 x:Name="IdleDetectionCheckBox" 참조)
+            Settings.IsIdleDetectionEnabled = IdleDetectionCheckBox.IsChecked ?? false;
+
+            // --- 설정 저장 및 전파 ---
             SaveSettings();
 
+            // 미니 타이머 토글은 즉시 MainWindow에 알려야 함
             if (sender == MiniTimerCheckBox)
             {
                 // (MainWindow.xaml.cs는 이미 bool? 타입을 받도록 수정되었습니다)
-                _mainWindow?.ToggleMiniTimer(MiniTimerCheckBox.IsChecked ?? false);
+                _mainWindow?.ToggleMiniTimer(Settings.IsMiniTimerEnabled);
+            }
+        }
+
+        // ✨ [버그 3 수정] TextBox의 LostFocus 이벤트를 처리할 별도 핸들러 추가
+        // (XAML에서 LostFocus="Setting_Changed_LostFocus"로 연결)
+        private void Setting_Changed_LostFocus(object sender, RoutedEventArgs e)
+        {
+            // 이 이벤트는 Text가 아닌, 포커스를 잃었을 때 발생합니다.
+            // 바인딩(Binding)이 TwoWay, UpdateSourceTrigger=LostFocus로 설정되어 있으므로
+            // Settings 객체는 이미 업데이트되었습니다.
+            // 우리는 저장만 호출해주면 됩니다.
+            if (_isLoaded)
+            {
+                SaveSettings();
             }
         }
         #endregion

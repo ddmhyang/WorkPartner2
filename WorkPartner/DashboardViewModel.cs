@@ -81,6 +81,7 @@ namespace WorkPartner.ViewModels
 
         #endregion
 
+        // 🎯 수정 후
         public DashboardViewModel(ITaskService taskService, IDialogService dialogService, ISettingsService settingsService, ITimerService timerService, ITimeLogService timeLogService)
         {
             _taskService = taskService;
@@ -93,7 +94,19 @@ namespace WorkPartner.ViewModels
             TimeLogEntries = new ObservableCollection<TimeLogEntry>();
 
             _timerService.Tick += OnTimerTick;
+
+            // ✨ [버그 2 수정] DataManager의 설정 업데이트 이벤트를 구독합니다.
+            DataManager.SettingsUpdated += OnSettingsUpdated;
+
             LoadInitialDataAsync();
+        }
+
+        // ✨ [버그 2 수정] 파일의 아무 곳에나 이 메서드를 추가하세요 (예: LoadInitialDataAsync 근처)
+        private void OnSettingsUpdated()
+        {
+            // ISettingsService를 통해 최신 설정을 다시 로드합니다.
+            _settings = _settingsService.LoadSettings();
+            System.Diagnostics.Debug.WriteLine("DashboardViewModel: Settings reloaded.");
         }
 
         private async void LoadInitialDataAsync()

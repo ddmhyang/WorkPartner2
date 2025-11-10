@@ -485,19 +485,27 @@ namespace WorkPartner
             if (win.ShowDialog() != true) return;
             if (win.NewLogEntry != null)
             {
-                TimeLogEntries.Add(win.NewLogEntry);
+                TimeLogEntries.Add(win.NewLogEntry); // 1. Page의 리스트에 추가
 
-                // ✨ [버그 1 수정]
-                // 수동 추가한 로그의 과목을 찾아 TaskListBox에서 선택해줍니다.
+                // ✨ [버그 1 수정] ViewModel의 리스트에도 동기화
+                if (DataContext is ViewModels.DashboardViewModel vm)
+                {
+                    vm.TimeLogEntries.Add(win.NewLogEntry);
+                }
+
+                // ✨ [버그 1 수정] (기존 코드 유지)
                 var addedTaskName = win.NewLogEntry.TaskText;
                 var taskToSelect = TaskItems.FirstOrDefault(t => t.Text == addedTaskName);
                 if (taskToSelect != null)
                 {
                     TaskListBox.SelectedItem = taskToSelect;
                 }
-                // ✨ [수정 종료]
             }
-            SaveTimeLogs();
+            // DataManager.SaveTimeLogsImmediately()는 ViewModel이 덮어쓸 것이므로, 
+            // DataManager.SaveTimeLogsImmediately(TimeLogEntries); // <- 이 줄은 삭제해도 무방하나, 만약을 위해 유지해도 됩니다.
+            // 하지만 ViewModel의 리스트가 동기화되었으므로 덮어써도 안전합니다.
+            DataManager.SaveTimeLogsImmediately(TimeLogEntries); // (유지)
+
             RecalculateAllTotals();
             RenderTimeTable();
         }
@@ -512,26 +520,33 @@ namespace WorkPartner
 
             if (win.IsDeleted)
             {
-                TimeLogEntries.Remove(log);
+                TimeLogEntries.Remove(log); // 1. Page의 리스트에서 삭제
+
+                // ✨ [버그 1 수정] ViewModel의 리스트에서도 동기화
+                if (DataContext is ViewModels.DashboardViewModel vm)
+                {
+                    vm.TimeLogEntries.Remove(log);
+                }
             }
             else
             {
+                // (수정 로직 - 이 부분은 'log' 객체 자체를 수정하므로
+                //  Page와 VM 양쪽에 동일한 참조가 있다면 자동으로 반영됩니다.)
                 log.StartTime = win.NewLogEntry.StartTime;
                 log.EndTime = win.NewLogEntry.EndTime;
                 log.TaskText = win.NewLogEntry.TaskText;
                 log.FocusScore = win.NewLogEntry.FocusScore;
 
-                // ✨ [버그 1 수정]
-                // 수정한 로그의 과목을 찾아 TaskListBox에서 선택해줍니다.
+                // ... (이하 동일)
                 var editedTaskName = win.NewLogEntry.TaskText;
                 var taskToSelect = TaskItems.FirstOrDefault(t => t.Text == editedTaskName);
                 if (taskToSelect != null)
                 {
                     TaskListBox.SelectedItem = taskToSelect;
                 }
-                // ✨ [수정 종료]
             }
-            SaveTimeLogs();
+
+            DataManager.SaveTimeLogsImmediately(TimeLogEntries); // (유지)
             RecalculateAllTotals();
             RenderTimeTable();
         }
