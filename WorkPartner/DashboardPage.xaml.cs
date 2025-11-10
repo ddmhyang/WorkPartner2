@@ -1143,30 +1143,25 @@ namespace WorkPartner
 
         private void OnViewModelTimeUpdated(string newTime)
         {
-            // [추가] 오늘 날짜가 아니면 ViewModel의 실시간 업데이트를 무시합니다.
+            // 1. 미니 타이머는 "항상" 오늘의 실시간 데이터로 업데이트합니다.
+            if (_miniTimer != null && _miniTimer.IsVisible)
+            {
+                if (_settings == null) LoadSettings();
+
+                // (위 1번 수정으로 CurrentTaskDisplay.Text는 항상 최신 상태가 보장됨)
+                _miniTimer.UpdateData(_settings, CurrentTaskDisplay.Text, newTime);
+            }
+
+            // 2. 메인 대시보드 UI(메인 타이머)는 "오늘 날짜를 볼 때만" 업데이트합니다.
             if (_currentDateForTimeline.Date != DateTime.Today.Date) return;
 
-            // 이 기능은 이제 ViewModel이 아닌 코드 비하인드에서 직접 관리하므로,
-            // 실시간 타이머가 필요할 경우 MainTimeDisplay.Text를 여기서 업데이트 할 수도 있습니다.
-            // 하지만 현재는 날짜별 기록 표시에 집중하므로 비워둡니다.
-            // _miniTimer?.UpdateTime(newTime);
-
-            // [수정] 위 주석을 무시하고, 여기서 UI를 직접 업데이트합니다.
             Dispatcher.Invoke(() =>
             {
                 // 1. 메인 타이머 업데이트
                 MainTimeDisplay.Text = newTime;
-
-                // 2. 미니 타이머 업데이트
-                if (_miniTimer != null && _miniTimer.IsVisible)
-                {
-                    if (_settings == null) LoadSettings();
-                    // CurrentTaskDisplay.Text는 OnViewModelTaskChanged가 업데이트합니다.
-                    _miniTimer.UpdateData(_settings, CurrentTaskDisplay.Text, newTime);
-                }
             });
         }
-
+        
         private void OnViewModelPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
             // 오늘 날짜가 아니면 VM 업데이트 무시
@@ -1188,15 +1183,17 @@ namespace WorkPartner
         // [추가] ViewModel에서 과목이 (AI 태그 등으로) 변경될 때
         private void OnViewModelTaskChanged(string newTaskName)
         {
-            // 오늘 날짜가 아니면 VM 업데이트 무시
+            // 1. 미니 타이머가 참조하는 'CurrentTaskDisplay.Text'는 "항상" 업데이트합니다.
+            Dispatcher.Invoke(() =>
+            {
+                CurrentTaskDisplay.Text = newTaskName;
+            });
+
+            // 2. 메인 대시보드 UI(과목 목록 선택)는 "오늘 날짜를 볼 때만" 업데이트합니다.
             if (_currentDateForTimeline.Date != DateTime.Today.Date) return;
 
             Dispatcher.Invoke(() =>
             {
-                // 1. 상단 과목명(CurrentTaskDisplay) 업데이트
-                CurrentTaskDisplay.Text = newTaskName;
-
-                // 2. (중요) 과목 목록(TaskListBox)의 선택도 VM과 동기화
                 var foundTask = TaskItems.FirstOrDefault(t => t.Text == newTaskName);
                 if (foundTask != null && TaskListBox.SelectedItem != foundTask)
                 {
