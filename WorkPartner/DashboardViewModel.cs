@@ -195,65 +195,143 @@ namespace WorkPartner.ViewModels
             }
         }
 
+        // 🎯 [수정] DashboardViewModel.cs (HandleStopwatchMode 메서드)
+        // 기존 HandleStopwatchMode 메서드 전체를 아래 코드로 교체하세요.
+
         private void HandleStopwatchMode()
         {
-            if (_settings == null) return;
+            // 1. 설정 확인
+            if (_settings == null)
+            {
+                Debug.WriteLine("[FocusMode Debug] _settings가 null입니다. 로직을 중단합니다.");
+                return;
+            }
 
-            // ✨ [수정] 활성 창 제목을 가져오도록 추가
+            // 2. 현재 활성 창 정보 가져오기
             string activeProcess = ActiveWindowHelper.GetActiveProcessName().ToLower();
             string activeUrl = ActiveWindowHelper.GetActiveBrowserTabUrl()?.ToLower() ?? string.Empty;
-            string activeTitle = ActiveWindowHelper.GetActiveWindowTitle()?.ToLower() ?? string.Empty; // ✨[추가]
+            string activeTitle = ActiveWindowHelper.GetActiveWindowTitle()?.ToLower() ?? string.Empty;
 
-            // ✨ [추가] 태그 규칙을 먼저 검사하여 현재 과목(SelectedTaskItem)을 변경
+            Debug.WriteLine($"[FocusMode Debug] 활성 창 감지: P='{activeProcess}', U='{activeUrl}', T='{activeTitle}'");
+
+            // 3. (AI 태그 규칙 검사 - 기존 코드)
             CheckTagRules(activeTitle, activeUrl);
 
+            // 4. 타이머 중지 및 저장을 위한 람다 (기존 코드)
             Action stopAndLogAction = () =>
             {
                 if (_stopwatch.IsRunning || _isPausedForIdle)
                 {
+                    Debug.WriteLine("[FocusMode Debug] stopAndLogAction: 타이머 중지 및 기록.");
                     LogWorkSession(_isPausedForIdle ? _sessionStartTime.Add(_stopwatch.Elapsed) : null);
                     _stopwatch.Reset();
                     IsRunningChanged?.Invoke(false);
-                    // ✨ [수정] 태그 규칙에 의해 과목이 선택되었을 수 있으므로 "없음"으로 강제 변경하지 않습니다.
-                    // CurrentTaskDisplayText = "없음"; 
-                    // CurrentTaskChanged?.Invoke(CurrentTaskDisplayText);
                 }
                 _isPausedForIdle = false;
             };
 
-            // ✨ [수정] 방해 프로세스 검사에 창 제목(activeTitle)도 포함 (더 정밀한 차단)
-            if (_settings.DistractionProcesses.Any(p => activeProcess.Contains(p) ||
-                                                        (!string.IsNullOrEmpty(activeUrl) && activeUrl.Contains(p)) ||
-                                                        (!string.IsNullOrEmpty(activeTitle) && activeTitle.Contains(p))))
+            // 5. '방해 앱'인지 확인
+            bool isDistraction = _settings.DistractionProcesses.Any(p =>
+                activeProcess.Contains(p) ||
+                (!string.IsNullOrEmpty(activeUrl) && activeUrl.Contains(p)) ||
+                (!string.IsNullOrEmpty(activeTitle) && activeTitle.Contains(p))
+            );
+
+            if (isDistraction)
             {
+                Debug.WriteLine("[FocusMode Debug] '방해 앱'이 감지되었습니다.");
+
+                // 6. '집중 모드'가 켜져 있는지 확인
+                if (_settings.IsFocusModeEnabled)
+                {
+                    Debug.WriteLine($"[FocusMode Debug] '집중 모드'가 활성화(true) 상태입니다. 경고 간격: {_settings.FocusModeNagIntervalSeconds}초");
+
+                    var elapsedSinceLastNag = (DateTime.Now - _lastFocusNagTime).TotalSeconds;
+                    Debug.WriteLine($"[FocusMode Debug] 마지막 경고창 이후 {elapsedSinceLastNag:F1}초 지났습니다.");
+
+                    // 7. 경고창 스팸 방지 시간 확인
+                    if (elapsedSinceLastNag > _settings.FocusModeNagIntervalSeconds)
+                    {
+                        Debug.WriteLine("[FocusMode Debug] ✅ 경고창 호출(_dialogService.ShowAlert)을 시도합니다!");
+                        _lastFocusNagTime = DateTime.Now;
+                        _dialogService.ShowAlert(_settings.FocusModeNagMessage, "집중 모드 경고");
+                    }
+                    else
+                    {
+                        Debug.WriteLine("[FocusMode Debug] ❌ 경고 간격이 아직 안 되었습니다. (스팸 방지)");
+                    }
+                }
+                else
+                {
+                    Debug.WriteLine("[FocusMode Debug] '집중 모드'가 비활성화(false) 상태입니다. (경고창 호출 안 함)");
+                }
+
+                // 8. 방해 앱이므로 타이머 중지
                 stopAndLogAction();
                 return;
             }
 
-            // ✨ [수정] 작업 프로세스 검사에 창 제목(activeTitle)도 포함
-
-            if (_settings.DistractionProcesses.Any(p => activeProcess.Contains(p) ||
-                                                        (!string.IsNullOrEmpty(activeUrl) && activeUrl.Contains(p)) ||
-                                                        (!string.IsNullOrEmpty(activeTitle) && activeTitle.Contains(p))))
+            // 9. '작업 앱'인지 확인 (기존 코드)
+            if (_settings.WorkProcesses.Any(p => activeProcess.Contains(p) ||
+                                                  (!string.IsNullOrEmpty(activeUrl) && activeUrl.Contains(p)) ||
+                                                  (!string.IsNullOrEmpty(activeTitle) && activeTitle.Contains(p))))
             {
-                // 방해 앱/사이트가 감지됨
+                Debug.WriteLine("[FocusMode Debug] '작업 앱' 감지됨. (자리 비움/작업 로직 진입)");
 
-                if (_settings.IsFocusModeEnabled)
+                // (자리 비움 감지 로직...)
+                bool isPassive = _settings.PassiveProcesses.Any(p => activeProcess.Contains(p));
+                bool isCurrentlyIdle = _settings.IsIdleDetectionEnabled && !isPassive && ActiveWindowHelper.GetIdleTime().TotalSeconds > _settings.IdleTimeoutSeconds;
+
+                if (isCurrentlyIdle)
                 {
-                    // "집중 모드"가 켜져 있음
-
-                    // 경고 메시지 스팸 방지 (설정된 간격(초)마다 한 번만 표시)
-                    if ((DateTime.Now - _lastFocusNagTime).TotalSeconds > _settings.FocusModeNagIntervalSeconds)
+                    if (_stopwatch.IsRunning)
                     {
-                        _lastFocusNagTime = DateTime.Now;
-                        // IDialogService를 사용해 경고창을 띄웁니다.
-                        _dialogService.ShowAlert(_settings.FocusModeNagMessage, "집중 모드 경고");
+                        Debug.WriteLine("[FocusMode Debug] '자리 비움' 감지. 타이머 일시 중지.");
+                        _stopwatch.Stop();
+                        _isPausedForIdle = true;
+                        _idleStartTime = DateTime.Now;
+                    }
+                    else if (_isPausedForIdle && (DateTime.Now - _idleStartTime).TotalSeconds > IdleGraceSeconds)
+                    {
+                        LogWorkSession(_sessionStartTime.Add(_stopwatch.Elapsed));
+                        _stopwatch.Reset();
+                        _isPausedForIdle = false;
                     }
                 }
+                else
+                {
+                    if (_isPausedForIdle)
+                    {
+                        Debug.WriteLine("[FocusMode Debug] '자리 비움' 해제. 타이머 재시작.");
+                        _isPausedForIdle = false;
+                        _stopwatch.Start();
+                    }
+                    else if (!_stopwatch.IsRunning)
+                    {
+                        Debug.WriteLine("[FocusMode Debug] '작G업 앱' 감지 및 타이머 시작.");
+                        // (타이머 시작 로직...)
+                        _currentWorkingTask = SelectedTaskItem;
+                        if (_currentWorkingTask == null && TaskItems.Any())
+                        {
+                            SelectedTaskItem = TaskItems.First();
+                            _currentWorkingTask = SelectedTaskItem;
+                        }
 
-                // 경고를 띄우든 띄우지 않든, 타이머는 중지하고 기록해야 함
+                        if (_currentWorkingTask != null)
+                        {
+                            _sessionStartTime = DateTime.Now;
+                            _stopwatch.Start();
+                            IsRunningChanged?.Invoke(true);
+                            CurrentTaskDisplayText = _currentWorkingTask.Text;
+                            CurrentTaskChanged?.Invoke(CurrentTaskDisplayText);
+                        }
+                    }
+                }
+            }
+            else // 10. '작업 앱'도 '방해 앱'도 아닌 경우
+            {
+                Debug.WriteLine("[FocusMode Debug] '작업 앱' 목록에 없는 앱입니다. 타이머를 중지합니다.");
                 stopAndLogAction();
-                return;
             }
         }
 
