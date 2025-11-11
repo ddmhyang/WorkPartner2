@@ -47,8 +47,6 @@ namespace WorkPartner
 
         private readonly Dictionary<string, SolidColorBrush> _taskBrushCache = new();
         private static readonly SolidColorBrush DefaultGrayBrush = new SolidColorBrush(Colors.Gray);
-        private static readonly SolidColorBrush BlockBackgroundBrush = new SolidColorBrush(Color.FromRgb(0xF5, 0xF5, 0xF5));
-        private static readonly SolidColorBrush BlockBorderBrush = Brushes.White;
 
         #endregion
 
@@ -758,13 +756,13 @@ namespace WorkPartner
                     {
                         Width = blockWidth,
                         Height = blockHeight,
-                        Background = BlockBackgroundBrush,
+                        Background = (Brush)FindResource("SecondaryBackgroundBrush"), // [!] 수정됨
                         Margin = new Thickness(horizontalMargin, 0, horizontalMargin, 0)
                     };
 
                     var blockWithBorder = new Border
                     {
-                        BorderBrush = BlockBorderBrush,
+                        BorderBrush = (Brush)FindResource("BorderBrush"), // [!] 수정됨
                         BorderThickness = new Thickness(1, 0, (minuteBlock + 1) % 6 == 0 ? 1 : 0, 1),
                         Child = blockContainer
                     };
@@ -886,14 +884,24 @@ namespace WorkPartner
         private void UpdateCharacterInfoPanel(string status = null)
         {
             if (_settings == null) return;
-            UsernameDisplay.Text = _settings.Username;
+            UsernameTextBlock.Text = _settings.Username; // [!] 수정됨
             UpdateCoinDisplay();
             CharacterPreview.UpdateCharacter();
         }
 
         private void UpdateCoinDisplay()
         {
-            if (_settings != null) CoinDisplay.Text = _settings.Coins.ToString("N0");
+            if (_settings != null) CoinTextBlock.Text = _settings.Coins.ToString("N0"); // [!] 수정됨
+        }
+
+        // [!] 아래 새 메서드를 클래스 내부에 추가하세요.
+        private async void GoToAvatarButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_parentWindow != null)
+            {
+                // "Avatar" 페이지로 이동
+                await _parentWindow.NavigateToPage("Avatar");
+            }
         }
 
         private void UpdateDateAndUI()
