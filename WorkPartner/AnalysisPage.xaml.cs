@@ -14,6 +14,7 @@ using LiveCharts;
 using LiveCharts.Wpf;
 using System.Diagnostics; // 👈 Debug.WriteLine을 위해 필요합니다.
 using WorkPartner.AI; // PredictionService, ModelInput 등이 정의된 네임스페이스
+using System.Windows.Media; // 👈 [이 using 문이 없으면 추가해주세요]
 
 namespace WorkPartner
 {
@@ -23,7 +24,7 @@ namespace WorkPartner
         // --- 멤버 변수 ---
         private readonly string _timeLogFilePath = DataManager.TimeLogFilePath;
         private readonly string _tasksFilePath = DataManager.TasksFilePath;
-        private List<TimeLogEntry> _allTimeLogs;
+        private IEnumerable<TimeLogEntry> _allTimeLogs; // 👈 IEnumerable<T> 타입으로 변경
         private bool _isDataLoaded = false;
         private PredictionService _predictionService;
 
@@ -178,7 +179,7 @@ namespace WorkPartner
             if (_viewModel != null)
             {
                 // 1. 시간 기록 (파일 대신 VM 메모리 사용)
-                _allTimeLogs = _viewModel.TimeLogEntries.ToList();
+                _allTimeLogs = _viewModel.TimeLogEntries; // 👈 .ToList() 제거 (단순 참조)
 
                 // 2. 과목 목록 (파일 대신 VM 메모리 사용)
                 var tasks = _viewModel.TaskItems.ToList();
@@ -204,7 +205,6 @@ namespace WorkPartner
         private void UpdateAllAnalyses()
         {
             UpdateTotalStudyTime();
-            UpdateTaskAnalysis();      // 과목별 시간 (탭 1)
             UpdateTaskFocusAnalysis(); // 집중도 분석 (탭 2)
             UpdateHourlyAnalysis();    // 시간대별 분석 (탭 3)
             GenerateWorkRestPatternSuggestion(); // AI 제안
@@ -221,19 +221,6 @@ namespace WorkPartner
             TotalStudyTimeTextBlock.Text = $"총 학습 시간: {days}일 {hours}시간 {minutes}분 {seconds}초";
         }
 
-        private void UpdateTaskAnalysis() // 탭 1: 과목별 학습 시간 표
-        {
-            var analysis = _allTimeLogs
-                .GroupBy(log => log.TaskText)
-                .Select(group => new TaskAnalysisResult
-                {
-                    TaskName = group.Key,
-                    TotalTime = TimeSpan.FromSeconds(group.Sum(log => log.Duration.TotalSeconds))
-                })
-                .OrderByDescending(item => item.TotalTime)
-                .ToList();
-            TaskAnalysisGrid.ItemsSource = analysis;
-        }
 
         private void UpdateTaskFocusAnalysis() // 탭 2: 집중도 분석 (평균, 분포, 과목별 표)
         {
@@ -278,11 +265,14 @@ namespace WorkPartner
             // 2. [핵심] C# 코드로 'Fill' 속성을 'AccentColorBrush' 리소스에 동적으로 바인딩합니다.
             columnSeries.SetResourceReference(Series.FillProperty, "AccentColorBrush");
 
-            // 3. 준비된 시리즈로 컬렉션을 만듭니다.
+            // 3. [요청 3] 데이터 라벨(숫자) 글자색도 테마 색으로 바인딩합니다.
+            columnSeries.SetResourceReference(Series.ForegroundProperty, "AccentColorBrush");
+
+            // 4. 준비된 시리즈로 컬렉션을 만듭니다.
             var localFocusDistributionSeries = new SeriesCollection { columnSeries };
 
             FocusDistributionSeries = localFocusDistributionSeries; // ◀◀ UI가 이 변경을 감지하고 새로 그림
-            // ▲▲▲            // ▲▲▲
+            // ▲▲▲
 
             FocusDistributionLabels = distributionLabels.ToArray();
 
@@ -338,14 +328,14 @@ namespace WorkPartner
             // 2. [핵심] 'Stroke' (선 색상) 속성을 'AccentColorBrush' 리소스에 동적으로 바인딩합니다.
             lineSeries.SetResourceReference(Series.StrokeProperty, "AccentColorBrush");
 
-            // (참고) 만약 라인 아래 영역도 채우고 싶다면 Fill 속성도 바인딩할 수 있습니다.
-            // lineSeries.SetResourceReference(Series.FillProperty, "AccentColorBrush");
+            // 3. [요청 1] 'Fill' (채우기) 속성을 XAML에서 만든 30% 투명 브러시에 바인딩합니다.
+            lineSeries.SetResourceReference(Series.FillProperty, "AccentColorFillBrush");
 
-            // 3. 준비된 시리즈로 컬렉션을 만듭니다.
+            // 4. 준비된 시리즈로 컬렉션을 만듭니다.
             var localHourAnalysisSeries = new SeriesCollection { lineSeries };
 
             HourAnalysisSeries = localHourAnalysisSeries; // ◀◀ UI가 이 변경을 감지하고 새로 그림
-            // ▲▲▲            // ▲▲▲
+            // ▲▲▲
 
             HourLabels = labels.ToArray();
 
@@ -370,32 +360,34 @@ namespace WorkPartner
             }
 
             // ▼▼▼ [수정 4] 새 컬렉션을 '만들어서' '교체'합니다. ▼▼▼
-            // ▼▼▼ [수정 4] 새 컬렉션을 '만들어서' '교체'합니다. ▼▼▼
 
             // 1. RowSeries 객체를 먼저 생성합니다.
             var rowSeries = new RowSeries
             {
                 Title = "학습 시간(분)",
                 Values = timeChartValues,
-                DataLabels = true
+                DataLabels = true,
+                // 2. [!!! 여기가 수정되었습니다 !!!]
+                // Y (인덱스) 대신 X (실제 값)를 표시하도록 변경합니다.
+                LabelPoint = (chartPoint) => ((int)chartPoint.X).ToString() // 👈 Y를 X로 변경
             };
-
-            // 2. [핵심] 'Fill' 속성을 'AccentColorBrush' 리소스에 동적으로 바인딩합니다.
+            // 3. [핵심] 'Fill' 속성을 'AccentColorBrush' 리소스에 동적으로 바인딩합니다.
             rowSeries.SetResourceReference(Series.FillProperty, "AccentColorBrush");
 
-            // 3. 준비된 시리즈로 컬렉션을 만듭니다.
-            var localHourlyTimeSeries = new SeriesCollection { rowSeries };
+            // 4. [요청 3] 데이터 라벨(숫자) 글자색도 테마 색으로 바인딩합니다.
+            rowSeries.SetResourceReference(Series.ForegroundProperty, "AccentColorBrush");
 
+            // 5. 준비된 시리즈로 컬렉션을 만듭니다.
+            var localHourlyTimeSeries = new SeriesCollection { rowSeries };
             HourlyTimeSeries = localHourlyTimeSeries; // ◀◀ UI가 이 변경을 감지하고 새로 그림
-            // ▲▲▲            // ▲▲▲
+            // ▲▲▲
         }
 
         private void GenerateWorkRestPatternSuggestion() // AI 제안
         {
-            if (_allTimeLogs.Count < 10)
+            if (_allTimeLogs.Count() < 10) // 👈 [수정] .Count() 메서드 호출로 변경
             {
-                WorkRestPatternSuggestionTextBlock.Text = "데이터가 더 필요합니다. 최소 10개 이상의 학습 기록이 쌓이면 분석을 제공합니다.";
-                return;
+                WorkRestPatternSuggestionTextBlock.Text = "데이터가 더 필요합니다. 최소 10개 이상의 학습 기록이 쌓이면 분석을 제공합니다."; return;
             }
 
             var sessions = new List<WorkRestPattern>();
@@ -492,16 +484,21 @@ namespace WorkPartner
         /// <summary>
         /// [통합 버튼] 항상 모델을 재훈련한 후, 즉시 예측을 수행합니다.
         /// </summary>
-        private async void PredictButton_Click(object sender, RoutedEventArgs e)
+// (약 467줄 근처)
+        /// <summary>
+        /// [최적화 수정] '훈련' 기능을 제거하고, '예측'만 즉시 수행합니다.
+        /// </summary>
+        private void PredictButton_Click(object sender, RoutedEventArgs e)
         {
-            // 1. 훈련 데이터가 있는지 확인
-            if (_allTimeLogs == null || !_allTimeLogs.Any(log => log.FocusScore > 0))
+            // 1. [신규] 모델이 훈련되었는지 '먼저' 확인합니다.
+            // (IsModelTrained는 user_model.zip 파일 존재 여부를 확인합니다)
+            if (!IsModelTrained)
             {
-                MessageBox.Show("훈련에 사용할 데이터가 부족합니다.\n먼저 대시보드에서 학습 기록에 1~5점의 집중도 점수를 매겨주세요.", "훈련 데이터 부족");
+                PredictionResultTextBlock.Text = "❌ 예측 실패: 모델이 훈련되지 않았습니다.\n먼저 '모델 훈련하기' 버튼을 눌러주세요.";
                 return;
             }
 
-            // 2. 예측할 항목(콤보박스)이 모두 선택되었는지 확인
+            // 2. 예측할 항목(콤보박스)이 모두 선택되었는지 확인 (기존 로직)
             if (TaskPredictionComboBox.SelectedItem == null ||
                 DayOfWeekPredictionComboBox.SelectedItem == null ||
                 HourPredictionComboBox.SelectedItem == null)
@@ -510,48 +507,9 @@ namespace WorkPartner
                 return;
             }
 
-            // 3. 사용자에게 훈련 시작 알림 (UI 일시 비활성화)
-            PredictionResultTextBlock.Text = "모델 훈련 중... 잠시만 기다려주세요...";
-            this.IsEnabled = false;
-
+            // 3. [신규] UI 비활성화 없이 '즉시' 예측을 실행합니다.
             try
             {
-                // 4. (백그라운드 실행) AI 모델 훈련
-                bool trainingSuccess = false; // 👈 [추가]
-                Exception trainingException = null; // 👈 [추가]
-
-                await Task.Run(() =>
-                {
-                    try
-                    {
-                        // [수정] Task 내부에서 직접 try-catch 실행
-                        trainingSuccess = _predictionService.TrainModel(_allTimeLogs);
-                    }
-                    catch (Exception ex)
-                    {
-                        // [추가] Task 내부의 예외를 기록
-                        trainingException = ex;
-                        Debug.WriteLine($"[AnalysisPage Error] Exception inside Task.Run: {ex.Message}");
-                    }
-                });
-
-                // [추가] Task에서 잡힌 예외가 있다면, 상세히 출력
-                if (trainingException != null)
-                {
-                    Debug.WriteLine("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-                    Debug.WriteLine($"[AnalysisPage Error] Task.Run caught an exception from PredictionService:");
-                    Debug.WriteLine($"[Full Exception] {trainingException.ToString()}");
-                    Debug.WriteLine("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-                }
-
-                // 5. 훈련 결과 확인
-                if (!trainingSuccess)
-                {
-                    PredictionResultTextBlock.Text = "❌ 모델 훈련에 실패했습니다. (자세한 내용은 디버그 출력 확인)";
-                    return;
-                }
-
-                // 6. (훈련 성공 시) 즉시 예측 실행
                 var input = new ModelInput
                 {
                     TaskName = TaskPredictionComboBox.SelectedItem as string ?? "",
@@ -560,24 +518,22 @@ namespace WorkPartner
                     Duration = 60 // 예측 기준 시간 (예: 60분)
                 };
 
+                // 4. 훈련된 모델로 예측만 수행 (매우 빠름)
                 float prediction = _predictionService.Predict(input);
                 prediction = Math.Max(0, Math.Min(5, prediction)); // 0~5점 사이로 보정
-                PredictionResultTextBlock.Text = $"✅ 훈련 완료! 예측 집중도 점수: {prediction:F2} / 5.0";
+
+                // "훈련 완료!" 문구 제거
+                PredictionResultTextBlock.Text = $"✅ 예측 집중도 점수: {prediction:F2} / 5.0";
             }
             catch (Exception ex)
             {
-                // [수정] 여기는 예측 로직(Predict)에서 발생하는 예외
+                // 5. 예측 로직(Predict)에서 발생하는 예외
                 PredictionResultTextBlock.Text = $"❌ 예측 중 오류 발생: {ex.Message}";
                 Debug.WriteLine($"[AnalysisPage Error] Predict logic failed: {ex.Message}");
                 Debug.WriteLine($"[StackTrace] {ex.StackTrace}");
             }
-            finally
-            {
-                // 7. UI 다시 활성화
-                this.IsEnabled = true;
-            }
+            // 6. [신규] 앱을 멈추게 했던 Task.Run, this.IsEnabled 토글, finally 블록 모두 제거
         }
-        // ▲▲▲ [여기까지 교체] ▲▲▲
 
         private async void RetrainButton_Click(object sender, RoutedEventArgs e)
         {
@@ -595,8 +551,7 @@ namespace WorkPartner
             PredictionResultTextBlock.Text = "모델 훈련 중... 잠시만 기다려주세요...";
 
             // 훈련 로직을 백그라운드 스레드에서 실행 (UI 멈춤 방지)
-            bool success = await Task.Run(() => _predictionService.TrainModel(_allTimeLogs));
-
+            bool success = await Task.Run(() => _predictionService.TrainModel(_allTimeLogs.ToList())); // 👈 [수정] .ToList()로 변환
             if (success)
             {
                 PredictionResultTextBlock.Text = "✅ 모델 훈련이 완료되었습니다! 이제 예측 기능이 더 정확해집니다.";

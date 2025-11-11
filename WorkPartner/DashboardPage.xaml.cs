@@ -110,6 +110,7 @@ namespace WorkPartner
                     }
                 }
                 RenderTimeTable();
+                UpdateCharacterInfoPanel(); // 👈 [이 줄을 추가하세요]
             });
         }
 
@@ -896,6 +897,8 @@ namespace WorkPartner
         {
             if (_settings == null) return;
             UsernameTextBlock.Text = _settings.Username; // [!] 수정됨
+            LevelTextBlock.Text = $"Lv.{_settings.Level}"; // 👈 [추가]
+            ExperienceBar.Value = _settings.Experience; // 👈 [추가]
             UpdateCoinDisplay();
             CharacterPreview.UpdateCharacter();
         }
