@@ -75,6 +75,15 @@ namespace WorkPartner
         public Func<double, string> YFormatterInt { get; set; }
 
         private ViewModels.DashboardViewModel _viewModel; // ViewModel을 저장할 변수 선언
+
+
+        private bool _isModelTrained = false;
+        public bool IsModelTrained
+        {
+            get => _isModelTrained;
+            set => SetProperty(ref _isModelTrained, value);
+        }
+
         // --- 생성자 ---
         public AnalysisPage()
         {
@@ -124,6 +133,26 @@ namespace WorkPartner
             // ▲▲▲ [ 여기까지 ] ▲▲▲
         }
 
+        // ▼▼▼ [이 메서드를 추가하세요] ▼▼▼
+        /// <summary>
+        /// AI 모델(user_model.zip) 존재 여부를 확인하고 UI 상태를 갱신합니다.
+        /// </summary>
+        private void UpdatePredictionUIState()
+        {
+            // DataManager.UserModelFilePath 파일이 있는지 확인
+            IsModelTrained = File.Exists(DataManager.UserModelFilePath);
+
+            if (IsModelTrained)
+            {
+                PredictionResultTextBlock.Text = "예측할 과목, 요일, 시간을 선택하세요.";
+            }
+            else
+            {
+                PredictionResultTextBlock.Text = "AI 예측을 사용하려면 먼저 '모델 훈련하기' 버튼을 눌러주세요.";
+            }
+        }
+        // ▲▲▲ [여기까지 추가] ▲▲▲
+
         private void AnalysisPage_Loaded(object sender, RoutedEventArgs e)
         {
             // 컨트롤이 화면에 완전히 로드된 후 딱 1번만 실행
@@ -134,6 +163,7 @@ namespace WorkPartner
                 _ = this.Dispatcher.InvokeAsync(async () =>
                 {
                     await LoadAndAnalyzeData();
+                    UpdatePredictionUIState(); // 👈 페이지 로드 시 UI 상태 갱신
                     _isDataLoaded = true;      // 로드 완료 플래그 설정
                 }, System.Windows.Threading.DispatcherPriority.Background);
                 // ▲▲▲ [ 수정 완료 ] ▲▲▲
@@ -436,18 +466,45 @@ namespace WorkPartner
         }
 
         // --- 이벤트 핸들러 ---
-        private void PredictButton_Click(object sender, RoutedEventArgs e) // AI 예측
+
+        /// <summary>
+        /// [통합 버튼] 항상 모델을 재훈련한 후, 즉시 예측을 수행합니다.
+        /// </summary>
+        private async void PredictButton_Click(object sender, RoutedEventArgs e)
         {
+            // 1. 훈련 데이터가 있는지 확인
+            if (_allTimeLogs == null || !_allTimeLogs.Any(log => log.FocusScore > 0))
+            {
+                MessageBox.Show("훈련에 사용할 데이터가 부족합니다.\n먼저 대시보드에서 학습 기록에 1~5점의 집중도 점수를 매겨주세요.", "훈련 데이터 부족");
+                return;
+            }
+
+            // 2. 예측할 항목(콤보박스)이 모두 선택되었는지 확인
             if (TaskPredictionComboBox.SelectedItem == null ||
                 DayOfWeekPredictionComboBox.SelectedItem == null ||
                 HourPredictionComboBox.SelectedItem == null)
             {
-                PredictionResultTextBlock.Text = "과목, 요일, 시간을 모두 선택해주세요.";
+                PredictionResultTextBlock.Text = "예측을 위해 과목, 요일, 시간을 모두 선택해주세요.";
                 return;
             }
 
+            // 3. 사용자에게 훈련 시작 알림 (UI 일시 비활성화)
+            PredictionResultTextBlock.Text = "모델 훈련 중... 잠시만 기다려주세요...";
+            this.IsEnabled = false;
+
             try
             {
+                // 4. (백그라운드 실행) AI 모델 훈련
+                bool trainingSuccess = await Task.Run(() => _predictionService.TrainModel(_allTimeLogs));
+
+                // 5. 훈련 결과 확인
+                if (!trainingSuccess)
+                {
+                    PredictionResultTextBlock.Text = "❌ 모델 훈련에 실패했습니다. (데이터 부족 등)";
+                    return;
+                }
+
+                // 6. (훈련 성공 시) 즉시 예측 실행
                 var input = new ModelInput
                 {
                     TaskName = TaskPredictionComboBox.SelectedItem as string ?? "",
@@ -457,15 +514,20 @@ namespace WorkPartner
                 };
 
                 float prediction = _predictionService.Predict(input);
-                // 예측 결과 범위 보정 (0~5점)
-                prediction = Math.Max(0, Math.Min(5, prediction));
-                PredictionResultTextBlock.Text = $"예측 집중도 점수: {prediction:F2} / 5.0";
+                prediction = Math.Max(0, Math.Min(5, prediction)); // 0~5점 사이로 보정
+                PredictionResultTextBlock.Text = $"✅ 훈련 완료! 예측 집중도 점수: {prediction:F2} / 5.0";
             }
             catch (Exception ex)
             {
                 PredictionResultTextBlock.Text = $"예측 중 오류 발생: {ex.Message}";
             }
+            finally
+            {
+                // 7. UI 다시 활성화
+                this.IsEnabled = true;
+            }
         }
+        // ▲▲▲ [여기까지 교체] ▲▲▲
 
         private async void RetrainButton_Click(object sender, RoutedEventArgs e)
         {

@@ -1,19 +1,28 @@
-﻿// 파일: ModelInput.cs (수정)
-// [수정] AI 학습에 필요한 속성만 남겨 구조를 단순화하고, [Ignore] 어트리뷰트를 모두 제거했습니다.
+﻿// 파일: WorkPartner/ModelInput.cs
 using Microsoft.ML.Data;
 
-namespace WorkPartner.AI
+namespace WorkPartner.AI // (네임스페이스는 WorkPartner.AI가 맞습니다)
 {
     public class ModelInput
     {
-        // 학습에 사용할 특성(Feature)들
-        public float DayOfWeek { get; set; }
-        public float Hour { get; set; }
-        public float Duration { get; set; }
+        // ▼▼▼ [수정] TextLoader가 파일 열을 읽을 수 있도록 LoadColumn 속성 추가 ▼▼▼
+
+        [LoadColumn(0)] // 1번째 열
         public string TaskName { get; set; }
 
-        // 예측할 값(Label)
+        [LoadColumn(1)] // 2번째 열
+        public float DayOfWeek { get; set; }
+
+        [LoadColumn(2)] // 3번째 열
+        public float Hour { get; set; }
+
+        [LoadColumn(3)] // 4번째 열
+        public float Duration { get; set; }
+
+        [LoadColumn(4)] // 5번째 열
         [ColumnName("Label")]
         public float FocusScore { get; set; }
+
+        // ▲▲▲ [수정 완료] ▲▲▲
     }
 }
