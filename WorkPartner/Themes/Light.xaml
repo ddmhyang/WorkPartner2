@@ -2,7 +2,7 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
     <SolidColorBrush x:Key="MainBackgroundBrush" Color="White"/>
-    <SolidColorBrush x:Key="SecondaryBackgroundBrush" Color="#E8E8E8"/>
+    <SolidColorBrush x:Key="SecondaryBackgroundBrush" Color="#f5f5f5"/>
     <SolidColorBrush x:Key="PrimaryTextBrush" Color="Black"/>
     <SolidColorBrush x:Key="SecondaryTextBrush" Color="#676767"/>
     <SolidColorBrush x:Key="BorderBrush" Color="#E8E8E8"/>

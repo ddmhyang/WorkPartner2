@@ -267,6 +267,9 @@ namespace WorkPartner
             RenderTimeTable();
         }
 
+        // 파일: ddmhyang/workpartner2/WorkPartner2-6/WorkPartner/DashboardPage.xaml.cs
+
+        // [수정 후 ✅]
         private void AddTaskButton_Click(object sender, RoutedEventArgs e)
         {
             string newTaskText = TaskInput.Text.Trim();
@@ -280,39 +283,66 @@ namespace WorkPartner
             var newTask = new TaskItem { Text = newTaskText };
             TaskItems.Add(newTask);
 
-            // 🎯 수정 후
-            var palette = new HslColorPicker(); // 
+            // --- ▼▼▼ [수정된 부분 시작] ▼▼▼ ---
+
+            // --- ▼▼▼ [수정된 부분 시작] ▼▼▼ ---
+            var palette = new HslColorPicker();
+            var confirmButton = new Button
+            {
+                Content = "확인",
+                Margin = new Thickness(0, 10, 0, 0)
+            };
+
+            // 1. StackPanel 대신 DockPanel 사용
+            var panel = new DockPanel
+            {
+                Margin = new Thickness(10),
+                LastChildFill = true // 👈 (중요) 마지막 자식이 남은 공간을 모두 채우도록 설정
+            };
+
+            // 2. '확인' 버튼을 DockPanel의 '아래(Bottom)'에 고정
+            DockPanel.SetDock(confirmButton, Dock.Bottom);
+            panel.Children.Add(confirmButton);
+
+            // 3. 'palette'를 마지막에 추가하여 남은 공간을 모두 채우게 함
+            panel.Children.Add(palette);
+            // --- ▲▲▲ [수정된 부분 끝] ▲▲▲ ---
+
             var window = new Window
             {
                 Title = "과목 색상 선택",
-                Content = palette,
-                Width = 280, // HSL 피커에 맞게 너비 조절
-                Height = 350, // HSL 피커에 맞게 높이 조절
+                Content = panel,
+                Width = 280,  // 👈 (수정) 사용자가 지정한 너비
+                Height = 380, // 👈 (수정) 사용자가 지정한 높이
+                              // SizeToContent = SizeToContent.WidthAndHeight, // 👈 (삭제) 고정 크기를 사용할 것이므로 삭제
                 WindowStyle = WindowStyle.ToolWindow,
                 ResizeMode = ResizeMode.NoResize,
                 WindowStartupLocation = WindowStartupLocation.CenterOwner,
                 Owner = Window.GetWindow(this)
             };
 
-            // ✨ [수정] HslColorPicker의 ColorChanged 이벤트를 사용합니다. (로직 동일)
-            palette.ColorChanged += (s, newColor) =>
+            confirmButton.Click += (s, args) =>
             {
-                _settings.TaskColors[newTask.Text] = newColor.ToString();
-                SaveSettings();
-                window.Close(); // 색상 선택 시 창 닫기
+                window.DialogResult = true;
+                window.Close();
             };
 
-            // ✨ [진짜 수정] 팔레트에서 색을 선택하면(ColorChanged) 창을 닫고 저장합니다.
-            palette.ColorChanged += (s, newColor) =>
+            // 5. 'ShowDialog()'를 호출하고, 그 결과가 true일 때만 (확인 버튼 클릭 시) 저장
+            if (window.ShowDialog() == true)
             {
+                // 6. 팔레트에서 최종 선택된 색상을 가져옴
+                var newColor = palette.SelectedColor;
+
+                // 7. [문제 1 해결] newTask 객체의 Brush를 직접 업데이트
+                newTask.ColorBrush = new SolidColorBrush(newColor);
+
+                // 8. 설정 파일에 저장
                 _settings.TaskColors[newTask.Text] = newColor.ToString();
                 SaveSettings();
-                window.Close(); // 색상 선택 시 창 닫기
-            };
+            }
+            // --- ▲▲▲ [수정된 부분 끝] ▲▲▲ ---
 
-            window.ShowDialog(); // ✨ Window가 ShowDialog()를 호출
-
-            TaskInput.Clear();
+            TaskInput.Clear();
             SaveTasks();
             RenderTimeTable();
         }
@@ -909,7 +939,6 @@ namespace WorkPartner
 
                     var blockWithBorder = new Border
                     {
-                        BorderBrush = (Brush)FindResource("BorderBrush"),
                         BorderThickness = new Thickness(1, 0, (minuteBlock + 1) % 6 == 0 ? 1 : 0, 1),
                         Child = blockContainer
                     };
@@ -1204,22 +1233,24 @@ namespace WorkPartner
             return (h * 360.0, s, l); // H(0-360), S(0-1), L(0-1)
         }
 
-        // 🎯 수정 후
+        // 파일: ddmhyang/workpartner2/WorkPartner2-6/WorkPartner/DashboardPage.xaml.cs
+
+        // [수정 후 ✅]
         private void ChangeTaskColor_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             if (sender is not Border { Tag: TaskItem selectedTask }) return;
 
             TaskListBox.SelectedItem = selectedTask;
 
-            // ✨ [수정] HslColorPicker(UserControl)를 호스팅할 새 Window를 만듭니다.
+            // --- ▼▼▼ [수정된 부분 시작] ▼▼▼ ---
+
             var palette = new HslColorPicker();
 
-            // (이미 저장된 색이 있으면 팔레트에 설정)
+            // (기존 색상 로드 로직...)
             if (_settings.TaskColors.TryGetValue(selectedTask.Text, out var hex))
             {
                 try
                 {
-                    // ✨ [수정] HSL 피커는 SetHsl() 메서드를 사용해 초기 색상을 설정해야 합니다.
                     var currentColor = (Color)ColorConverter.ConvertFromString(hex);
                     (double H, double S, double L) hsl = WpfColorToHsl(currentColor);
                     palette.SetHsl(hsl.H, hsl.S, hsl.L);
@@ -1227,30 +1258,57 @@ namespace WorkPartner
                 catch { /* ignore invalid hex */ }
             }
 
+            var confirmButton = new Button
+            {
+                Content = "확인",
+                Margin = new Thickness(0, 10, 0, 0)
+            };
+
+            // 1. StackPanel 대신 DockPanel 사용
+            var panel = new DockPanel
+            {
+                Margin = new Thickness(10),
+                LastChildFill = true // 👈 (중요)
+            };
+
+            // 2. '확인' 버튼을 '아래(Bottom)'에 고정
+            DockPanel.SetDock(confirmButton, Dock.Bottom);
+            panel.Children.Add(confirmButton);
+
+            // 3. 'palette'를 마지막에 추가
+            panel.Children.Add(palette);
+            // --- ▲▲▲ [수정된 부분 끝] ▲▲▲ ---
+
             var window = new Window
             {
                 Title = "과목 색상 변경",
-                Content = palette,
-                Width = 280, // HSL 피커에 맞게 너비 조절
-                Height = 350, // HSL 피커에 맞게 높이 조절
+                Content = panel,
+                Width = 280,  // 👈 (수정) 사용자가 지정한 너비
+                Height = 380, // 👈 (수정) 사용자가 지정한 높이
+                              // SizeToContent = SizeToContent.WidthAndHeight, // 👈 (삭제)
                 WindowStyle = WindowStyle.ToolWindow,
                 ResizeMode = ResizeMode.NoResize,
                 WindowStartupLocation = WindowStartupLocation.CenterOwner,
                 Owner = Window.GetWindow(this)
             };
 
-            // ✨ [수정] 팔레트에서 색을 선택하면(ColorChanged) 창을 닫고 저장합니다. (이 로직은 동일)
-            palette.ColorChanged += (s, newColor) =>
+            confirmButton.Click += (s, args) =>
             {
+                window.DialogResult = true;
+                window.Close();
+            };
+
+            // 5. 'ShowDialog()'를 호출하고, 그 결과가 true일 때만 (확인 버튼 클릭 시) 저장
+            if (window.ShowDialog() == true)
+            {
+                var newColor = palette.SelectedColor;
                 _settings.TaskColors[selectedTask.Text] = newColor.ToString();
                 selectedTask.ColorBrush = new SolidColorBrush(newColor);
                 DataManager.SaveSettings(_settings); // (DataManager.cs가 static이므로)
 
                 RenderTimeTable();
-                window.Close(); // 색상 선택 시 창 닫기
-            };
-
-            window.ShowDialog(); // ✨ Window가 ShowDialog()를 호출
+            }
+            // --- ▲▲▲ [수정된 부분 끝] ---
 
             e.Handled = true;
         }

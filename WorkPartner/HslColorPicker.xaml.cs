@@ -14,6 +14,24 @@ namespace WorkPartner
         private bool _isUpdatingFromSetter = false;
         private bool _isDragging = false;
 
+        // --- ▼▼▼ [이 코드 블록 전체를 여기에 추가] ▼▼▼ ---
+        public static readonly DependencyProperty SelectedColorProperty =
+            DependencyProperty.Register(
+                "SelectedColor",                          // 속성 이름
+                typeof(Color),                            // 속성 유형 (System.Windows.Media.Color)
+                typeof(HslColorPicker),                   // 이 속성의 소유자 클래스
+                new PropertyMetadata(Colors.Transparent)); // 기본값
+
+        /// <summary>
+        /// 현재 선택된 색상의 최종 RGB 값입니다.
+        /// </summary>
+        public Color SelectedColor
+        {
+            get { return (Color)GetValue(SelectedColorProperty); }
+            set { SetValue(SelectedColorProperty, value); }
+        }
+        // --- ▲▲▲ [여기까지 추가] ▲▲▲ ---
+
         private double _currentHue = 0;
         private double _currentSaturation = 1;
         private double _currentValue = 1;
@@ -92,10 +110,19 @@ namespace WorkPartner
         }
 
         // 3. 내부 (H, S, V) 상태로부터 최종 색상(RGB)을 계산하고 이벤트를 발생시킴
+        // 파일: ddmhyang/workpartner2/WorkPartner2-6/WorkPartner/HslColorPicker.xaml.cs
+        // (약 107줄 근처)
+
+        // 3. 내부 (H, S, V) 상태로부터 최종 색상(RGB)을 계산하고 이벤트를 발생시킴
         private void UpdateColorFromState(bool raiseEvent)
         {
             Color rgbColor = HsvToRgb(_currentHue, _currentSaturation, _currentValue);
             PreviewBrush.Color = rgbColor;
+
+            // --- ▼▼▼ [이 1줄을 여기에 추가] ▼▼▼ ---
+            // 계산된 최종 색상을 공용 'SelectedColor' 속성에 저장합니다.
+            this.SelectedColor = rgbColor;
+            // --- ▲▲▲ [여기까지 추가] ▲▲▲ ---
 
             if (raiseEvent && !_isUpdatingFromSetter)
             {
