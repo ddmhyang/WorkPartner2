@@ -74,7 +74,7 @@ namespace WorkPartner
         // 정수 Y축 포맷터
         public Func<double, string> YFormatterInt { get; set; }
 
-
+        private ViewModels.DashboardViewModel _viewModel; // ViewModel을 저장할 변수 선언
         // --- 생성자 ---
         public AnalysisPage()
         {
@@ -126,36 +126,31 @@ namespace WorkPartner
 
         private async Task LoadDataAsync()
         {
-            if (File.Exists(_timeLogFilePath))
+            // ▼▼▼ [수정] 파일 로드 대신 ViewModel에서 데이터 가져오기 ▼▼▼
+            if (_viewModel != null)
             {
-                try
-                {
-                    await using (FileStream stream = new FileStream(_timeLogFilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite)) // ✨ [수정]
-                    {
-                        _allTimeLogs = await JsonSerializer.DeserializeAsync<List<TimeLogEntry>>(stream) ?? new List<TimeLogEntry>();
-                    }
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show($"시간 기록 로딩 오류: {ex.Message}");
-                    _allTimeLogs = new List<TimeLogEntry>();
-                }
+                // 1. 시간 기록 (파일 대신 VM 메모리 사용)
+                _allTimeLogs = _viewModel.TimeLogEntries.ToList();
+
+                // 2. 과목 목록 (파일 대신 VM 메모리 사용)
+                var tasks = _viewModel.TaskItems.ToList();
+                TaskPredictionComboBox.ItemsSource = tasks.Select(t => t.Text);
+                if (tasks.Any()) TaskPredictionComboBox.SelectedIndex = 0;
             }
-            if (File.Exists(_tasksFilePath))
+            else
             {
-                try
-                {
-                    await using (FileStream stream = new FileStream(_tasksFilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite)) // ✨ [수정]
-                    {
-                        var tasks = await JsonSerializer.DeserializeAsync<List<TaskItem>>(stream) ?? new List<TaskItem>(); TaskPredictionComboBox.ItemsSource = tasks.Select(t => t.Text);
-                        if (tasks.Any()) TaskPredictionComboBox.SelectedIndex = 0;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show($"과목 목록 로딩 오류: {ex.Message}");
-                }
+                // (폴백) ViewModel이 없는 경우 (오류)
+                _allTimeLogs = new List<TimeLogEntry>();
+                MessageBox.Show("데이터를 불러오는 데 실패했습니다. (ViewModel 누락)");
             }
+            // ▲▲▲ [수정 완료] ▲▲▲
+
+            // (참고) Task 로딩은 비동기일 필요가 없어졌으므로 'await'가 필요 없지만,
+            // 메서드 시그니처(async Task) 유지를 위해 'await Task.CompletedTask;'를
+            // 리턴 직전에 추가하거나, 메서드 전체에서 async/await를 제거할 수 있습니다.
+            // 여기서는 간단하게 await Task.CompletedTask; 를 맨 끝에 추가하겠습니다.
+
+            await Task.CompletedTask;
         }
 
         private void UpdateAllAnalyses()
@@ -464,6 +459,11 @@ namespace WorkPartner
             return true;
         }
         #endregion
+
+        public void SetViewModel(ViewModels.DashboardViewModel vm)
+        {
+            _viewModel = vm;
+        }
 
     } // <- AnalysisPage 클래스 닫는 괄호
 

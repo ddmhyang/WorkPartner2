@@ -14,6 +14,7 @@ namespace WorkPartner
         private SettingsPage _settingsPage;
         private MiniTimerWindow _miniTimer;
 
+        private ViewModels.DashboardViewModel _mainViewModel; // ViewModel을 저장할 변수 선언
         public MainWindow()
         {
             InitializeComponent();
@@ -62,6 +63,11 @@ namespace WorkPartner
                     break;
                 case "Analysis":
                     if (_analysisPage == null) _analysisPage = new AnalysisPage();
+
+                    // ▼▼▼ [추가] 분석 페이지에 메인 ViewModel 전달 ▼▼▼
+                    _analysisPage.SetViewModel(_mainViewModel);
+                    // ▲▲▲
+
                     await _analysisPage.LoadAndAnalyzeData(); // 비동기 로딩
                     MainFrame.Navigate(_analysisPage);
                     break;
@@ -115,7 +121,10 @@ namespace WorkPartner
 
         public void SetDashboardViewModel(object viewModel)
         {
-            _dashboardPage.DataContext = viewModel;
+            // ▼▼▼ [수정] ViewModel을 메인 윈도우에 저장 ▼▼▼
+            _mainViewModel = viewModel as ViewModels.DashboardViewModel;
+            _dashboardPage.DataContext = _mainViewModel;
+            // ▲▲▲
         }
     }
 }
