@@ -139,7 +139,7 @@
             <TextBlock Canvas.Left="19" Canvas.Top="241" Text="프로세스 설정" FontSize="12" FontFamily="Pretendard" FontWeight="SemiBold" Foreground="{DynamicResource PrimaryTextBrush}"/>
             <TextBlock Canvas.Left="19" Canvas.Top="403" Text="AI 태그 규칙 설정" FontSize="12" FontFamily="Pretendard" FontWeight="SemiBold" Foreground="{DynamicResource PrimaryTextBrush}"/>
             <TextBlock Canvas.Left="19" Canvas.Top="588" Text="집중모드 설정" FontSize="12" FontFamily="Pretendard" FontWeight="SemiBold" Foreground="{DynamicResource PrimaryTextBrush}"/>
-            <TextBlock Canvas.Left="406" Canvas.Top="588" Text="데이터 관리" FontSize="12" FontFamily="Pretendard" FontWeight="SemiBold" Foreground="{DynamicResource PrimaryTextBrush}"/>
+            <TextBlock Canvas.Left="314" Canvas.Top="588" Text="데이터 관리" FontSize="12" FontFamily="Pretendard" FontWeight="SemiBold" Foreground="{DynamicResource PrimaryTextBrush}" HorizontalAlignment="Left" VerticalAlignment="Center"/>
 
             <Border Canvas.Left="19" Canvas.Top="95" Width="247" Height="130" BorderBrush="{DynamicResource AccentColorBrush}" BorderThickness="2" CornerRadius="10">
                 <Grid>
@@ -299,8 +299,7 @@
                     </ListBox>
                 </DockPanel>
             </Border>
-
-            <Border Canvas.Left="19" Canvas.Top="606" Width="380" Height="81" BorderBrush="{DynamicResource BorderBrush}" Background="{DynamicResource MainBackgroundBrush}" BorderThickness="2" CornerRadius="10">
+            <Border Canvas.Left="19" Canvas.Top="606" Width="289" Height="81" BorderBrush="{DynamicResource BorderBrush}" Background="{DynamicResource MainBackgroundBrush}" BorderThickness="2" CornerRadius="10" HorizontalAlignment="Left" VerticalAlignment="Center">
                 <StackPanel Margin="10">
                     <TextBlock Text="경고 메세지" FontSize="10" Foreground="{DynamicResource PrimaryTextBrush}"/>
                     <TextBox Margin="0,2,0,5"
@@ -314,16 +313,47 @@
                     </StackPanel>
                 </StackPanel>
             </Border>
+            <Border Canvas.Left="314" Canvas.Top="606" Width="351" Height="81" 
+                    BorderBrush="{DynamicResource BorderBrush}" 
+                    Background="{DynamicResource MainBackgroundBrush}" 
+                    BorderThickness="2" CornerRadius="10">
 
-            <Border Canvas.Left="406" Canvas.Top="606" Width="259" Height="81"
-                    Background="#FFF0F0" BorderBrush="#FFA4A4" BorderThickness="2" CornerRadius="10">
-                <StackPanel Margin="10">
-                    <TextBlock Text="이 작업은 되돌릴 수 없습니다!"
-                               Foreground="Red" FontWeight="SemiBold"/>
-                    <TextBlock Text="모든 데이터가 영구적으로 삭제됩니다."
-                               FontSize="10" TextWrapping="Wrap" Foreground="Red" Margin="0,2,0,5"/>
-                    <Button Content="모든 데이터 초기화" Background="Red" Foreground="White" HorizontalAlignment="Right" Width="84" Height="15" FontSize="8"/>
-                </StackPanel>
+                <Grid Margin="10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,0,0">
+                        <Button Content="백업" 
+                                Style="{StaticResource RoundedCornerButtonStyle}" 
+                                Padding="10,3" 
+                                Click="ExportDataButton_Click"/>
+                        <Button Content="복원" 
+                                Style="{StaticResource RoundedCornerButtonStyle}" 
+                                Padding="10,3" 
+                                Margin="0,5,0,0" 
+                                Click="ImportDataButton_Click"/>
+                    </StackPanel>
+
+                    <Separator Grid.Column="1" Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" Margin="10,0" />
+
+                    <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                        <Button Content="모든 데이터 초기화" 
+                                Background="Red" Foreground="White" 
+                                Style="{StaticResource RoundedCornerButtonStyle}" 
+                                Padding="10,3" 
+                                Margin="0,5,0,0" 
+                                Click="ResetDataButton_Click"/>
+                        <TextBlock Text="모든 데이터가 영구적으로 삭제됩니다." 
+                                   FontSize="9" TextWrapping="Wrap" 
+                                   Foreground="Red" Margin="0,2,0,5" 
+                                   HorizontalAlignment="Center"/>
+
+
+                    </StackPanel>
+                </Grid>
             </Border>
         </Canvas>
     </Viewbox>
