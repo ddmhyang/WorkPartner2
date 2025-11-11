@@ -37,6 +37,16 @@ namespace WorkPartner
         private MemoWindow _memoWindow;
         private MiniTimerWindow _miniTimer;
 
+        private readonly double _blockWidth = 35, _blockHeight = 17;
+        private readonly double _hourLabelWidth = 30;
+        private readonly double _verticalMargin = 1, _horizontalMargin = 1;
+        private readonly double _borderLeftThickness = 1;
+        private readonly double _borderBottomThickness = 1;
+
+        // 계산된 값 (생성자에서 초기화)
+        private readonly double _rowHeight;
+        private readonly double _cellWidth;
+
         private DateTime _currentDateForTimeline = DateTime.Today;
 
         private Point _dragStartPoint;
@@ -54,6 +64,7 @@ namespace WorkPartner
         {
             InitializeComponent();
             InitializeData();
+            InitializeTimeTableBackground();
             InitializeSoundPlayers();
 
             waveSlider.ValueChanged += SoundSlider_ValueChanged;
@@ -79,6 +90,9 @@ namespace WorkPartner
 
             RenderOptions.SetBitmapScalingMode(this, BitmapScalingMode.LowQuality);
             RenderOptions.SetEdgeMode(this, EdgeMode.Aliased);
+
+            _rowHeight = _blockHeight + (_verticalMargin * 2.65) + _borderBottomThickness;
+            _cellWidth = _blockWidth + (_horizontalMargin * 2) + _borderLeftThickness;
         }
 
 
@@ -341,8 +355,8 @@ namespace WorkPartner
             selectedTask.Text = newName;
 
             SaveTasks();
-            // ▼▼▼ [V6 수정] VM의 리스트를 즉시 저장 ▼▼▼
-            DataManager.SaveTimeLogsImmediately(vm.TimeLogEntries);
+            // ▼▼▼ [V6 수정] VM의 리스트를 지연 저장 ▼▼▼
+            DataManager.SaveTimeLogs(vm.TimeLogEntries); // 👈 'Immediately'를 뺐습니다.
             SaveSettings();
 
             TaskListBox.Items.Refresh();
@@ -381,10 +395,9 @@ namespace WorkPartner
             }
 
             SaveTasks();
-            // ▼▼▼ [V6 수정] VM의 리스트를 즉시 저장 ▼▼▼
-            DataManager.SaveTimeLogsImmediately(vm.TimeLogEntries);
+            // ▼▼▼ [V6 수정] VM의 리스트를 지연 저장 ▼▼▼
+            DataManager.SaveTimeLogs(vm.TimeLogEntries); // 👈 'Immediately'를 뺐습니다.
             RenderTimeTable();
-            RecalculateAllTotals();
         }
 
         private void TaskInput_KeyDown(object sender, KeyEventArgs e)
@@ -704,9 +717,9 @@ namespace WorkPartner
 
         // 621번째 줄의 RenderTimeTable 메서드 전체를 아래 코드로 대체해주세요.
 
+        // 👈 [ 2단계 오류 수정: 이 메서드 전체를 교체 ]
         private void RenderTimeTable()
         {
-            // ▼▼▼ [수정] VM을 먼저 가져옵니다. (오류 747 'vm' 해결) ▼▼▼
             if (DataContext is not ViewModels.DashboardViewModel vm) return;
 
             // 이전 블록 삭제
@@ -715,74 +728,13 @@ namespace WorkPartner
                                          .ToList();
             foreach (var border in bordersToRemove) SelectionCanvas.Children.Remove(border);
 
-            // 배경 그리기
-            TimeTableContainer.Children.Clear();
-
-            double blockWidth = 35, blockHeight = 17;
-            double hourLabelWidth = 30;
-            double verticalMargin = 1, horizontalMargin = 1;
-
-            // --- 중요한 보정값: Border 두께(실제 XAML에서 설정한 값과 일치시킬 것) ---
-            double borderLeftThickness = 1;   // blockWithBorder Border의 Left 두께 (코드에서 new Thickness(1,0,...)로 설정됨)
-            double borderBottomThickness = 1; // Border의 Bottom 두께 (new Thickness(...,1) 로 설정됨)
-
-            // 행 높이와 셀 너비는 실제 렌더링 차이를 반영
-            double rowHeight = blockHeight + (verticalMargin * 2.65) + borderBottomThickness;
-            double cellWidth = blockWidth + (horizontalMargin * 2) + borderLeftThickness;
-
-            for (int hour = 0; hour < 24; hour++)
-            {
-                var hourRowPanel = new StackPanel
-                {
-                    Orientation = Orientation.Horizontal,
-                    Margin = new Thickness(0, verticalMargin, 0, verticalMargin)
-                };
-
-                var hourLabel = new TextBlock
-                {
-                    Text = $"{hour:00}",
-                    Width = hourLabelWidth,
-                    Height = blockHeight,
-                    VerticalAlignment = VerticalAlignment.Center,
-                    TextAlignment = TextAlignment.Center,
-                    Foreground = Brushes.Gray,
-                    FontSize = 8
-                };
-                hourRowPanel.Children.Add(hourLabel);
-
-                for (int minuteBlock = 0; minuteBlock < 6; minuteBlock++)
-                {
-                    var blockContainer = new Grid
-                    {
-                        Width = blockWidth,
-                        Height = blockHeight,
-                        Background = (Brush)FindResource("SecondaryBackgroundBrush"), // [!] 수정됨
-                        Margin = new Thickness(horizontalMargin, 0, horizontalMargin, 0)
-                    };
-
-                    var blockWithBorder = new Border
-                    {
-                        BorderBrush = (Brush)FindResource("BorderBrush"), // [!] 수정됨
-                        BorderThickness = new Thickness(1, 0, (minuteBlock + 1) % 6 == 0 ? 1 : 0, 1),
-                        Child = blockContainer
-                    };
-
-                    hourRowPanel.Children.Add(blockWithBorder);
-                }
-
-                TimeTableContainer.Children.Add(hourRowPanel);
-            }
-
-            // (디버그) 한셀 계산값 출력 — 실제로 얼마로 계산되는지 확인 가능
-            Debug.WriteLine($"RenderTimeTable: blockWidth={blockWidth}, cellWidth={cellWidth}, rowHeight={rowHeight}, hourLabelWidth={hourLabelWidth}");
+            // [!!!] 배경 그리기가 삭제된 상태 (정상)
 
             // 로그 블록 그리기
-            // ▼▼▼ [핵심 수정] Page의 리스트가 아닌 VM의 리스트(vm.TimeLogEntries)를 사용
             var logsForSelectedDate = vm.TimeLogEntries
                 .Where(log => log.StartTime.Date == _currentDateForTimeline.Date)
                 .OrderBy(l => l.StartTime)
                 .ToList();
-            // ▲▲▲
 
             foreach (var logEntry in logsForSelectedDate)
             {
@@ -810,22 +762,22 @@ namespace WorkPartner
                         if (blockDuration.TotalSeconds <= 0) break;
 
                         // --- [수정된 좌표 계산 로직] ---
-                        // 1. 10분당 픽셀 수 (실제 그리기 영역 'blockWidth' 기준)
-                        double pixelsPerMinuteInBlock = blockWidth / 10.0;
+                        // ❗️ [수정] 모든 변수가 클래스 필드(_(언더스코어))를 사용하도록 변경
+
+                        // 1. 10분당 픽셀 수 (실제 그리기 영역 '_blockWidth' 기준)
+                        double pixelsPerMinuteInBlock = _blockWidth / 10.0; // 👈 _(언더스코어) 사용
 
                         // 2. 현재 블록이 속한 10분 단위 셀 인덱스 (0~5)
                         int cellIndex = (int)Math.Floor(blockStart.Minute / 10.0);
 
                         // 3. 해당 셀 안에서의 분 (0.0 ~ 9.99...)
-                        //    (정확한 오프셋 계산을 위해 TotalMinutes 사용)
                         double minuteInCell = blockStart.TimeOfDay.TotalMinutes % 10.0;
 
                         // 4. 해당 셀의 '그리기 영역(blockContainer)'이 시작되는 X좌표
-                        //    = (시간 레이블) + (이전 셀들의 총 너비) + (현재 셀의 왼쪽 테두리) + (현재 셀의 왼쪽 여백)
-                        double cellDrawableAreaStart = hourLabelWidth
-                                                     + (cellIndex * cellWidth)
-                                                     + borderLeftThickness
-                                                     + horizontalMargin;
+                        double cellDrawableAreaStart = _hourLabelWidth                // 👈 _(언더스코어) 사용
+                                                     + (cellIndex * _cellWidth)     // 👈 _(언더스코어) 사용
+                                                     + _borderLeftThickness         // 👈 _(언더스코어) 사용
+                                                     + _horizontalMargin;           // 👈 _(언더스코어) 사용
 
                         // 5. 셀 내부 '그리기 영역' 안에서의 픽셀 오프셋
                         double offsetInCell = minuteInCell * pixelsPerMinuteInBlock;
@@ -837,7 +789,7 @@ namespace WorkPartner
                         double barWidth = blockDuration.TotalMinutes * pixelsPerMinuteInBlock;
 
                         // 8. Top 좌표 (기존 로직 유지)
-                        double topOffset = Math.Floor(blockStart.TimeOfDay.TotalHours) * rowHeight + verticalMargin;
+                        double topOffset = Math.Floor(blockStart.TimeOfDay.TotalHours) * _rowHeight + _verticalMargin; // 👈 _(언더스코어) 사용
                         // --- [계산 로직 종료] ---
 
 
@@ -851,7 +803,7 @@ namespace WorkPartner
                         var coloredBar = new Border
                         {
                             Width = barWidth,
-                            Height = blockHeight, // 기존 코드(blockHeight+2) 유지
+                            Height = _blockHeight, // 👈 _(언더스코어) 사용
                             Background = GetColorForTask(logEntry.TaskText),
                             CornerRadius = new CornerRadius(2),
                             Tag = logEntry,
@@ -873,11 +825,70 @@ namespace WorkPartner
             }
 
             // Canvas 높이 보정
-            SelectionCanvas.Height = (24 * rowHeight) + verticalMargin;
+            SelectionCanvas.Height = (24 * _rowHeight) + _verticalMargin; // 👈 _(언더스코어) 사용
 
             if (_selectionBox != null) Panel.SetZIndex(_selectionBox, 100);
 
             Debug.WriteLine($"RenderTimeTable: Done. SelectionCanvas.Children={SelectionCanvas.Children.Count}, Height={SelectionCanvas.Height}");
+        }
+
+        // 👈 [ 2단계 오류 수정: 이 메서드 전체를 교체 ]
+        /// <summary>
+        /// 앱 시작 시 '최초 1회'만 호출되어 타임라인의 배경 눈금을 그립니다.
+        /// </summary>
+        private void InitializeTimeTableBackground()
+        {
+            // 배경 그리기
+            TimeTableContainer.Children.Clear();
+
+            // ❗️ [수정] 모든 로컬 변수 선언을 삭제하고,
+            // ❗️ 클래스 필드(_blockWidth, _rowHeight 등)를 사용합니다.
+
+            for (int hour = 0; hour < 24; hour++)
+            {
+                var hourRowPanel = new StackPanel
+                {
+                    Orientation = Orientation.Horizontal,
+                    Margin = new Thickness(0, _verticalMargin, 0, _verticalMargin) // 👈 _(언더스코어) 사용
+                };
+
+                var hourLabel = new TextBlock
+                {
+                    Text = $"{hour:00}",
+                    Width = _hourLabelWidth,   // 👈 _(언더스코어) 사용
+                    Height = _blockHeight,     // 👈 _(언더스코어) 사용
+                    VerticalAlignment = VerticalAlignment.Center,
+                    TextAlignment = TextAlignment.Center,
+                    Foreground = Brushes.Gray,
+                    FontSize = 8
+                };
+                hourRowPanel.Children.Add(hourLabel);
+
+                for (int minuteBlock = 0; minuteBlock < 6; minuteBlock++)
+                {
+                    var blockContainer = new Grid
+                    {
+                        Width = _blockWidth,   // 👈 _(언더스코어) 사용
+                        Height = _blockHeight, // 👈 _(언더스코어) 사용
+                        Background = (Brush)FindResource("SecondaryBackgroundBrush"),
+                        Margin = new Thickness(_horizontalMargin, 0, _horizontalMargin, 0) // 👈 _(언더스코어) 사용
+                    };
+
+                    var blockWithBorder = new Border
+                    {
+                        BorderBrush = (Brush)FindResource("BorderBrush"),
+                        BorderThickness = new Thickness(1, 0, (minuteBlock + 1) % 6 == 0 ? 1 : 0, 1),
+                        Child = blockContainer
+                    };
+
+                    hourRowPanel.Children.Add(blockWithBorder);
+                }
+
+                TimeTableContainer.Children.Add(hourRowPanel);
+            }
+
+            // (디버그) 한셀 계산값 출력
+            Debug.WriteLine($"InitializeTimeTableBackground: blockWidth={_blockWidth}, cellWidth={_cellWidth}, rowHeight={_rowHeight}, hourLabelWidth={_hourLabelWidth}");
         }
 
 
@@ -1392,7 +1403,7 @@ private void EvaluateDayButton_Click(object sender, RoutedEventArgs e)
                 if (isChanged)
                 {
                     // ▼▼▼ [핵심 수정] VM 리스트(vm.TimeLogEntries)를 저장
-                    DataManager.SaveTimeLogsImmediately(vm.TimeLogEntries); // (오류 1287 수정)
+                    DataManager.SaveTimeLogs(vm.TimeLogEntries); // 👈 'Immediately'를 뺐습니다.
                     // ▲▲▲
                     MessageBox.Show($"'{targetDate:yyyy-MM-dd}'의 모든 기록에 집중도 {newScore}점을 적용했습니다.", "저장 완료");
                 }
