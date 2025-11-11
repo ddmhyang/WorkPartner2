@@ -467,6 +467,36 @@ namespace WorkPartner
             }
         }
 
+        private async void RetrainButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_allTimeLogs == null || !_allTimeLogs.Any(log => log.FocusScore > 0))
+            {
+                MessageBox.Show("훈련에 사용할 데이터가 부족합니다.\n먼저 대시보드에서 학습 기록에 1~5점의 집중도 점수를 매겨주세요.", "훈련 데이터 부족");
+                return;
+            }
+
+            if (MessageBox.Show("현재까지 기록된 모든 데이터를 바탕으로 AI 모델을 새로 훈련시킵니다.\n이 작업은 데이터 양에 따라 몇 초 정도 소요될 수 있습니다.\n\n계속하시겠습니까?", "AI 모델 재학습", MessageBoxButton.YesNo) == MessageBoxResult.No)
+            {
+                return;
+            }
+
+            PredictionResultTextBlock.Text = "모델 훈련 중... 잠시만 기다려주세요...";
+
+            // 훈련 로직을 백그라운드 스레드에서 실행 (UI 멈춤 방지)
+            bool success = await Task.Run(() => _predictionService.TrainModel(_allTimeLogs));
+
+            if (success)
+            {
+                PredictionResultTextBlock.Text = "✅ 모델 훈련이 완료되었습니다! 이제 예측 기능이 더 정확해집니다.";
+                MessageBox.Show("AI 모델 훈련이 성공적으로 완료되었습니다.", "훈련 완료");
+            }
+            else
+            {
+                PredictionResultTextBlock.Text = "❌ 모델 훈련 중 오류가 발생했습니다.";
+                MessageBox.Show("모델 훈련에 실패했습니다. (데이터가 10개 미만이거나 오류 발생)", "훈련 실패");
+            }
+        }
+
         private void HandlePreviewMouseWheel(object sender, MouseWheelEventArgs e) // 스크롤 이벤트 처리
         {
             if (!e.Handled)

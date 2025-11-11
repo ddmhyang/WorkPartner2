@@ -23,7 +23,7 @@ namespace WorkPartner
         // ✨ [오류 수정] PredictionService에서 사용하던 ModelFilePath를 다시 추가했습니다.
         public static readonly string ModelFilePath = Path.Combine(AppDataPath, "model_input.json");
 
-
+        public static readonly string UserModelFilePath = Path.Combine(AppDataPath, "user_model.zip");
         // ✨ [오류 수정] 다른 클래스에서 접근할 수 있도록 접근 제어자를 internal로 변경했습니다.
         internal static readonly JsonSerializerOptions JsonOptions = new JsonSerializerOptions
         {
