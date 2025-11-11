@@ -101,9 +101,8 @@
 
                                 <TextBlock Text="집중도 점수 분포 (횟수)" FontSize="10" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,0,0,5"/>
                                 <lvc:CartesianChart x:Name="FocusDistributionChart" Height="150" Margin="0,0,0,15">
-                                    <lvc:CartesianChart.Series>
-                                        <lvc:ColumnSeries Title="횟수" Values="{Binding FocusDistributionValues}" DataLabels="True"/>
-                                    </lvc:CartesianChart.Series>
+                                    <lvc:CartesianChart Series="{Binding FocusDistributionSeries}">
+                                    </lvc:CartesianChart>
                                     <lvc:CartesianChart.AxisX>
                                         <lvc:Axis Title="점수" Labels="{Binding FocusDistributionLabels}"/>
                                     </lvc:CartesianChart.AxisX>
@@ -137,11 +136,11 @@
                                         <lvc:Axis Title="평균 집중도" LabelFormatter="{Binding YFormatter}" MinValue="0" MaxValue="5"/>
                                     </lvc:CartesianChart.AxisY>
                                 </lvc:CartesianChart>
+                                
 
-                                <lvc:CartesianChart Grid.Row="1" Name="HourlyTimeChart" Height="250" Margin="0,15,0,0">
-                                    <lvc:CartesianChart.Series>
-                                        <lvc:RowSeries Title="학습 시간(분)" Values="{Binding HourlyTimeValues}" DataLabels="True"/>
-                                    </lvc:CartesianChart.Series>
+                                <lvc:CartesianChart Grid.Row="1" Name="HourlyTimeChart" Height="500" Margin="0,15,0,0">
+                                    <lvc:CartesianChart Series="{Binding HourlyTimeSeries}">
+                                    </lvc:CartesianChart>
                                     <lvc:CartesianChart.AxisY>
                                         <lvc:Axis Title="시간대" Labels="{Binding HourLabels}"/>
                                     </lvc:CartesianChart.AxisY>

@@ -92,6 +92,7 @@ namespace WorkPartner
 
             DataContext = this; // 데이터 바인딩 컨텍스트 설정
             InitializePredictionUI();
+            this.Loaded += AnalysisPage_Loaded; // ◀◀ 최초 1회 로드 이벤트 연결
         }
 
         // --- 초기화 메서드 ---
@@ -113,16 +114,32 @@ namespace WorkPartner
 
         private async void AnalysisPage_IsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
         {
-            if (e.NewValue is true && !_isDataLoaded)
+            // ▼▼▼ [ 아래 코드로 전체 교체 ] ▼▼▼
+            if (e.NewValue is true && _isDataLoaded)
             {
-                await LoadAndAnalyzeData();
-                _isDataLoaded = true;
+                // 이미 한 번 로드된 상태에서 다시 페이지에 진입할 때 (새로고침)
+                await LoadDataAsync(); // 1. 데이터만 새로 가져오고
+                UpdateAllAnalyses();   // 2. 분석/차트 새로 그리기
             }
-            else if (e.NewValue is true && _isDataLoaded)
+            // ▲▲▲ [ 여기까지 ] ▲▲▲
+        }
+
+        private void AnalysisPage_Loaded(object sender, RoutedEventArgs e)
+        {
+            // 컨트롤이 화면에 완전히 로드된 후 딱 1번만 실행
+            if (!_isDataLoaded)
             {
-                UpdateAllAnalyses(); // 페이지가 다시 보일 때마다 업데이트
+                // ▼▼▼ [ "System.Windows.Threading.Dispatcher" -> "this.Dispatcher"로 수정 ] ▼▼▼
+                // (CS0120 오류: 'this'가 가리키는 현재 객체의 Dispatcher를 사용해야 함)
+                _ = this.Dispatcher.InvokeAsync(async () =>
+                {
+                    await LoadAndAnalyzeData();
+                    _isDataLoaded = true;      // 로드 완료 플래그 설정
+                }, System.Windows.Threading.DispatcherPriority.Background);
+                // ▲▲▲ [ 수정 완료 ] ▲▲▲
             }
         }
+
 
         private async Task LoadDataAsync()
         {
@@ -196,7 +213,11 @@ namespace WorkPartner
             AverageFocusScoreTextBlock.Text = overallAvgFocus.ToString("F1");
 
             // 집중도 점수 분포 (세로 막대 차트)
-            var localFocusDistributionSeries = new SeriesCollection();
+
+            // ▼▼▼ [수정 1] FocusDistributionSeries.Clear()를 삭제합니다. ▼▼▼
+            // FocusDistributionSeries.Clear(); // ◀◀ 이 줄 삭제 (충돌 원인)
+            // ▲▲▲
+
             var focusCounts = validLogs
                 .GroupBy(log => log.FocusScore)
                 .Select(g => new { Score = g.Key, Count = g.Count() })
@@ -213,14 +234,20 @@ namespace WorkPartner
                 distributionLabels.Add($"{score}점");
             }
 
-            localFocusDistributionSeries.Add(new ColumnSeries
+            // ▼▼▼ [수정 2] 새 컬렉션을 '만들어서' '교체'합니다. (Clear/Add 대신) ▼▼▼
+            var localFocusDistributionSeries = new SeriesCollection
             {
-                Title = "횟수",
-                Values = distributionValues,
-                DataLabels = true
-            });
-            // 속성 업데이트 (SetProperty 호출 -> UI 갱신)
-            FocusDistributionSeries = localFocusDistributionSeries;
+                new ColumnSeries
+                {
+                    Title = "횟수",
+                    Values = distributionValues,
+                    DataLabels = true
+                }
+            };
+
+            FocusDistributionSeries = localFocusDistributionSeries; // ◀◀ UI가 이 변경을 감지하고 새로 그림
+            // ▲▲▲
+
             FocusDistributionLabels = distributionLabels.ToArray();
 
             // 과목별 평균 집중도 (표)
@@ -240,7 +267,11 @@ namespace WorkPartner
         private void UpdateHourlyAnalysis() // 탭 3: 시간대별 분석 (집중도 라인, 학습 시간 막대)
         {
             // 시간대별 평균 집중도 (라인 차트)
-            var localHourAnalysisSeries = new SeriesCollection();
+
+            // ▼▼▼ [수정 1] HourAnalysisSeries.Clear()를 삭제합니다. ▼▼▼
+            // HourAnalysisSeries.Clear(); // ◀◀ 이 줄 삭제 (충돌 원인)
+            // ▲▲▲
+
             var hourlyFocus = _allTimeLogs
                 .Where(log => log.FocusScore > 0)
                 .GroupBy(log => log.StartTime.Hour)
@@ -258,18 +289,27 @@ namespace WorkPartner
                 labels.Add($"{i}시");
             }
 
-            localHourAnalysisSeries.Add(new LineSeries
+            // ▼▼▼ [수정 2] 새 컬렉션을 '만들어서' '교체'합니다. ▼▼▼
+            var localHourAnalysisSeries = new SeriesCollection
             {
-                Title = "평균 집중도",
-                Values = focusChartValues,
-                PointGeometry = null
-            });
-            // 속성 업데이트 (SetProperty 호출 -> UI 갱신)
-            HourAnalysisSeries = localHourAnalysisSeries;
-            HourLabels = labels.ToArray(); // 시간대별 학습 시간 차트와 Y축 레이블 공유
+                new LineSeries
+                {
+                    Title = "평균 집중도",
+                    Values = focusChartValues,
+                    PointGeometry = null
+                }
+            };
+            HourAnalysisSeries = localHourAnalysisSeries; // ◀◀ UI가 이 변경을 감지하고 새로 그림
+            // ▲▲▲
+
+            HourLabels = labels.ToArray();
 
             // 시간대별 총 학습 시간 (가로 막대 차트)
-            var localHourlyTimeSeries = new SeriesCollection();
+
+            // ▼▼▼ [수정 3] HourlyTimeSeries.Clear()를 삭제합니다. ▼▼▼
+            // HourlyTimeSeries.Clear(); // ◀◀ 이 줄 삭제 (충돌 원인)
+            // ▲▲▲
+
             var hourlyTime = _allTimeLogs
                 .GroupBy(log => log.StartTime.Hour)
                 .Select(g => new { Hour = g.Key, TotalMinutes = g.Sum(l => l.Duration.TotalMinutes) })
@@ -284,14 +324,18 @@ namespace WorkPartner
                 timeChartValues.Add(timeData?.TotalMinutes ?? 0);
             }
 
-            localHourlyTimeSeries.Add(new RowSeries
+            // ▼▼▼ [수정 4] 새 컬렉션을 '만들어서' '교체'합니다. ▼▼▼
+            var localHourlyTimeSeries = new SeriesCollection
             {
-                Title = "학습 시간(분)",
-                Values = timeChartValues,
-                DataLabels = true
-            });
-            // 속성 업데이트 (SetProperty 호출 -> UI 갱신)
-            HourlyTimeSeries = localHourlyTimeSeries;
+                new RowSeries
+                {
+                    Title = "학습 시간(분)",
+                    Values = timeChartValues,
+                    DataLabels = true
+                }
+            };
+            HourlyTimeSeries = localHourlyTimeSeries; // ◀◀ UI가 이 변경을 감지하고 새로 그림
+            // ▲▲▲
         }
 
         private void GenerateWorkRestPatternSuggestion() // AI 제안
