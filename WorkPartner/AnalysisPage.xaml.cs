@@ -12,6 +12,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using LiveCharts;
 using LiveCharts.Wpf;
+using System.Diagnostics; // 👈 Debug.WriteLine을 위해 필요합니다.
 using WorkPartner.AI; // PredictionService, ModelInput 등이 정의된 네임스페이스
 
 namespace WorkPartner
@@ -495,12 +496,37 @@ namespace WorkPartner
             try
             {
                 // 4. (백그라운드 실행) AI 모델 훈련
-                bool trainingSuccess = await Task.Run(() => _predictionService.TrainModel(_allTimeLogs));
+                bool trainingSuccess = false; // 👈 [추가]
+                Exception trainingException = null; // 👈 [추가]
+
+                await Task.Run(() =>
+                {
+                    try
+                    {
+                        // [수정] Task 내부에서 직접 try-catch 실행
+                        trainingSuccess = _predictionService.TrainModel(_allTimeLogs);
+                    }
+                    catch (Exception ex)
+                    {
+                        // [추가] Task 내부의 예외를 기록
+                        trainingException = ex;
+                        Debug.WriteLine($"[AnalysisPage Error] Exception inside Task.Run: {ex.Message}");
+                    }
+                });
+
+                // [추가] Task에서 잡힌 예외가 있다면, 상세히 출력
+                if (trainingException != null)
+                {
+                    Debug.WriteLine("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+                    Debug.WriteLine($"[AnalysisPage Error] Task.Run caught an exception from PredictionService:");
+                    Debug.WriteLine($"[Full Exception] {trainingException.ToString()}");
+                    Debug.WriteLine("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+                }
 
                 // 5. 훈련 결과 확인
                 if (!trainingSuccess)
                 {
-                    PredictionResultTextBlock.Text = "❌ 모델 훈련에 실패했습니다. (데이터 부족 등)";
+                    PredictionResultTextBlock.Text = "❌ 모델 훈련에 실패했습니다. (자세한 내용은 디버그 출력 확인)";
                     return;
                 }
 
@@ -519,7 +545,10 @@ namespace WorkPartner
             }
             catch (Exception ex)
             {
-                PredictionResultTextBlock.Text = $"예측 중 오류 발생: {ex.Message}";
+                // [수정] 여기는 예측 로직(Predict)에서 발생하는 예외
+                PredictionResultTextBlock.Text = $"❌ 예측 중 오류 발생: {ex.Message}";
+                Debug.WriteLine($"[AnalysisPage Error] Predict logic failed: {ex.Message}");
+                Debug.WriteLine($"[StackTrace] {ex.StackTrace}");
             }
             finally
             {

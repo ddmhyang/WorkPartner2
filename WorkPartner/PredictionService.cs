@@ -80,23 +80,40 @@ namespace WorkPartner.AI
         //          'FocusScore'를 'Label'로 복사하는 라인을 추가합니다.
         private IEstimator<ITransformer> BuildTrainingPipeline()
         {
-            // 1. 데이터를 변환하는 파이프라인 정의
-            var dataProcessPipeline = _mlContext.Transforms.Conversion.MapValueToKey(inputColumnName: nameof(ModelInput.TaskName), outputColumnName: "TaskNameFeaturized")
-                .Append(_mlContext.Transforms.Categorical.OneHotEncoding(inputColumnName: "TaskNameFeaturized", outputColumnName: "TaskNameEncoded"))
-                .Append(_mlContext.Transforms.Concatenate("Features", "TaskNameEncoded", nameof(ModelInput.DayOfWeek), nameof(ModelInput.Hour), nameof(ModelInput.Duration)))
+            try
+            {
+                // 1. 데이터를 변환하는 파이프라인 정의
+                var dataProcessPipeline = _mlContext.Transforms.Conversion.MapValueToKey(inputColumnName: nameof(ModelInput.TaskName), outputColumnName: "TaskNameFeaturized")
+                    .Append(_mlContext.Transforms.Categorical.OneHotEncoding(inputColumnName: "TaskNameFeaturized", outputColumnName: "TaskNameEncoded"))
+                    .Append(_mlContext.Transforms.Concatenate("Features", "TaskNameEncoded", nameof(ModelInput.DayOfWeek), nameof(ModelInput.Hour), nameof(ModelInput.Duration)));
 
-                // ▼▼▼ [이 줄을 추가하세요] ▼▼▼
-                // 'FocusScore'(정답)를 ML.NET이 인식하는 'Label'로 복사합니다.
-                .Append(_mlContext.Transforms.CopyColumns(outputColumnName: "Label", inputColumnName: nameof(ModelInput.FocusScore)));
-            // ▲▲▲ [여기까지 추가] ▲▲▲
+                // ▼▼▼ [이 줄을 삭제하세요!] ▼▼▼
+                // .Append(_mlContext.Transforms.CopyColumns(outputColumnName: "Label", inputColumnName: nameof(ModelInput.FocusScore)));
+                // ▲▲▲ [삭제 완료] ▲▲▲
 
-            // 2. 훈련 알고리즘 선택 (예: LightGbmRegression)
-            var trainer = _mlContext.Regression.Trainers.LightGbm(labelColumnName: "Label", featureColumnName: "Features");
+                // 2. 훈련 알고리즘 선택 (이제 "Label" 열을 바로 찾을 수 있습니다)
+                var trainer = _mlContext.Regression.Trainers.LightGbm(labelColumnName: "Label", featureColumnName: "Features");
 
-            // 3. 전체 파이프라인 결합
-            var trainingPipeline = dataProcessPipeline.Append(trainer);
+                // 3. 전체 파이프라인 결합
+                var trainingPipeline = dataProcessPipeline.Append(trainer);
 
-            return trainingPipeline;
+                return trainingPipeline;
+            }
+            catch (Exception ex)
+            {
+                // [추가] 파이프라인 빌드 실패 시 상세 로그
+                Debug.WriteLine("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+                Debug.WriteLine("[PredictionService Error] BuildTrainingPipeline Failed:");
+                Debug.WriteLine($"[Error Message] {ex.Message}");
+                Debug.WriteLine($"[StackTrace] {ex.StackTrace}");
+                // LightGbm 오류가 계속 발생한다면 NuGet 패키지가 올바르게 설치되었는지 확인하세요.
+                if (ex.ToString().Contains("LightGbm"))
+                {
+                    Debug.WriteLine("[Error Hint] 'LightGbm' 관련 오류입니다. Microsoft.ML.LightGbm NuGet 패키지가 설치되었는지 확인하세요.");
+                }
+                Debug.WriteLine("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+                throw; // 예외를 다시 던져서 TrainModel 메서드가 잡도록 함
+            }
         }
         // ▲▲▲ [수정 완료] ▲▲▲
 
@@ -142,34 +159,45 @@ namespace WorkPartner.AI
 
                 if (trainingData.Count < 10) // 훈련에 필요한 최소 데이터 수
                 {
-                    Debug.WriteLine("Not enough data to train model.");
+                    Debug.WriteLine("[PredictionService Info] Not enough data to train model (less than 10 entries with FocusScore).");
                     return false;
                 }
 
                 // 2. ML.NET 데이터 뷰로 변환
+                Debug.WriteLine("[PredictionService Info] Loading data into DataView...");
                 var dataView = _mlContext.Data.LoadFromEnumerable(trainingData);
 
                 // 3. 훈련 파이프라인 가져오기
-                var pipeline = BuildTrainingPipeline();
+                Debug.WriteLine("[PredictionService Info] Building training pipeline...");
+                var pipeline = BuildTrainingPipeline(); // 👈 여기서 오류가 발생하면 catch로 이동
+                if (pipeline == null) return false;
 
                 // 4. 모델 훈련
-                Debug.WriteLine("Starting model training...");
-                _model = pipeline.Fit(dataView);
-                Debug.WriteLine("Model training finished.");
+                Debug.WriteLine("[PredictionService Info] Starting model training...");
+                _model = pipeline.Fit(dataView); // 👈 여기서도 오류 발생 가능
+                Debug.WriteLine("[PredictionService Info] Model training finished.");
 
                 // 5. 훈련된 모델을 .zip 파일로 저장
                 _mlContext.Model.Save(_model, dataView.Schema, DataManager.UserModelFilePath);
-                Debug.WriteLine($"Model saved to {DataManager.UserModelFilePath}");
+                Debug.WriteLine($"[PredictionService Info] Model saved to {DataManager.UserModelFilePath}");
 
                 // 6. 훈련된 모델을 즉시 PredictionEngine에 반영
                 _predictionEngine = _mlContext.Model.CreatePredictionEngine<ModelInput, ModelOutput>(_model);
-                Debug.WriteLine("Prediction engine updated with new model.");
+                Debug.WriteLine("[PredictionService Info] Prediction engine updated with new model.");
 
                 return true;
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Error training model: {ex.Message}");
+                // [수정] 상세한 오류 메시지와 스택 트레이스 출력
+                Debug.WriteLine("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+                Debug.WriteLine($"[PredictionService Error] TrainModel Failed:");
+                Debug.WriteLine($"[Error Message] {ex.Message}");
+                Debug.WriteLine("---------------------------------------------------");
+                Debug.WriteLine($"[Full Exception] {ex.ToString()}");
+                Debug.WriteLine("---------------------------------------------------");
+                Debug.WriteLine($"[StackTrace] {ex.StackTrace}");
+                Debug.WriteLine("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
                 return false;
             }
         }
