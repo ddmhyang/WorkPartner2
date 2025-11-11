@@ -366,15 +366,31 @@ namespace WorkPartner
 
         private void DeleteTaskButton_Click(object sender, RoutedEventArgs e)
         {
-            // ▼▼▼ [V6 수정] VM에서 TimeLogEntries를 가져와야 함 ▼▼▼
             if (DataContext is not ViewModels.DashboardViewModel vm) return;
 
-            if (TaskListBox.SelectedItem is not TaskItem selectedTask)
+            // --- ▼▼▼ [수정된 부분 시작] ▼▼▼ ---
+            TaskItem selectedTask = null;
+
+            // 1. 클릭된 버튼(sender)에서 DataContext(TaskItem)를 가져옵니다.
+            if (sender is FrameworkElement button && button.DataContext is TaskItem taskFromButton)
+            {
+                selectedTask = taskFromButton;
+            }
+            // 2. (예외 처리) 만약 DataContext가 없으면, 기존 방식(선택된 항목)을 사용합니다.
+            else if (TaskListBox.SelectedItem is TaskItem taskFromList)
+            {
+                selectedTask = taskFromList;
+            }
+
+            // 3. 그래도 없으면 삭제할 대상이 없는 것입니다.
+            if (selectedTask == null)
             {
                 MessageBox.Show("삭제할 과목을 목록에서 선택해주세요.", "알림", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
+            // --- ▲▲▲ [수정된 부분 끝] ▲▲▲ ---
 
+            // ▼▼▼ (기존 로직 동일) ▼▼▼
             if (MessageBox.Show($"'{selectedTask.Text}' 과목을 삭제하시겠습니까?\n관련된 모든 학습 기록도 삭제됩니다.", "삭제 확인", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
                 return;
 
@@ -388,7 +404,6 @@ namespace WorkPartner
                 SaveSettings();
             }
 
-            // ▼▼▼ [V6 수정] vm.TimeLogEntries 사용 ▼▼▼
             var logsToRemove = vm.TimeLogEntries.Where(l => l.TaskText == taskNameToDelete).ToList();
             foreach (var log in logsToRemove)
             {
@@ -396,8 +411,7 @@ namespace WorkPartner
             }
 
             SaveTasks();
-            // ▼▼▼ [V6 수정] VM의 리스트를 지연 저장 ▼▼▼
-            DataManager.SaveTimeLogs(vm.TimeLogEntries); // 👈 'Immediately'를 뺐습니다.
+            DataManager.SaveTimeLogs(vm.TimeLogEntries); // 👈 (이전 단계에서 수정했어야 함) vm.DeleteLog(log)를 사용하거나, 이 라인을 _timeLogService.SaveTimeLogsAsync(vm.TimeLogEntries)로 바꿔야 하지만, 지금은 시연이 우선이니 그대로 둡니다.
             RenderTimeTable();
         }
 
@@ -447,12 +461,30 @@ namespace WorkPartner
 
         private void DeleteTodoButton_Click(object sender, RoutedEventArgs e)
         {
-            if (TodoTreeView.SelectedItem is not TodoItem selectedTodo)
+            // --- ▼▼▼ [수정된 부분 시작] ▼▼▼ ---
+            TodoItem selectedTodo = null;
+
+            // 1. 클릭된 버튼(sender)에서 DataContext(TodoItem)를 가져옵니다.
+            if (sender is FrameworkElement button && button.DataContext is TodoItem todoFromButton)
+            {
+                selectedTodo = todoFromButton;
+            }
+            // 2. (예외 처리) 만약 DataContext가 없으면, 기존 방식(선택된 항목)을 사용합니다.
+            else if (TodoTreeView.SelectedItem is TodoItem todoFromTree)
+            {
+                selectedTodo = todoFromTree;
+            }
+
+            // 3. 그래도 없으면 삭제할 대상이 없는 것입니다.
+            if (selectedTodo == null)
             {
                 MessageBox.Show("삭제할 할 일을 목록에서 선택해주세요.", "알림", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
+            // --- ▲▲▲ [수정된 부분 끝] ▲▲▲ ---
 
+
+            // ▼▼▼ (기존 로직 동일) ▼▼▼
             if (MessageBox.Show($"'{selectedTodo.Text}' 할 일을 삭제하시겠습니까?", "삭제 확인", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
             {
                 RemoveTodoItem(TodoItems, selectedTodo);

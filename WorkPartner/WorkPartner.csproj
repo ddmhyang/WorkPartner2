@@ -282,5 +282,14 @@
 	  <Folder Include="shaders\" />
 	</ItemGroup>
 
+	<ItemGroup>
+	  <Compile Update="CharacterDisplay.xaml.cs">
+	    <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+	  </Compile>
+	  <Compile Update="HslColorPicker.xaml.cs">
+	    <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+	  </Compile>
+	</ItemGroup>
+
 </Project>
 
