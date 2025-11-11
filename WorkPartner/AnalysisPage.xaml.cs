@@ -266,18 +266,23 @@ namespace WorkPartner
             }
 
             // ▼▼▼ [수정 2] 새 컬렉션을 '만들어서' '교체'합니다. (Clear/Add 대신) ▼▼▼
-            var localFocusDistributionSeries = new SeriesCollection
+
+            // 1. ColumnSeries 객체를 먼저 생성합니다.
+            var columnSeries = new ColumnSeries
             {
-                new ColumnSeries
-                {
-                    Title = "횟수",
-                    Values = distributionValues,
-                    DataLabels = true
-                }
+                Title = "횟수",
+                Values = distributionValues,
+                DataLabels = true
             };
 
+            // 2. [핵심] C# 코드로 'Fill' 속성을 'AccentColorBrush' 리소스에 동적으로 바인딩합니다.
+            columnSeries.SetResourceReference(Series.FillProperty, "AccentColorBrush");
+
+            // 3. 준비된 시리즈로 컬렉션을 만듭니다.
+            var localFocusDistributionSeries = new SeriesCollection { columnSeries };
+
             FocusDistributionSeries = localFocusDistributionSeries; // ◀◀ UI가 이 변경을 감지하고 새로 그림
-            // ▲▲▲
+            // ▲▲▲            // ▲▲▲
 
             FocusDistributionLabels = distributionLabels.ToArray();
 
@@ -321,17 +326,26 @@ namespace WorkPartner
             }
 
             // ▼▼▼ [수정 2] 새 컬렉션을 '만들어서' '교체'합니다. ▼▼▼
-            var localHourAnalysisSeries = new SeriesCollection
+
+            // 1. LineSeries 객체를 먼저 생성합니다.
+            var lineSeries = new LineSeries
             {
-                new LineSeries
-                {
-                    Title = "평균 집중도",
-                    Values = focusChartValues,
-                    PointGeometry = null
-                }
+                Title = "평균 집중도",
+                Values = focusChartValues,
+                PointGeometry = null
             };
+
+            // 2. [핵심] 'Stroke' (선 색상) 속성을 'AccentColorBrush' 리소스에 동적으로 바인딩합니다.
+            lineSeries.SetResourceReference(Series.StrokeProperty, "AccentColorBrush");
+
+            // (참고) 만약 라인 아래 영역도 채우고 싶다면 Fill 속성도 바인딩할 수 있습니다.
+            // lineSeries.SetResourceReference(Series.FillProperty, "AccentColorBrush");
+
+            // 3. 준비된 시리즈로 컬렉션을 만듭니다.
+            var localHourAnalysisSeries = new SeriesCollection { lineSeries };
+
             HourAnalysisSeries = localHourAnalysisSeries; // ◀◀ UI가 이 변경을 감지하고 새로 그림
-            // ▲▲▲
+            // ▲▲▲            // ▲▲▲
 
             HourLabels = labels.ToArray();
 
@@ -356,17 +370,24 @@ namespace WorkPartner
             }
 
             // ▼▼▼ [수정 4] 새 컬렉션을 '만들어서' '교체'합니다. ▼▼▼
-            var localHourlyTimeSeries = new SeriesCollection
+            // ▼▼▼ [수정 4] 새 컬렉션을 '만들어서' '교체'합니다. ▼▼▼
+
+            // 1. RowSeries 객체를 먼저 생성합니다.
+            var rowSeries = new RowSeries
             {
-                new RowSeries
-                {
-                    Title = "학습 시간(분)",
-                    Values = timeChartValues,
-                    DataLabels = true
-                }
+                Title = "학습 시간(분)",
+                Values = timeChartValues,
+                DataLabels = true
             };
+
+            // 2. [핵심] 'Fill' 속성을 'AccentColorBrush' 리소스에 동적으로 바인딩합니다.
+            rowSeries.SetResourceReference(Series.FillProperty, "AccentColorBrush");
+
+            // 3. 준비된 시리즈로 컬렉션을 만듭니다.
+            var localHourlyTimeSeries = new SeriesCollection { rowSeries };
+
             HourlyTimeSeries = localHourlyTimeSeries; // ◀◀ UI가 이 변경을 감지하고 새로 그림
-            // ▲▲▲
+            // ▲▲▲            // ▲▲▲
         }
 
         private void GenerateWorkRestPatternSuggestion() // AI 제안
