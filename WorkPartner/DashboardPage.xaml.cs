@@ -464,11 +464,15 @@ namespace WorkPartner
 
         private void MemoButton_Click(object sender, RoutedEventArgs e)
         {
+            if (ViewModel == null) return; // '두뇌'가 없으면 중지
+
             if (_memoWindow == null || !_memoWindow.IsVisible)
             {
-                _memoWindow = new MemoWindow { Owner = Window.GetWindow(this) };
+                // ▼▼▼ [수정] 생성자에 '두뇌'(ViewModel)를 전달 ▼▼▼
+                _memoWindow = new MemoWindow(ViewModel) { Owner = Window.GetWindow(this) };
                 _memoWindow.Show();
             }
+
             else
             {
                 _memoWindow.Activate();
@@ -1066,7 +1070,11 @@ namespace WorkPartner
 
         private void PinnedMemo_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            var memoWindow = new MemoWindow { Owner = Window.GetWindow(this) };
+            if (ViewModel == null) return; // '두뇌'가 없으면 중지
+
+            // ▼▼▼ [수정] 생성자에 '두뇌'(ViewModel)를 전달 ▼▼▼
+            var memoWindow = new MemoWindow(ViewModel) { Owner = Window.GetWindow(this) };
+
             memoWindow.Closed += (s, args) => UpdatePinnedMemoView();
             memoWindow.ShowDialog();
         }

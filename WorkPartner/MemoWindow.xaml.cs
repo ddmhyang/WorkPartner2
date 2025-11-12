@@ -1,8 +1,7 @@
-﻿using System;
+﻿// 파일: MemoWindow.xaml.cs (전체 교체)
+using System;
 using System.Collections.ObjectModel;
-using System.IO;
 using System.Linq;
-using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 
@@ -10,102 +9,99 @@ namespace WorkPartner
 {
     public partial class MemoWindow : Window
     {
-        private readonly string _memosFilePath = DataManager.MemosFilePath;
-        public ObservableCollection<MemoItem> AllMemos { get; set; }
+        // 1. '두뇌' ViewModel을 저장할 변수
+        private readonly ViewModels.DashboardViewModel _viewModel;
 
-        public MemoWindow()
+        // 2. [수정] 생성자가 '두뇌' ViewModel을 전달받도록 변경
+        public MemoWindow(ViewModels.DashboardViewModel viewModel)
         {
             InitializeComponent();
-            LoadMemos();
-            MemoListBox.ItemsSource = AllMemos;
+
+            _viewModel = viewModel; // 전달받은 '두뇌' 저장
+
+            // 3. [수정] '두뇌'의 AllMemos 컬렉션을 ListBox에 바로 연결
+            MemoListBox.ItemsSource = _viewModel.AllMemos;
+
+            // 4. [삭제] LoadMemos()는 '두뇌'가 이미 처리했으므로 삭제
+            //    Loaded += (s, e) => LoadMemos();
+
+            // 5. [수정] 텍스트가 바뀔 때마다 저장하는 대신, 창이 닫힐 때만 저장
+            this.Closing += Window_Closing;
         }
 
-        private void LoadMemos()
+        // 8. [수정] NewMemoButton_Click (사용자님이 알려주신 정확한 이름)
+        private void NewMemoButton_Click(object sender, RoutedEventArgs e)
         {
-            if (File.Exists(_memosFilePath))
-            {
-                var json = File.ReadAllText(_memosFilePath);
-                AllMemos = JsonSerializer.Deserialize<ObservableCollection<MemoItem>>(json) ?? new ObservableCollection<MemoItem>();
-            }
-            else
-            {
-                AllMemos = new ObservableCollection<MemoItem>();
-            }
+            var newMemo = new MemoItem();
+
+            // '두뇌'의 리스트에 추가
+            _viewModel.AllMemos.Add(newMemo);
+
+            MemoListBox.SelectedItem = newMemo;
+            MemoContentTextBox.Focus(); // (이름 수정)
         }
 
-        private void SaveMemos()
+        // 9. [수정] DeleteMemoButton_Click
+        private void DeleteMemoButton_Click(object sender, RoutedEventArgs e)
         {
-            var options = new JsonSerializerOptions { WriteIndented = true, Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
-            var json = JsonSerializer.Serialize(AllMemos, options);
-            File.WriteAllText(_memosFilePath, json);
-        }
-
-        private void MemoListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            if (MemoListBox.SelectedItem is MemoItem selectedMemo)
+            if (MemoListBox.SelectedItem is MemoItem memo)
             {
-                EditorPanel.IsEnabled = true;
-                MemoContentTextBox.Text = selectedMemo.Content;
-                PinCheckBox.IsChecked = selectedMemo.IsPinned;
-            }
-            else
-            {
-                EditorPanel.IsEnabled = false;
-                MemoContentTextBox.Text = "";
-                PinCheckBox.IsChecked = false;
+                // '두뇌'의 리스트에서 삭제
+                _viewModel.AllMemos.Remove(memo);
             }
         }
 
+        // 10. [수정] MemoContentTextBox_TextChanged (사용자님이 알려주신 정확한 이름)
         private void MemoContentTextBox_TextChanged(object sender, TextChangedEventArgs e)
         {
-            if (MemoListBox.SelectedItem is MemoItem selectedMemo)
-            {
-                selectedMemo.Content = MemoContentTextBox.Text;
-            }
+            // 텍스트가 변경될 때마다 저장하던 로직을 삭제 (성능 향상)
+            // SaveMemos(); // 👈 [삭제]
         }
 
+        // 11. [수정] 핀 고정 로직
         private void PinCheckBox_Click(object sender, RoutedEventArgs e)
         {
             if (MemoListBox.SelectedItem is MemoItem selectedMemo)
             {
-                bool isNowPinned = PinCheckBox.IsChecked ?? false;
+                // 핀 상태 토글
+                selectedMemo.IsPinned = !selectedMemo.IsPinned;
 
-                // 모든 메모의 고정 상태를 해제
-                foreach (var memo in AllMemos)
+                // 다른 모든 메모의 핀 상태는 false로 변경
+                foreach (var memo in _viewModel.AllMemos.Where(m => m != selectedMemo))
                 {
                     memo.IsPinned = false;
                 }
 
-                // 현재 선택된 메모만 고정 (체크된 경우)
-                selectedMemo.IsPinned = isNowPinned;
-
-                // UI 즉시 새로고침
-                MemoListBox.Items.Refresh();
+                // (UI 갱신은 MemoItem의 INotifyPropertyChanged가 처리할 것입니다)
+                // (저장은 창이 닫힐 때 한꺼번에 처리)
             }
         }
 
-        private void NewMemoButton_Click(object sender, RoutedEventArgs e)
-        {
-            var newMemo = new MemoItem { Content = "새 메모" };
-            AllMemos.Insert(0, newMemo);
-            MemoListBox.SelectedItem = newMemo;
-            MemoContentTextBox.Focus();
-        }
-
-        private void DeleteMemoButton_Click(object sender, RoutedEventArgs e)
-        {
-            if (MemoListBox.SelectedItem is MemoItem selectedMemo)
-            {
-                if (MessageBox.Show("메모를 삭제하시겠습니까?", "확인", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
-                {
-                    AllMemos.Remove(selectedMemo);
-                }
-            }
-        }
-
+        // 12. [수정] 닫힐 때 '두뇌'를 통해 저장
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
-            SaveMemos();
+            // '두뇌'에게 메모 저장을 요청
+            _viewModel?.SaveMemos();
+        }
+        // 파일: MemoWindow.xaml.cs
+
+        // ▼▼▼ [CS0103 오류 해결] 이 메서드 전체를 교체하세요 ▼▼▼
+        private void MemoListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (MemoListBox.SelectedItem is MemoItem memo)
+            {
+                // 1. [수정] MemoContentGrid -> EditorPanel (XAML 이름)
+                EditorPanel.DataContext = memo;
+                // 2. [추가] 메모가 선택되면 에디터 패널을 활성화
+                EditorPanel.IsEnabled = true;
+            }
+            else
+            {
+                // 1. [수정] MemoContentGrid -> EditorPanel (XAML 이름)
+                EditorPanel.DataContext = null;
+                // 2. [추가] 선택된 메모가 없으면 비활성화
+                EditorPanel.IsEnabled = false;
+            }
         }
     }
 }

@@ -204,7 +204,21 @@ namespace WorkPartner
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Error saving {Path.GetFileName(TimeLogFilePath)}: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Error saving SaveMemos{Path.GetFileName(TimeLogFilePath)}: {ex.Message}");
+            }
+        }
+
+        public static void SaveMemos(IEnumerable<MemoItem> memos)
+        {
+            // 메모는 지연 저장(Debounce) 대신 즉시 저장하는 것이 안전합니다.
+            try
+            {
+                string json = JsonSerializer.Serialize(memos, JsonOptions);
+                File.WriteAllText(MemosFilePath, json);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error saving {Path.GetFileName(MemosFilePath)}: {ex.Message}");
             }
         }
     }

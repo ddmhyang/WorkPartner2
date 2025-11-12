@@ -857,5 +857,12 @@ namespace WorkPartner.ViewModels
             // 3. '두뇌'의 저장 메서드를 호출합니다. (이전 단계에서 만듦)
             SaveTodos();
         }
+
+        public void SaveMemos()
+        {
+            // '두뇌'가 직접 DataManager를 호출해 저장합니다.
+            // (IMemoService가 없으므로 임시로 이 방식을 사용)
+            DataManager.SaveMemos(AllMemos);
+        }
     }
 }
