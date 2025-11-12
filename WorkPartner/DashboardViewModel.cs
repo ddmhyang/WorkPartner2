@@ -29,6 +29,7 @@ namespace WorkPartner.ViewModels
 
         private readonly Stopwatch _stopwatch;
         private AppSettings _settings;
+        public AppSettings Settings => _settings; // '얼굴'이 _settings를 읽을 수 있게 공개
 
         private bool _isInGracePeriod = false;
         private DateTime _gracePeriodStartTime;
@@ -172,6 +173,12 @@ namespace WorkPartner.ViewModels
                 });
             }
             catch (Exception ex) { Debug.WriteLine($"Error loading todos: {ex.Message}"); }
+        }
+
+        public void SaveSettings()
+        {
+            // '두뇌'가 가진 서비스(_settingsService)를 이용해 저장합니다.
+            _settingsService.SaveSettings(_settings);
         }
 
         public void SaveTodos()
