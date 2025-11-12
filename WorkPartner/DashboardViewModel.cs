@@ -31,6 +31,28 @@ namespace WorkPartner.ViewModels
         private AppSettings _settings;
         public AppSettings Settings => _settings; // '얼굴'이 _settings를 읽을 수 있게 공개
 
+        // ▼▼▼ [수정] 이 속성들을 추가합니다. ▼▼▼
+
+        private string _mainTimeDisplay = "00:00:00";
+        /// <summary>
+        /// 메인 타이머에 표시될 시간 (00:00:00)
+        /// </summary>
+        public string MainTimeDisplay
+        {
+            get => _mainTimeDisplay;
+            set { _mainTimeDisplay = value; OnPropertyChanged(); }
+        }
+
+        private string _totalTimeTodayDisplayText = "이날의 총 학습 시간: 0시간 0분";
+        /// <summary>
+        /// "이날의 총 학습 시간: X시간 X분"
+        /// </summary>
+        public string TotalTimeTodayDisplayText
+        {
+            get => _totalTimeTodayDisplayText;
+            set { _totalTimeTodayDisplayText = value; OnPropertyChanged(); }
+        }
+
         private bool _isInGracePeriod = false;
         private DateTime _gracePeriodStartTime;
         private const int GracePeriodSeconds = 120; // 👈 2분(120초)간의 유예 시간 (이 시간은 조절 가능)
@@ -58,20 +80,6 @@ namespace WorkPartner.ViewModels
         #endregion
 
         #region --- UI와 바인딩될 속성 ---
-
-        private string _mainTimeDisplayText = "00:00:00";
-        public string MainTimeDisplayText
-        {
-            get => _mainTimeDisplayText;
-            set => SetProperty(ref _mainTimeDisplayText, value);
-        }
-
-        public string _totalTimeTodayDisplayText = "오늘의 작업 시간 | 00:00:00";
-        public string TotalTimeTodayDisplayText
-        {
-            get => _totalTimeTodayDisplayText;
-            set => SetProperty(ref _totalTimeTodayDisplayText, value);
-        }
 
         private string _currentTaskDisplayText = "없음";
         public string CurrentTaskDisplayText
@@ -109,7 +117,7 @@ namespace WorkPartner.ViewModels
             _stopwatch = new Stopwatch();
             TaskItems = new ObservableCollection<TaskItem>();
             TimeLogEntries = new ObservableCollection<TimeLogEntry>();
-
+            TimeLogEntries.CollectionChanged += OnTimeLogEntriesChanged;
             TodoItems = new ObservableCollection<TodoItem>();
             AllMemos = new ObservableCollection<MemoItem>();
 
@@ -245,20 +253,24 @@ namespace WorkPartner.ViewModels
                 .ToDictionary(g => g.Key, g => new TimeSpan(g.Sum(l => l.Duration.Ticks)));
         }
 
+        // 파일: DashboardViewModel.cs
+
         private void OnSelectedTaskChanged(TaskItem newSelectedTask)
         {
-            CurrentTaskDisplayText = newSelectedTask?.Text ?? "없음";
+            CurrentTaskDisplayText = newSelectedTask?.Text ?? "과목 없음";
             CurrentTaskChanged?.Invoke(CurrentTaskDisplayText);
-            UpdateLiveTimeDisplays();
 
-            if (_currentWorkingTask != newSelectedTask)
+            // [수정 전]
+            // if (!IsRunning && newSelectedTask != null) // 👈 CS0103 오류 발생 지점
+            // {
+            //     MainTimeDisplay = newSelectedTask.TotalTime.ToString(@"hh\:mm\:ss");
+            // }
+
+            // ▼▼▼ [수정 후] ▼▼▼
+            // 스톱워치가 멈춰있고, '유예 기간'도 아닐 때만 시간을 갱신합니다.
+            if (!_stopwatch.IsRunning && !_isInGracePeriod && newSelectedTask != null)
             {
-                if (_stopwatch.IsRunning)
-                {
-                    LogWorkSession();
-                    // _stopwatch.Reset(); // ◀ LogWorkSession에서 Reset하므로 여기서 제거
-                }
-                _currentWorkingTask = newSelectedTask;
+                MainTimeDisplay = newSelectedTask.TotalTime.ToString(@"hh\:mm\:ss");
             }
         }
 
@@ -436,56 +448,23 @@ namespace WorkPartner.ViewModels
             DataManager.SaveTimeLogsImmediately(TimeLogEntries);
         }
 
+        // 파일: DashboardViewModel.cs (약 445줄)
+
+        // ▼▼▼ 이 메서드 전체를 교체하세요 ▼▼▼
         private void UpdateLiveTimeDisplays()
         {
-            var totalTimeToday = _totalTimeTodayFromLogs;
-            // (이전 수정) 스톱워치가 실행 중이거나, 유예 기간 중일 때
-            if (_stopwatch.IsRunning || _isInGracePeriod)
-            {
-                totalTimeToday += _stopwatch.Elapsed;
-            }
-            TotalTimeTodayDisplayText = $"오늘의 작업 시간 | {totalTimeToday:hh\\:mm\\:ss}";
+            if (_currentWorkingTask == null) return;
 
-            var timeForSelectedTask = TimeSpan.Zero;
-            if (SelectedTaskItem != null && _dailyTaskTotals.TryGetValue(SelectedTaskItem.Text, out var storedTime))
-            {
-                timeForSelectedTask = storedTime;
-            }
+            TimeSpan elapsed = _stopwatch.Elapsed;
+            // '두뇌'의 리스트에서 현재 과목의 총 시간을 다시 계산 (오늘 날짜 기준)
+            TimeSpan totalTime = _currentWorkingTask.TotalTime + elapsed;
 
-            // (이전 수정) 스톱워치가 실행 중이거나 유예 기간 중이고 + 현재 선택된 과목일 때
-            if ((_stopwatch.IsRunning || _isInGracePeriod) && _currentWorkingTask == SelectedTaskItem)
-            {
-                timeForSelectedTask += _stopwatch.Elapsed;
-            }
+            // 1. [수정] MainTimeDisplay 속성을 업데이트 (UI가 자동으로 갱신됨)
+            MainTimeDisplay = totalTime.ToString(@"hh\:mm\:ss");
 
-            string newTime = timeForSelectedTask.ToString(@"hh\:mm\:ss");
-            MainTimeDisplayText = newTime;
-
-            TimeUpdated?.Invoke(newTime);
-
-
-            // ▼▼▼ [이 코드 블록을 여기에 추가하세요] ▼▼▼
-            // (1초마다 모든 과목 목록의 시간을 실시간으로 업데이트)
-            foreach (var task in TaskItems)
-            {
-                // 1. 저장된 로그에서 기본 시간 가져오기
-                TimeSpan taskTotalTime = TimeSpan.Zero;
-                if (_dailyTaskTotals.TryGetValue(task.Text, out var storedTaskTime))
-                {
-                    taskTotalTime = storedTaskTime;
-                }
-
-                // 2. 이 과목이 현재 실행 중인 과목이라면, 실시간 스톱워치 시간을 더하기
-                if ((_stopwatch.IsRunning || _isInGracePeriod) && _currentWorkingTask == task)
-                {
-                    taskTotalTime += _stopwatch.Elapsed;
-                }
-
-                // 3. TaskItem의 TotalTime 속성을 업데이트합니다.
-                //    (이 속성이 변경되면 TaskItem.cs가 자동으로 UI를 갱신합니다)
-                task.TotalTime = taskTotalTime;
-            }
-            // ▲▲▲ [여기까지 추가] ▲▲▲
+            // 2. [수정] 'TimeUpdated' 이벤트는 미니 타이머를 위해서만 호출
+            //    (DashboardPage가 이 이벤트를 받을 필요가 없어짐)
+            TimeUpdated?.Invoke(MainTimeDisplay);
         }
 
         #region --- Public CRUD Methods for Page ---
@@ -568,7 +547,94 @@ namespace WorkPartner.ViewModels
         #endregion
 
         #region --- INotifyPropertyChanged 구현 ---
+
+        /// <summary>
+        /// '두뇌'의 시간 기록 목록이 변경될 때마다 호출됩니다.
+        /// </summary>
+        private void OnTimeLogEntriesChanged(object sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+        {
+            // 날짜와 관계없이 '모든' 과목의 총 시간을 다시 계산합니다.
+            // (이 로직은 AnalysisPage에서도 사용되므로 포괄적이어야 함)
+            RecalculateTaskTotals();
+
+            // 오늘 날짜의 대시보드 요약 텍스트를 갱신합니다.
+            RecalculateTodaySummary(DateTime.Today);
+        }
+
+        /// <summary>
+        /// 모든 과목의 'TotalTime' 속성을 TimeLogEntries 기준으로 다시 계산합니다.
+        /// </summary>
+        public void RecalculateTaskTotals()
+        {
+            var allLogsByTask = TimeLogEntries.GroupBy(log => log.TaskText);
+
+            foreach (var task in TaskItems)
+            {
+                var taskLogs = allLogsByTask.FirstOrDefault(g => g.Key == task.Text);
+                if (taskLogs != null)
+                {
+                    task.TotalTime = new TimeSpan(taskLogs.Sum(log => log.Duration.Ticks));
+                }
+                else
+                {
+                    task.TotalTime = TimeSpan.Zero;
+                }
+            }
+        }
+
+        /// <summary>
+        /// 특정 날짜의 '총 학습 시간' 요약 텍스트를 갱신합니다.
+        /// </summary>
+        // 파일: DashboardViewModel.cs (약 780줄)
+
+        /// <summary>
+        /// 특정 날짜의 '총 학습 시간' 요약 텍스트를 갱신합니다.
+        /// </summary>
+        public void RecalculateTodaySummary(DateTime date)
+        {
+            var todayLogs = TimeLogEntries
+                .Where(log => log.StartTime.Date == date.Date);
+
+            var totalTimeToday = new TimeSpan(todayLogs.Sum(log => log.Duration.Ticks));
+
+            TotalTimeTodayDisplayText = $"이날의 총 학습 시간: {(int)totalTimeToday.TotalHours}시간 {totalTimeToday.Minutes}분";
+
+            // ▼▼▼ [핵심 수정] 이 블록을 추가하세요! ▼▼▼
+            // (날짜가 바뀌었으니, TaskItem 목록의 시간도 이 날짜 기준으로 새로고침합니다)
+            var logsByTask = todayLogs.GroupBy(log => log.TaskText);
+            foreach (var task in TaskItems)
+            {
+                var taskLogs = logsByTask.FirstOrDefault(g => g.Key == task.Text);
+                if (taskLogs != null)
+                {
+                    // 'TotalTime' 속성을 업데이트합니다 (UI가 자동으로 갱신됨)
+                    task.TotalTime = new TimeSpan(taskLogs.Sum(log => log.Duration.Ticks));
+                }
+                else
+                {
+                    task.TotalTime = TimeSpan.Zero;
+                }
+            }
+
+            // ▼▼▼ [추가] 선택된 과목의 메인 타이머 시간도 갱신합니다 ▼▼▼
+            if (SelectedTaskItem != null)
+            {
+                OnSelectedTaskChanged(SelectedTaskItem);
+            }
+            else
+            {
+                MainTimeDisplay = "00:00:00"; // 선택된 과목이 없으면 0으로 리셋
+            }
+            // ▲▲▲ [수정 완료] ▲▲▲
+        }
+
+        // ▼▼▼ [추가] PropertyChanged 이벤트 핸들러 (이미 있다면 추가 X) ▼▼▼
         public event PropertyChangedEventHandler PropertyChanged;
+        protected void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+
         protected bool SetProperty<T>(ref T field, T newValue, [CallerMemberName] string propertyName = null)
         {
             if (Equals(field, newValue)) return false;
@@ -672,11 +738,16 @@ namespace WorkPartner.ViewModels
                 _settingsService.SaveSettings(_settings);
             }
 
-            // 4. 과목 객체 자체의 이름 변경 (INotifyPropertyChanged가 UI 갱신)
             taskToUpdate.Text = newName;
 
-            // 5. '두뇌'의 과목 리스트를 파일에 저장 (지난 단계에서 만든 메서드)
+            // 5. 과목 리스트를 파일에 저장
             SaveTasks();
+
+            // ▼▼▼ [수정] 이 2줄을 추가하세요! ▼▼▼
+            // 6. 변경된 로그를 기준으로 모든 시간 계산을 수동으로 다시 실행합니다.
+            RecalculateTaskTotals(); // 과목 목록(TaskListBox) 갱신
+            RecalculateTodaySummary(DateTime.Today); // "이날의 총 학습 시간" 갱신
+                                                     // ▲▲▲ [추가 완료] ▲▲▲
 
             return true;
         }

@@ -888,14 +888,21 @@ namespace WorkPartner
             }
         }
 
+        // 파일: DashboardPage.xaml.cs (약 964줄)
+
         private void UpdateDateAndUI()
         {
             CurrentDateDisplay.Text = _currentDateForTimeline.ToString("yyyy-MM-dd");
-
             CurrentDayDisplay.Text = _currentDateForTimeline.ToString("ddd");
 
             RenderTimeTable();
-            RecalculateAllTotals();
+
+            // ▼▼▼ [삭제] '얼굴'이 직접 계산하지 않음 ▼▼▼
+            // RecalculateAllTotals();
+
+            // ▼▼▼ [추가] '두뇌'에게 날짜가 바뀌었으니 '오늘의 총 학습 시간'을 다시 계산하라고 알림 ▼▼▼
+            ViewModel?.RecalculateTodaySummary(_currentDateForTimeline);
+
             FilterTodos();
         }
 
@@ -1217,62 +1224,73 @@ namespace WorkPartner
             e.Handled = true;
         }
 
-        // (약 1137줄 근처)
+        // 파일: DashboardPage.xaml.cs
+
+        // ▼▼▼ 이 메서드 전체를 교체하세요 ▼▼▼
         private void DashboardPage_DataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
         {
+            // --- 1. 이전 '두뇌'와의 연결 해제 ---
             if (e.OldValue is ViewModels.DashboardViewModel oldVm)
             {
+                // 이벤트 구독 해제
                 oldVm.TimeUpdated -= OnViewModelTimeUpdated;
                 oldVm.TimerStoppedAndSaved -= OnViewModelTimerStopped;
                 oldVm.CurrentTaskChanged -= OnViewModelTaskChanged;
-                oldVm.PropertyChanged -= OnViewModelPropertyChanged; // ◀◀ [이 줄 추가]
                 oldVm.PropertyChanged -= OnViewModelPropertyChanged;
 
-                // ▼▼▼ [추가] '할 일' 목록 이벤트 구독 해제 ▼▼▼
+                // 컬렉션 구독 해제
                 if (oldVm.TodoItems != null)
                 {
                     oldVm.TodoItems.CollectionChanged -= TodoItems_CollectionChanged;
                 }
-
-                // ▼▼▼ [추가] '시간 기록' 목록 이벤트 구독 해제 ▼▼▼
+                // ▼ [추가] 시간 기록 구독 해제
                 if (oldVm.TimeLogEntries != null)
                 {
                     oldVm.TimeLogEntries.CollectionChanged -= TimeLogEntries_CollectionChanged;
                 }
-
+                // ▼ [추가] 메모 구독 해제
                 if (oldVm.AllMemos != null)
                 {
                     oldVm.AllMemos.CollectionChanged -= Memos_CollectionChanged;
                 }
             }
+
+            // --- 2. 새로운 '두뇌'와의 연결 ---
             if (e.NewValue is ViewModels.DashboardViewModel newVm)
             {
+                // 이벤트 구독
                 newVm.TimeUpdated += OnViewModelTimeUpdated;
                 newVm.TimerStoppedAndSaved += OnViewModelTimerStopped;
                 newVm.CurrentTaskChanged += OnViewModelTaskChanged;
-                newVm.PropertyChanged += OnViewModelPropertyChanged; // ◀◀ [이 줄 추가]
+                newVm.PropertyChanged += OnViewModelPropertyChanged;
 
+                // 컬렉션 구독
                 if (newVm.TodoItems != null)
                 {
                     newVm.TodoItems.CollectionChanged += TodoItems_CollectionChanged;
                 }
-
+                // ▼ [추가] 시간 기록 구독
                 if (newVm.TimeLogEntries != null)
                 {
                     newVm.TimeLogEntries.CollectionChanged += TimeLogEntries_CollectionChanged;
                 }
-                // ▲▲▲ [추가 완료] ▲▲▲
-
+                // ▼ [추가] 메모 구독
                 if (newVm.AllMemos != null)
                 {
                     newVm.AllMemos.CollectionChanged += Memos_CollectionChanged;
                 }
+
+                // --- 3. UI 설정 및 초기 갱신 ---
                 TaskListBox.ItemsSource = newVm.TaskItems;
-                // ▲▲▲ [여기까지 추가] ▲▲▲
-                RecalculateAllTotals();
+
+                // '두뇌'가 연결되었으니, '얼굴'의 모든 UI를 즉시 갱신합니다.
+                // (이 메서드들은 이제 '두뇌'의 데이터를 참조하여 화면을 그립니다)
                 RenderTimeTable();
                 UpdateCharacterInfoPanel();
-                FilterTodos(); // '두뇌'가 연결되었으니, '할 일' 목록을 즉시 필터링합니다.
+                FilterTodos();
+
+                // '두뇌'에게 현재 날짜의 요약 계산을 요청합니다.
+                newVm.RecalculateTodaySummary(_currentDateForTimeline);
             }
         }
 
@@ -1286,13 +1304,14 @@ namespace WorkPartner
         }
 
 
+        // 파일: DashboardPage.xaml.cs (약 1284줄)
+
         private void TimeLogEntries_CollectionChanged(object sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
         {
-            // '두뇌'의 시간 기록이 바뀌었으니, '얼굴'의 타임라인과 계산을 모두 새로고침합니다.
-            // (UI 스레드에서 실행되도록 보장합니다.)
             Dispatcher.Invoke(() =>
             {
-                RecalculateAllTotals();
+                // ▼▼▼ [삭제] '두뇌'가 스스로 계산하므로 이 줄 삭제 ▼▼▼
+                // RecalculateAllTotals(); 
                 RenderTimeTable();
             });
         }
@@ -1319,23 +1338,26 @@ namespace WorkPartner
         // 파일: DashboardPage.xaml.cs
         // 메서드: OnViewModelTimeUpdated (약 1157줄 근처)
 
+        // 파일: DashboardPage.xaml.cs (약 1157줄)
+
+        // ▼▼▼ 이 메서드 전체를 교체하세요 ▼▼▼
         private void OnViewModelTimeUpdated(string newTime)
         {
+            // '얼굴'은 이제 미니 타이머 업데이트만 신경 씁니다.
+            // (메인 타이머는 XAML 바인딩이 알아서 갱신합니다.)
             if (_miniTimer != null && _miniTimer.IsVisible)
             {
-                // '두뇌'의 설정이 준비되었는지 확인하고, '두뇌'의 설정을 전달합니다.
                 if (ViewModel?.Settings == null) return;
                 _miniTimer.UpdateData(ViewModel.Settings, CurrentTaskDisplay.Text, newTime);
             }
 
-            // 2. 메인 타이머 업데이트 (이 코드는 그대로 둡니다)
+            // '오늘 날짜가 아니면 UI 갱신 안 함' 로직도
+            // '두뇌'가 담당해야 하지만, 일단은 남겨둡니다.
             if (_currentDateForTimeline.Date != DateTime.Today.Date) return;
 
-            Dispatcher.Invoke(() =>
-            {
-                MainTimeDisplay.Text = newTime;
-            });
+            // ▼▼▼ [삭제] Dispatcher.Invoke(...)로 MainTimeDisplay.Text를 설정하던 코드 삭제 ▼▼▼
         }
+
         private void OnViewModelPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
             // 오늘 날짜가 아니면 VM 업데이트 무시
@@ -1354,22 +1376,20 @@ namespace WorkPartner
             }
         }
 
+        // 파일: DashboardPage.xaml.cs (약 1190줄)
+
+        // ▼▼▼ 이 메서드 전체를 교체하세요 ▼▼▼
         private void OnViewModelTaskChanged(string newTaskName)
         {
-            // 1. 메인 과목 텍스트(CurrentTaskDisplay)는 "항상" ViewModel의 값을 따릅니다.
-            Dispatcher.Invoke(() =>
-            {
-                CurrentTaskDisplay.Text = newTaskName;
-            });
+            // '얼굴'의 메인 과목 텍스트(CurrentTaskDisplay)는 XAML 바인딩이 처리합니다.
 
-            // 2. 메인 대시보드 UI(TaskListBox)는 "오늘 날짜를 볼 때만" 동기화합니다.
+            // '오늘 날짜가 아니면 UI 갱신 안 함' 로직만 남겨둡니다.
             if (_currentDateForTimeline.Date != DateTime.Today.Date) return;
 
             Dispatcher.Invoke(() =>
             {
-                // ▼▼▼ [수정] '얼굴'의 TaskItems 대신 '두뇌'의 ViewModel.TaskItems를 사용 ▼▼▼
+                // '두뇌'가 선택한 과목을 '얼굴'의 TaskListBox에서도 선택해줍니다.
                 var foundTask = ViewModel.TaskItems.FirstOrDefault(t => t.Text == newTaskName);
-
                 if (foundTask != null && TaskListBox.SelectedItem != foundTask)
                 {
                     TaskListBox.SelectedItem = foundTask;
