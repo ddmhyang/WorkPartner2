@@ -292,8 +292,10 @@ Canvas.Top="12" Content=" 집중도 평가 " Height="17" Width="60" FontSize="8"
                                             <TextBlock Text="{Binding Text}" VerticalAlignment="Center" Foreground="{DynamicResource PrimaryTextBrush}" FontSize="12"/>
                                         </StackPanel>
 
-                                        <Button Content="✏️" FontSize="8" Background="Transparent"  Foreground="{DynamicResource PrimaryTextBrush}"  BorderBrush="Transparent" VerticalAlignment="Center" Click="EditTodoButton_Click"/>
-                                        <Button Grid.Column="1" Content="×" FontSize="8" Background="Transparent" Foreground="{DynamicResource PrimaryTextBrush}" BorderBrush="Transparent" VerticalAlignment="Center" Click="DeleteTodoButton_Click"/>
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                            <Button Content="✏️" FontSize="10" Background="Transparent"  Foreground="{DynamicResource PrimaryTextBrush}" Margin="0,0,5,0" BorderBrush="Transparent" VerticalAlignment="Center" Click="EditTodoButton_Click"/>
+                                            <Button Content="×" FontSize="8" Background="Transparent" Foreground="{DynamicResource PrimaryTextBrush}" BorderBrush="Transparent" VerticalAlignment="Center" Click="DeleteTodoButton_Click"/>
+                                        </StackPanel>
                                     </Grid>
                                 </Border>
                             </DataTemplate>

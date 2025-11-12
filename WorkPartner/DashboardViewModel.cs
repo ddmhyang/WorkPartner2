@@ -778,5 +778,84 @@ namespace WorkPartner.ViewModels
                 Debug.WriteLine($"[Error] GrantExperience Failed: {ex.Message}");
             }
         }
+
+        // 파일: DashboardViewModel.cs
+
+        /// <summary>
+        /// '두뇌'가 '할 일' 삭제 로직을 처리합니다.
+        /// </summary>
+        public void DeleteTodo(TodoItem todoToDelete)
+        {
+            if (todoToDelete == null) return;
+
+            // 1. '두뇌'의 TodoItems 리스트(및 하위 리스트)에서 제거
+            RemoveTodoItem(this.TodoItems, todoToDelete);
+
+            // 2. '두뇌'의 저장 메서드를 호출
+            SaveTodos();
+        }
+
+        /// <summary>
+        /// '두뇌'가 '할 일' 수정 로직을 처리합니다.
+        /// </summary>
+        public void UpdateTodo(TodoItem todoToUpdate, string newText)
+        {
+            if (todoToUpdate == null || string.IsNullOrWhiteSpace(newText)) return;
+
+            // 1. 항목의 텍스트를 변경 (INotifyPropertyChanged가 UI 갱신)
+            todoToUpdate.Text = newText;
+
+            // 2. '두뇌'의 저장 메서드를 호출
+            SaveTodos();
+        }
+
+        /// <summary>
+        /// 재귀적으로 컬렉션을 탐색하여 '할 일' 항목을 제거합니다.
+        /// (DashboardPage.xaml.cs에서 그대로 가져온 헬퍼 메서드)
+        /// </summary>
+        private bool RemoveTodoItem(ObservableCollection<TodoItem> collection, TodoItem itemToRemove)
+        {
+            if (collection.Remove(itemToRemove)) return true;
+            foreach (var item in collection)
+            {
+                if (item.SubTasks != null && RemoveTodoItem(item.SubTasks, itemToRemove)) return true;
+            }
+            return false;
+        }
+
+        // 파일: DashboardViewModel.cs
+
+        /// <summary>
+        /// '두뇌'가 '할 일' 추가 로직을 처리합니다.
+        /// </summary>
+        /// <param name="newTodoText">새 할 일의 텍스트</param>
+        /// <param name="parentTodo">부모 할 일 (없으면 null)</param>
+        /// <param name="date">할 일이 속한 날짜</param>
+        public void AddTodo(string newTodoText, TodoItem parentTodo, DateTime date)
+        {
+            if (string.IsNullOrWhiteSpace(newTodoText)) return;
+
+            // 1. '두뇌'가 직접 새 TodoItem 객체를 생성합니다.
+            var newTodo = new TodoItem
+            {
+                Text = newTodoText,
+                Date = date.Date // '얼굴'로부터 전달받은 날짜를 사용
+            };
+
+            // 2. 부모가 있는지 확인하고 올바른 리스트에 추가합니다.
+            if (parentTodo != null)
+            {
+                // 하위 작업으로 추가
+                parentTodo.SubTasks.Add(newTodo);
+            }
+            else
+            {
+                // 최상위 작업으로 추가
+                TodoItems.Add(newTodo);
+            }
+
+            // 3. '두뇌'의 저장 메서드를 호출합니다. (이전 단계에서 만듦)
+            SaveTodos();
+        }
     }
 }

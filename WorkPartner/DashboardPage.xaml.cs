@@ -24,7 +24,6 @@ namespace WorkPartner
         #region 변수 선언
         private readonly string _tasksFilePath = DataManager.TasksFilePath;
 
-        public ObservableCollection<TaskItem> TaskItems { get; set; }
         public ObservableCollection<TodoItem> FilteredTodoItems { get; set; }
         //public ObservableCollection<TimeLogEntry> TimeLogEntries { get; set; } // ◀◀ [이 줄 삭제 또는 주석 처리]
 
@@ -92,18 +91,17 @@ namespace WorkPartner
         }
 
 
-        // 파일: DashboardPage.xaml.cs (약 114줄)
+        // 파일: DashboardPage.xaml.cs (약 102줄)
 
-        // ▼▼▼ 이 메서드 전체를 교체하세요 ▼▼▼
         private void OnSettingsUpdated()
         {
-            // '두뇌'가 설정을 이미 새로고침했으므로, '얼굴'은 캐시만 비우고 화면만 그리면 됩니다.
             _taskBrushCache.Clear();
             Dispatcher.Invoke(() =>
             {
-                if (ViewModel?.Settings == null) return; // '두뇌'가 준비 안 됐으면 중지
+                if (ViewModel?.Settings == null) return;
 
-                foreach (var taskItem in TaskItems)
+                // ▼▼▼ [수정] '얼굴'의 TaskItems 대신 '두뇌'의 ViewModel.TaskItems를 사용합니다. ▼▼▼
+                foreach (var taskItem in ViewModel.TaskItems) // 👈 [오류 수정]
                 {
                     // '두뇌'의 설정값을 참조합니다.
                     if (ViewModel.Settings.TaskColors.TryGetValue(taskItem.Text, out string colorHex))
@@ -142,20 +140,12 @@ namespace WorkPartner
             }
         }
 
-        #region 데이터 저장 / 불러오기
-        private void SaveTasks()
-        {
-            DataManager.SaveTasks(TaskItems);
-        }
-
-
 
         private void SaveTodos()
         {
             ViewModel?.SaveTodos();
         }
 
-        #endregion
 
         #region UI 이벤트 핸들러
 
@@ -247,7 +237,7 @@ namespace WorkPartner
             // --- ▲▲▲ [수정된 부분 끝] ▲▲▲ ---
 
             TaskInput.Clear();
-            SaveTasks();
+            ViewModel?.SaveTasks();
             RenderTimeTable();
         }
 
@@ -337,98 +327,98 @@ namespace WorkPartner
             if (e.Key == Key.Enter) AddTaskButton_Click(sender, e);
         }
 
+        // 파일: DashboardPage.xaml.cs
+
+        // ▼▼▼ 이 메서드 전체를 아래 코드로 교체하세요 ▼▼▼
         private void AddTodoButton_Click(object sender, RoutedEventArgs e)
         {
-            if (string.IsNullOrWhiteSpace(TodoInput.Text)) return;
-            var newTodo = new TodoItem
-            {
-                Text = TodoInput.Text,
-                Date = _currentDateForTimeline.Date
-            };
+            // 1. '두뇌'(ViewModel)가 준비되었는지, 입력값이 있는지 확인
+            if (ViewModel == null) return;
 
-            if (TodoTreeView.SelectedItem is TodoItem parentTodo)
-            {
-                parentTodo.SubTasks.Add(newTodo);
-            }
-            else
-            {
-                ViewModel?.TodoItems.Add(newTodo);
-            }
+            string newTodoText = TodoInput.Text.Trim();
+            if (string.IsNullOrWhiteSpace(newTodoText)) return;
 
+            // 2. '얼굴'에서 필요한 UI 정보(선택된 부모, 현재 날짜)를 가져옵니다.
+            TodoItem parentTodo = TodoTreeView.SelectedItem as TodoItem;
+            DateTime currentDate = _currentDateForTimeline; // '얼굴'이 알고 있는 현재 날짜
+
+            // 3. [핵심] '두뇌'에게 추가를 요청 (모든 정보 전달)
+            ViewModel.AddTodo(newTodoText, parentTodo, currentDate);
+
+            // 4. '얼굴'은 UI 정리만 수행
             TodoInput.Clear();
-            SaveTodos();
-            FilterTodos();
+            FilterTodos(); // '얼굴'의 필터링된 뷰 갱신
         }
 
         // 파일: DashboardPage.xaml.cs
 
-        // ▼▼▼ 이 메서드 전체를 교체하세요 ▼▼▼
+        // 파일: DashboardPage.xaml.cs
+
+        // ▼▼▼ 이 메서드 전체를 아래 코드로 교체하세요 ▼▼▼
         private void EditTodoButton_Click(object sender, RoutedEventArgs e)
         {
-            // --- ▼▼▼ [수정된 부분 시작] ▼▼▼ ---
-            TodoItem selectedTodo = null;
+            // 1. '두뇌'(ViewModel)가 준비되었는지, 클릭한 대상이 무엇인지 확인
+            if (ViewModel == null) return;
 
-            // 1. 클릭된 버튼(sender)에서 DataContext(TodoItem)를 가져옵니다.
+            TodoItem selectedTodo = null;
             if (sender is FrameworkElement button && button.DataContext is TodoItem todoFromButton)
             {
                 selectedTodo = todoFromButton;
             }
-            // 2. (예외 처리) 만약 DataContext가 없으면, 기존 방식(선택된 항목)을 사용합니다.
-            else if (TodoTreeView.SelectedItem is TodoItem todoFromTree)
+            else if (TodoTreeView.SelectedItem is TodoItem todoFromTree) // (예외 처리)
             {
                 selectedTodo = todoFromTree;
             }
 
-            // 3. 그래도 없으면 수정할 대상이 없는 것입니다.
             if (selectedTodo == null)
             {
                 MessageBox.Show("수정할 할 일을 목록에서 선택해주세요.", "알림", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
-            // --- ▲▲▲ [수정된 부분 끝] ▲▲▲ ---
 
-
-            // --- (이하는 기존 수정 로직과 동일) ---
+            // 2. '얼굴'은 팝업창을 띄우고 입력받는 역할만 수행
             var inputWindow = new InputWindow("할 일 수정", selectedTodo.Text) { Owner = Window.GetWindow(this) };
-            if (inputWindow.ShowDialog() == true)
-            {
-                selectedTodo.Text = inputWindow.ResponseText;
-                SaveTodos();
-            }
+            if (inputWindow.ShowDialog() != true) return;
+
+            // 3. [핵심] '두뇌'에게 수정을 요청
+            ViewModel.UpdateTodo(selectedTodo, inputWindow.ResponseText);
+
+            // (UI 갱신은 TodoItem의 INotifyPropertyChanged가 자동으로 처리하므로 FilterTodos() 불필요)
         }
 
+        // 파일: DashboardPage.xaml.cs
+
+        // ▼▼▼ 이 메서드 전체를 아래 코드로 교체하세요 ▼▼▼
         private void DeleteTodoButton_Click(object sender, RoutedEventArgs e)
         {
-            // --- ▼▼▼ [수정된 부분 시작] ▼▼▼ ---
-            TodoItem selectedTodo = null;
+            // 1. '두뇌'(ViewModel)가 준비되었는지, 클릭한 대상이 무엇인지 확인
+            if (ViewModel == null) return;
 
-            // 1. 클릭된 버튼(sender)에서 DataContext(TodoItem)를 가져옵니다.
+            TodoItem selectedTodo = null;
             if (sender is FrameworkElement button && button.DataContext is TodoItem todoFromButton)
             {
                 selectedTodo = todoFromButton;
             }
-            // 2. (예외 처리) 만약 DataContext가 없으면, 기존 방식(선택된 항목)을 사용합니다.
-            else if (TodoTreeView.SelectedItem is TodoItem todoFromTree)
+            else if (TodoTreeView.SelectedItem is TodoItem todoFromTree) // (예외 처리)
             {
                 selectedTodo = todoFromTree;
             }
 
-            // 3. 그래도 없으면 삭제할 대상이 없는 것입니다.
             if (selectedTodo == null)
             {
                 MessageBox.Show("삭제할 할 일을 목록에서 선택해주세요.", "알림", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
-            // --- ▲▲▲ [수정된 부분 끝] ▲▲▲ ---
 
+            // 2. 사용자에게 삭제 확인 (이 로직은 '얼굴'이 담당)
+            if (MessageBox.Show($"'{selectedTodo.Text}' 할 일을 삭제하시겠습니까?", "삭제 확인", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
+                return;
 
-            // ▼▼▼ (기존 로직 동일) ▼▼▼
-            if (MessageBox.Show($"'{selectedTodo.Text}' 할 일을 삭제하시겠습니까?", "삭제 확인", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
-            {
-                if (ViewModel != null) RemoveTodoItem(ViewModel.TodoItems, selectedTodo);
-                SaveTodos();
-                FilterTodos();
-            }
+            // 3. [핵심] '두뇌'에게 삭제를 요청
+            ViewModel.DeleteTodo(selectedTodo);
+
+            // 4. '얼굴'은 필터링된 화면만 다시 그림
+            FilterTodos();
         }
 
         private void TodoInput_KeyDown(object sender, KeyEventArgs e)
@@ -508,11 +498,11 @@ namespace WorkPartner
             {
                 StartTime = defaultStartTime,
                 EndTime = defaultStartTime.AddHours(1), // 기본 1시간
-                TaskText = TaskItems.FirstOrDefault()?.Text ?? "과목 없음" // 첫 번째 과목 선택
+                TaskText = ViewModel.TaskItems.FirstOrDefault()?.Text ?? "과목 없음"
             };
 
             // 3. [수정] '편집' 생성자를 사용하여 팝업을 띄웁니다.
-            var win = new AddLogWindow(TaskItems, templateLog) { Owner = Window.GetWindow(this) };
+            var win = new AddLogWindow(ViewModel.TaskItems, templateLog) { Owner = Window.GetWindow(this) };
             if (win.ShowDialog() != true) return;
 
             // 4. [신규] 사용자가 '삭제'를 눌러 템플릿 생성을 취소한 경우
@@ -521,18 +511,16 @@ namespace WorkPartner
             // 5. [기존 로직] win.NewLogEntry에는 팝업에서 수정한 최종 결과가 담겨있음
             if (win.NewLogEntry != null)
             {
-                // 6. [핵심] Page 리스트가 아닌 VM의 public 메서드 호출
-                vm.AddManualLog(win.NewLogEntry); // ◀ (오류 370 수정) - [기존 코드 재사용]
+                vm.AddManualLog(win.NewLogEntry);
 
-                // (과목 선택 로직은 그대로 둠)
                 var addedTaskName = win.NewLogEntry.TaskText;
-                var taskToSelect = TaskItems.FirstOrDefault(t => t.Text == addedTaskName);
+                // [오류 527 수정]
+                var taskToSelect = ViewModel.TaskItems.FirstOrDefault(t => t.Text == addedTaskName);
                 if (taskToSelect != null)
                 {
                     TaskListBox.SelectedItem = taskToSelect;
                 }
             }
-
             // --- ▲▲▲ [수정된 부분 끝] ▲▲▲ ---
 
             // (기존 코드 재사용)
@@ -555,22 +543,20 @@ namespace WorkPartner
             // (만약 못찾으면 Page의 log 객체라도 사용)
             if (originalLog == null) originalLog = log;
 
-            var win = new AddLogWindow(TaskItems, originalLog) { Owner = Window.GetWindow(this) };
+            var win = new AddLogWindow(ViewModel.TaskItems, originalLog) { Owner = Window.GetWindow(this) };
             if (win.ShowDialog() != true) return;
 
             if (win.IsDeleted)
             {
-                // 2. [핵심] Page 리스트가 아닌 VM의 public 메서드 호출
                 vm.DeleteLog(originalLog);
             }
             else
             {
-                // 2. [핵심] Page 리스트가 아닌 VM의 public 메서드 호출
                 vm.UpdateLog(originalLog, win.NewLogEntry);
 
-                // (과목 선택 로직은 그대로 둠)
                 var editedTaskName = win.NewLogEntry.TaskText;
-                var taskToSelect = TaskItems.FirstOrDefault(t => t.Text == editedTaskName);
+                // [오류 571 수정]
+                var taskToSelect = ViewModel.TaskItems.FirstOrDefault(t => t.Text == editedTaskName);
                 if (taskToSelect != null)
                 {
                     TaskListBox.SelectedItem = taskToSelect;
@@ -934,19 +920,7 @@ namespace WorkPartner
             foreach (var item in filtered) FilteredTodoItems.Add(item);
         }
 
-        private bool RemoveTodoItem(ObservableCollection<TodoItem> collection, TodoItem itemToRemove)
-        {
-            if (collection.Remove(itemToRemove)) return true;
-            foreach (var item in collection)
-            {
-                if (item.SubTasks != null && RemoveTodoItem(item.SubTasks, itemToRemove)) return true;
-            }
-            return false;
-        }
 
-        #endregion
-
-        #region 타임라인 드래그 및 일괄 수정
         private void SelectionCanvas_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             if (e.OriginalSource is Border) return;
@@ -1018,8 +992,7 @@ namespace WorkPartner
             // [롤백] '한 번에' 수정하는 'BulkEditLogsWindow' 팝업을 띄웁니다.
             // (이 로직은 원본 DashboardPage.xaml.cs 파일에 있던 로직입니다.)
 
-            var bulkEditWindow = new BulkEditLogsWindow(distinctLogs, TaskItems) { Owner = Window.GetWindow(this) };
-
+            var bulkEditWindow = new BulkEditLogsWindow(distinctLogs, ViewModel.TaskItems) { Owner = Window.GetWindow(this) };
             if (bulkEditWindow.ShowDialog() != true) return;
 
             // ▼▼▼ [핵심 수정] VM의 메서드를 호출하도록 변경 ▼▼▼
@@ -1258,6 +1231,7 @@ namespace WorkPartner
                 RecalculateAllTotals();
                 RenderTimeTable();
                 UpdateCharacterInfoPanel();
+                FilterTodos(); // '두뇌'가 연결되었으니, '할 일' 목록을 즉시 필터링합니다.
             }
         }
 
