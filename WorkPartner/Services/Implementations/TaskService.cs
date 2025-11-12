@@ -26,5 +26,10 @@ namespace WorkPartner.Services.Implementations
             var tasks = await JsonSerializer.DeserializeAsync<ObservableCollection<TaskItem>>(openStream);
             return tasks ?? new ObservableCollection<TaskItem>();
         }
+        public void SaveTasks(IEnumerable<TaskItem> tasks)
+        {
+            // DataManager를 호출해 실제로 파일에 저장합니다.
+            DataManager.SaveTasks(tasks);
+        }
     }
 }

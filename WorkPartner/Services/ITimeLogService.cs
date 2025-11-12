@@ -7,6 +7,6 @@ namespace WorkPartner.Services
     public interface ITimeLogService
     {
         Task<ObservableCollection<TimeLogEntry>> LoadTimeLogsAsync();
-        Task SaveTimeLogsAsync(ObservableCollection<TimeLogEntry> timeLogs);
+        void SaveTimeLogs(ObservableCollection<TimeLogEntry> logs);
     }
 }

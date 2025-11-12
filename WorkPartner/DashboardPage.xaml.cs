@@ -173,21 +173,21 @@ namespace WorkPartner
             CurrentDayDisplay.Text = _currentDateForTimeline.ToString("ddd");
         }
 
-        // 파일: ddmhyang/workpartner2/WorkPartner2-6/WorkPartner/DashboardPage.xaml.cs
-
-        // [수정 후 ✅]
         private void AddTaskButton_Click(object sender, RoutedEventArgs e)
         {
             string newTaskText = TaskInput.Text.Trim();
             if (string.IsNullOrWhiteSpace(newTaskText)) return;
 
-            if (TaskItems.Any(t => t.Text.Equals(newTaskText, StringComparison.OrdinalIgnoreCase)))
+            // ▼▼▼ [수정] '얼굴'의 TaskItems 대신 '두뇌'의 ViewModel.TaskItems를 사용 ▼▼▼
+            if (ViewModel.TaskItems.Any(t => t.Text.Equals(newTaskText, StringComparison.OrdinalIgnoreCase)))
             {
                 MessageBox.Show("이미 존재하는 과목입니다.", "중복 오류", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
             var newTask = new TaskItem { Text = newTaskText };
-            TaskItems.Add(newTask);
+
+            // ▼▼▼ [수정] '얼굴'의 TaskItems 대신 '두뇌'의 ViewModel.TaskItems에 추가 ▼▼▼
+            ViewModel.TaskItems.Add(newTask);
 
             // --- ▼▼▼ [수정된 부분 시작] ▼▼▼ ---
 
@@ -251,123 +251,84 @@ namespace WorkPartner
             RenderTimeTable();
         }
 
+        // 파일: DashboardPage.xaml.cs
+
+        // ▼▼▼ 이 메서드 전체를 아래 코드로 교체하세요 ▼▼▼
         private void EditTaskButton_Click(object sender, RoutedEventArgs e)
         {
-            // 1. VM 가져오기 (기존과 동일)
-            if (DataContext is not ViewModels.DashboardViewModel vm) return;
+            // 1. '두뇌'(ViewModel)가 준비되었는지, 클릭한 대상이 무엇인지 확인
+            if (ViewModel == null) return;
 
-            // --- ▼▼▼ [수정된 부분 시작] ▼▼▼ ---
             TaskItem selectedTask = null;
-
-            // 2. 클릭된 버튼(sender)에서 DataContext(TaskItem)를 가져옵니다.
             if (sender is FrameworkElement button && button.DataContext is TaskItem taskFromButton)
             {
                 selectedTask = taskFromButton;
             }
-            // 3. (예외 처리) 만약 DataContext가 없으면, 기존 방식(선택된 항목)을 사용합니다.
-            else if (TaskListBox.SelectedItem is TaskItem taskFromList)
+            else if (TaskListBox.SelectedItem is TaskItem taskFromList) // (예외 처리)
             {
                 selectedTask = taskFromList;
             }
 
-            // 4. 그래도 없으면 수정할 대상이 없는 것입니다.
             if (selectedTask == null)
             {
                 MessageBox.Show("수정할 과목을 목록에서 선택해주세요.", "알림", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
-            // --- ▲▲▲ [수정된 부분 끝] ▲▲▲ ---
 
-
-            // --- (이하는 기존 수정 로직과 동일) ---
+            // 2. '얼굴'은 팝업창을 띄우고 입력받는 역할만 수행
             var inputWindow = new InputWindow("과목 이름 수정", selectedTask.Text) { Owner = Window.GetWindow(this) };
             if (inputWindow.ShowDialog() != true) return;
 
             string newName = inputWindow.ResponseText.Trim();
-            string oldName = selectedTask.Text;
-            if (string.IsNullOrWhiteSpace(newName) || newName == oldName) return;
-            if (TaskItems.Any(t => t.Text.Equals(newName, StringComparison.OrdinalIgnoreCase) && t != selectedTask))
-            {
-                MessageBox.Show("이미 존재하는 과목 이름입니다.", "오류", MessageBoxButton.OK, MessageBoxImage.Error);
-                return;
-            }
+            string oldName = selectedTask.Text; // 👈 캐시를 비우기 위해 옛날 이름 저장
 
-            foreach (var log in vm.TimeLogEntries.Where(l => l.TaskText == oldName))
-            {
-                log.TaskText = newName;
-            }
+            // 3. [핵심] '두뇌'에게 이름 변경을 요청
+            bool updateSuccess = ViewModel.UpdateTask(selectedTask, newName);
 
-            // ▼▼▼ [수정] _settings -> ViewModel.Settings (총 4줄) ▼▼▼
-            if (ViewModel.Settings.TaskColors.ContainsKey(oldName))
+            // 4. '두뇌'가 성공적으로 변경했을 때만 '얼굴'의 UI를 갱신
+            if (updateSuccess)
             {
-                var color = ViewModel.Settings.TaskColors[oldName];
-                ViewModel.Settings.TaskColors.Remove(oldName);
-                ViewModel.Settings.TaskColors[newName] = color;
+                // '얼굴'이 가진 색상 캐시에서 옛날 이름 제거
                 _taskBrushCache.Remove(oldName);
+
+                TaskListBox.Items.Refresh();
+                RenderTimeTable();
             }
-
-            selectedTask.Text = newName;
-
-            SaveTasks();
-            DataManager.SaveTimeLogs(vm.TimeLogEntries);
-
-            // ▼▼▼ [수정] SaveSettings() -> ViewModel.SaveSettings() ▼▼▼
-            ViewModel.SaveSettings();
-
-            TaskListBox.Items.Refresh();
-            RenderTimeTable();
         }
 
+        // 파일: DashboardPage.xaml.cs
+
+        // ▼▼▼ 이 메서드 전체를 아래 코드로 교체하세요 ▼▼▼
         private void DeleteTaskButton_Click(object sender, RoutedEventArgs e)
         {
-            if (DataContext is not ViewModels.DashboardViewModel vm) return;
+            // 1. '두뇌'(ViewModel)가 준비되었는지 확인
+            if (ViewModel == null) return;
 
-            // --- ▼▼▼ [수정된 부분 시작] ▼▼▼ ---
+            // 2. 클릭된 버튼(sender)이 속한 과목(TaskItem) 가져오기
             TaskItem selectedTask = null;
-
-            // 1. 클릭된 버튼(sender)에서 DataContext(TaskItem)를 가져옵니다.
             if (sender is FrameworkElement button && button.DataContext is TaskItem taskFromButton)
             {
                 selectedTask = taskFromButton;
             }
-            // 2. (예외 처리) 만약 DataContext가 없으면, 기존 방식(선택된 항목)을 사용합니다.
-            else if (TaskListBox.SelectedItem is TaskItem taskFromList)
+            else if (TaskListBox.SelectedItem is TaskItem taskFromList) // (기존 방식 예외 처리)
             {
                 selectedTask = taskFromList;
             }
 
-            // 3. 그래도 없으면 삭제할 대상이 없는 것입니다.
             if (selectedTask == null)
             {
                 MessageBox.Show("삭제할 과목을 목록에서 선택해주세요.", "알림", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
-            // --- ▲▲▲ [수정된 부분 끝] ▲▲▲ ---
 
-            // ▼▼▼ (기존 로직 동일) ▼▼▼
+            // 3. 사용자에게 삭제 확인 (이 로직은 '얼굴'이 담당하는 것이 맞습니다)
             if (MessageBox.Show($"'{selectedTask.Text}' 과목을 삭제하시겠습니까?\n관련된 모든 학습 기록도 삭제됩니다.", "삭제 확인", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
                 return;
 
-            string taskNameToDelete = selectedTask.Text;
-            TaskItems.Remove(selectedTask);
+            // 4. [핵심] '두뇌'에게 삭제를 요청
+            ViewModel.DeleteTask(selectedTask);
 
-            // ▼▼▼ [수정] _settings -> ViewModel.Settings (총 2줄) ▼▼▼
-            if (ViewModel.Settings.TaskColors.ContainsKey(taskNameToDelete))
-            {
-                ViewModel.Settings.TaskColors.Remove(taskNameToDelete);
-                _taskBrushCache.Remove(taskNameToDelete);
-                // ▼▼▼ [수정] SaveSettings() -> ViewModel.SaveSettings() ▼▼▼
-                ViewModel.SaveSettings();
-            }
-
-            var logsToRemove = vm.TimeLogEntries.Where(l => l.TaskText == taskNameToDelete).ToList();
-            foreach (var log in logsToRemove)
-            {
-                vm.TimeLogEntries.Remove(log);
-            }
-
-            SaveTasks();
-            DataManager.SaveTimeLogs(vm.TimeLogEntries); // 👈 (이전 단계에서 수정했어야 함) vm.DeleteLog(log)를 사용하거나, 이 라인을 _timeLogService.SaveTimeLogsAsync(vm.TimeLogEntries)로 바꿔야 하지만, 지금은 시연이 우선이니 그대로 둡니다.
+            // 5. '얼굴'은 화면을 다시 그리기만 함
             RenderTimeTable();
         }
 
@@ -1352,7 +1313,6 @@ namespace WorkPartner
         private void OnViewModelTaskChanged(string newTaskName)
         {
             // 1. 메인 과목 텍스트(CurrentTaskDisplay)는 "항상" ViewModel의 값을 따릅니다.
-            //    (이 값은 OnViewModelTimeUpdated가 참조하여 미니 타이머로 전달됩니다)
             Dispatcher.Invoke(() =>
             {
                 CurrentTaskDisplay.Text = newTaskName;
@@ -1363,14 +1323,11 @@ namespace WorkPartner
 
             Dispatcher.Invoke(() =>
             {
-                // ✨ [추가] 
-                // AI가 과목을 변경했을 때, TaskListBox의 UI 선택도 강제로 변경합니다.
-                var foundTask = TaskItems.FirstOrDefault(t => t.Text == newTaskName);
+                // ▼▼▼ [수정] '얼굴'의 TaskItems 대신 '두뇌'의 ViewModel.TaskItems를 사용 ▼▼▼
+                var foundTask = ViewModel.TaskItems.FirstOrDefault(t => t.Text == newTaskName);
+
                 if (foundTask != null && TaskListBox.SelectedItem != foundTask)
                 {
-                    // 이 구문은 SelectionChanged 이벤트를 발생시키지만,
-                    // 1단계에서 UpdateMainTimeDisplay의 충돌 코드를 제거했으므로
-                    // 더 이상 문제를 일으키지 않습니다.
                     TaskListBox.SelectedItem = foundTask;
                 }
             });
@@ -1379,7 +1336,7 @@ namespace WorkPartner
 
         // 파일: DashboardPage.xaml.cs
         // (약 1238줄 근처)
-private void EvaluateDayButton_Click(object sender, RoutedEventArgs e)
+        private void EvaluateDayButton_Click(object sender, RoutedEventArgs e)
         {
             // ▼▼▼ [수정] VM을 먼저 가져옵니다. ▼▼▼
             if (DataContext is not ViewModels.DashboardViewModel vm) return;

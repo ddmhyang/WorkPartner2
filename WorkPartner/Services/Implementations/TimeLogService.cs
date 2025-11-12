@@ -44,5 +44,10 @@ namespace WorkPartner.Services.Implementations
                 Debug.WriteLine($"Error saving time logs: {ex.Message}");
             }
         }
+        public void SaveTimeLogs(ObservableCollection<TimeLogEntry> logs)
+        {
+            // DataManager의 지연 저장(Debounce) 기능을 사용합니다.
+            DataManager.SaveTimeLogs(logs);
+        }
     }
 }

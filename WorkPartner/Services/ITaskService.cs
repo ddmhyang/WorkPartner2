@@ -7,7 +7,7 @@ namespace WorkPartner.Services
     public interface ITaskService
     {
         // ▼▼▼ 오류 수정: SaveTasksAsync와 LoadTasksAsync 정의 추가 ▼▼▼
-        Task SaveTasksAsync(ObservableCollection<TaskItem> tasks);
         Task<ObservableCollection<TaskItem>> LoadTasksAsync();
+        void SaveTasks(IEnumerable<TaskItem> tasks);
     }
 }

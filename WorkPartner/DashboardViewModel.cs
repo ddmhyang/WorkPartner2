@@ -415,7 +415,7 @@ namespace WorkPartner.ViewModels
 
             TimeLogEntries.Insert(0, entry);
             // ▼▼▼ [수정] 비동기 저장을 호출
-            _timeLogService.SaveTimeLogsAsync(TimeLogEntries);
+            _timeLogService.SaveTimeLogs(TimeLogEntries); // 👈 'Async' 삭제
             // ▲▲▲
 
             TaskStoppedAndSaved?.Invoke();
@@ -585,6 +585,102 @@ namespace WorkPartner.ViewModels
             UpdateLiveTimeDisplays();
         }
 
+        // 파일: DashboardViewModel.cs
+
+        /// <summary>
+        /// '두뇌'가 소유한 TaskItems 목록을 파일에 저장합니다.
+        /// </summary>
+        public void SaveTasks()
+        {
+            // '두뇌'가 가진 _taskService를 이용해 저장합니다.
+            _taskService.SaveTasks(TaskItems);
+        }
+
+        /// <summary>
+        /// '두뇌'가 과목 삭제의 모든 로직을 처리합니다.
+        /// </summary>
+        public void DeleteTask(TaskItem taskToDelete)
+        {
+            if (taskToDelete == null) return;
+
+            string taskNameToDelete = taskToDelete.Text;
+
+            // 1. '두뇌'의 과목 리스트에서 제거
+            TaskItems.Remove(taskToDelete);
+
+            // 2. '두뇌'의 설정(Settings)에서 해당 과목 색상 정보 제거
+            if (_settings.TaskColors.ContainsKey(taskNameToDelete))
+            {
+                _settings.TaskColors.Remove(taskNameToDelete);
+                // '두뇌'의 설정 서비스를 통해 즉시 저장
+                _settingsService.SaveSettings(_settings);
+            }
+
+            // 3. '두뇌'의 시간 기록(TimeLogEntries)에서 관련 기록 모두 제거
+            var logsToRemove = TimeLogEntries.Where(l => l.TaskText == taskNameToDelete).ToList();
+            foreach (var log in logsToRemove)
+            {
+                TimeLogEntries.Remove(log);
+            }
+            // '두뇌'의 시간 기록 서비스를 통해 즉시 저장
+            _timeLogService.SaveTimeLogs(TimeLogEntries);
+
+            // 4. '두뇌'의 과목 리스트를 파일에 저장
+            SaveTasks();
+        }
+
+
+        // 파일: DashboardViewModel.cs
+
+        /// <summary>
+        /// '두뇌'가 과목 이름 변경의 모든 복잡한 로직을 처리합니다.
+        /// </summary>
+        /// <param name="taskToUpdate">이름을 변경할 과목 객체</param>
+        /// <param name="newName">새로운 과목 이름</param>
+        /// <returns>성공하면 true, (중복 이름 등으로) 실패하면 false</returns>
+        public bool UpdateTask(TaskItem taskToUpdate, string newName)
+        {
+            if (taskToUpdate == null || string.IsNullOrWhiteSpace(newName) || taskToUpdate.Text == newName)
+            {
+                return false; // 변경할 필요 없음
+            }
+
+            // 1. 이름 중복 검사
+            if (TaskItems.Any(t => t.Text.Equals(newName, StringComparison.OrdinalIgnoreCase) && t != taskToUpdate))
+            {
+                _dialogService.ShowAlert("이미 존재하는 과목 이름입니다.", "오류");
+                return false;
+            }
+
+            string oldName = taskToUpdate.Text;
+
+            // 2. '두뇌'의 시간 기록(TimeLogEntries) 업데이트
+            foreach (var log in TimeLogEntries.Where(l => l.TaskText == oldName))
+            {
+                log.TaskText = newName;
+            }
+            // 시간 기록 서비스로 저장
+            _timeLogService.SaveTimeLogs(TimeLogEntries);
+
+            // 3. '두뇌'의 설정(Settings)에서 색상 정보 이전
+            if (_settings.TaskColors.ContainsKey(oldName))
+            {
+                var color = _settings.TaskColors[oldName];
+                _settings.TaskColors.Remove(oldName);
+                _settings.TaskColors[newName] = color;
+                // 설정 서비스로 저장
+                _settingsService.SaveSettings(_settings);
+            }
+
+            // 4. 과목 객체 자체의 이름 변경 (INotifyPropertyChanged가 UI 갱신)
+            taskToUpdate.Text = newName;
+
+            // 5. '두뇌'의 과목 리스트를 파일에 저장 (지난 단계에서 만든 메서드)
+            SaveTasks();
+
+            return true;
+        }
+
 
         // 파일: DashboardViewModel.cs
         // (약 455줄 근처)
@@ -607,7 +703,7 @@ namespace WorkPartner.ViewModels
                 TimeLogEntries.Add(entry);
 
                 // 3. '즉시 저장' 호출
-                _timeLogService.SaveTimeLogsAsync(TimeLogEntries); // 👈 [문제의 코드]
+                _timeLogService.SaveTimeLogs(TimeLogEntries); // 👈 'Async' 삭제
                 // ▲▲▲ [수정 완료] ▲▲▲
 
                 Debug.WriteLine("VM Shutdown: Final session saved.");
@@ -615,72 +711,72 @@ namespace WorkPartner.ViewModels
         }
 
         /// <summary>
-/// 작업 시간을 기반으로 경험치와 레벨을 계산하고 적용합니다.
-/// (TimeSpan.Negate()를 사용하여 경험치를 차감할 수도 있습니다.)
-/// </summary>
-/// <param name="workDuration">적용할 작업 시간</param>
-private void GrantExperience(TimeSpan workDuration)
-{
-    try
-    {
-        double minutesWorked = workDuration.TotalMinutes;
-        if (Math.Abs(minutesWorked) < 0.01) return; // 변경 값 없음
-
-        // (중요) 기존 설정을 '미리' 로드합니다.
-        _settings = _settingsService.LoadSettings();
-
-        double totalPendingMinutes = _settings.PendingWorkMinutes + minutesWorked;
-        int currentLevel = _settings.Level;
-        int minutesPerXpChunk = currentLevel;
-        int xpPerChunk = 10;
-        int xpToLevelUp = 100;
-        int coinsPerLevel = 50;
-
-        if (totalPendingMinutes >= minutesPerXpChunk)
+        /// 작업 시간을 기반으로 경험치와 레벨을 계산하고 적용합니다.
+        /// (TimeSpan.Negate()를 사용하여 경험치를 차감할 수도 있습니다.)
+        /// </summary>
+        /// <param name="workDuration">적용할 작업 시간</param>
+        private void GrantExperience(TimeSpan workDuration)
         {
-            // ... (기존 레벨업 로직과 동일) ...
-            int chunksEarned = (int)Math.Floor(totalPendingMinutes / minutesPerXpChunk);
-            int xpGained = chunksEarned * xpPerChunk;
-            double remainingMinutes = totalPendingMinutes % minutesPerXpChunk;
-
-            _settings.Experience += xpGained;
-            _settings.PendingWorkMinutes = remainingMinutes;
-
-            bool leveledUp = false;
-            while (_settings.Experience >= xpToLevelUp)
+            try
             {
-                _settings.Level++;
-                _settings.Experience -= xpToLevelUp;
-                _settings.Coins += coinsPerLevel;
-                leveledUp = true;
-            }
+                double minutesWorked = workDuration.TotalMinutes;
+                if (Math.Abs(minutesWorked) < 0.01) return; // 변경 값 없음
 
-            if (leveledUp)
+                // (중요) 기존 설정을 '미리' 로드합니다.
+                _settings = _settingsService.LoadSettings();
+
+                double totalPendingMinutes = _settings.PendingWorkMinutes + minutesWorked;
+                int currentLevel = _settings.Level;
+                int minutesPerXpChunk = currentLevel;
+                int xpPerChunk = 10;
+                int xpToLevelUp = 100;
+                int coinsPerLevel = 50;
+
+                if (totalPendingMinutes >= minutesPerXpChunk)
+                {
+                    // ... (기존 레벨업 로직과 동일) ...
+                    int chunksEarned = (int)Math.Floor(totalPendingMinutes / minutesPerXpChunk);
+                    int xpGained = chunksEarned * xpPerChunk;
+                    double remainingMinutes = totalPendingMinutes % minutesPerXpChunk;
+
+                    _settings.Experience += xpGained;
+                    _settings.PendingWorkMinutes = remainingMinutes;
+
+                    bool leveledUp = false;
+                    while (_settings.Experience >= xpToLevelUp)
+                    {
+                        _settings.Level++;
+                        _settings.Experience -= xpToLevelUp;
+                        _settings.Coins += coinsPerLevel;
+                        leveledUp = true;
+                    }
+
+                    if (leveledUp)
+                    {
+                        _dialogService.ShowAlert(
+                            $"🎉 축하합니다! 레벨 업! 🎉\n\n레벨 {_settings.Level}이(가) 되었습니다.\n보상으로 {coinsPerLevel}코인을 획득했습니다!",
+                            "레벨 업!"
+                        );
+                    }
+                }
+                else if (totalPendingMinutes < 0)
+                {
+                    // (경험치 차감 로직 - 레벨 다운은 구현되지 않음)
+                    _settings.PendingWorkMinutes = totalPendingMinutes;
+                    // 참고: 경험치(XP)가 음수가 되는 것을 방지하는 로직이 필요할 수 있습니다.
+                    // 예: _settings.Experience = Math.Max(0, _settings.Experience + xpGained);
+                }
+                else
+                {
+                    _settings.PendingWorkMinutes = totalPendingMinutes;
+                }
+
+                _settingsService.SaveSettings(_settings);
+            }
+            catch (Exception ex)
             {
-                _dialogService.ShowAlert(
-                    $"🎉 축하합니다! 레벨 업! 🎉\n\n레벨 {_settings.Level}이(가) 되었습니다.\n보상으로 {coinsPerLevel}코인을 획득했습니다!",
-                    "레벨 업!"
-                );
+                Debug.WriteLine($"[Error] GrantExperience Failed: {ex.Message}");
             }
         }
-        else if (totalPendingMinutes < 0)
-        {
-            // (경험치 차감 로직 - 레벨 다운은 구현되지 않음)
-            _settings.PendingWorkMinutes = totalPendingMinutes;
-            // 참고: 경험치(XP)가 음수가 되는 것을 방지하는 로직이 필요할 수 있습니다.
-            // 예: _settings.Experience = Math.Max(0, _settings.Experience + xpGained);
-        }
-        else
-        {
-            _settings.PendingWorkMinutes = totalPendingMinutes;
-        }
-
-        _settingsService.SaveSettings(_settings);
-    }
-    catch (Exception ex)
-    {
-        Debug.WriteLine($"[Error] GrantExperience Failed: {ex.Message}");
-    }
-}
     }
 }
