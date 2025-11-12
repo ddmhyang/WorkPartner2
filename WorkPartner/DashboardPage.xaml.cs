@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -13,8 +14,8 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Shapes;
 using System.Windows.Threading;
+using WorkPartner;
 using WorkPartner.AI;
-using System.ComponentModel;
 
 namespace WorkPartner
 {
@@ -349,15 +350,33 @@ namespace WorkPartner
 
         private void EditTaskButton_Click(object sender, RoutedEventArgs e)
         {
-            // ▼▼▼ [V6 수정] VM에서 TimeLogEntries를 가져와야 함 ▼▼▼
+            // 1. VM 가져오기 (기존과 동일)
             if (DataContext is not ViewModels.DashboardViewModel vm) return;
 
-            if (TaskListBox.SelectedItem is not TaskItem selectedTask)
+            // --- ▼▼▼ [수정된 부분 시작] ▼▼▼ ---
+            TaskItem selectedTask = null;
+
+            // 2. 클릭된 버튼(sender)에서 DataContext(TaskItem)를 가져옵니다.
+            if (sender is FrameworkElement button && button.DataContext is TaskItem taskFromButton)
+            {
+                selectedTask = taskFromButton;
+            }
+            // 3. (예외 처리) 만약 DataContext가 없으면, 기존 방식(선택된 항목)을 사용합니다.
+            else if (TaskListBox.SelectedItem is TaskItem taskFromList)
+            {
+                selectedTask = taskFromList;
+            }
+
+            // 4. 그래도 없으면 수정할 대상이 없는 것입니다.
+            if (selectedTask == null)
             {
                 MessageBox.Show("수정할 과목을 목록에서 선택해주세요.", "알림", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
+            // --- ▲▲▲ [수정된 부분 끝] ▲▲▲ ---
 
+
+            // --- (이하는 기존 수정 로직과 동일) ---
             var inputWindow = new InputWindow("과목 이름 수정", selectedTask.Text) { Owner = Window.GetWindow(this) };
             if (inputWindow.ShowDialog() != true) return;
 
@@ -370,7 +389,6 @@ namespace WorkPartner
                 return;
             }
 
-            // ▼▼▼ [V6 수정] vm.TimeLogEntries 사용 ▼▼▼
             foreach (var log in vm.TimeLogEntries.Where(l => l.TaskText == oldName))
             {
                 log.TaskText = newName;
@@ -386,8 +404,7 @@ namespace WorkPartner
             selectedTask.Text = newName;
 
             SaveTasks();
-            // ▼▼▼ [V6 수정] VM의 리스트를 지연 저장 ▼▼▼
-            DataManager.SaveTimeLogs(vm.TimeLogEntries); // 👈 'Immediately'를 뺐습니다.
+            DataManager.SaveTimeLogs(vm.TimeLogEntries);
             SaveSettings();
 
             TaskListBox.Items.Refresh();
@@ -473,14 +490,35 @@ namespace WorkPartner
             FilterTodos();
         }
 
+        // 파일: DashboardPage.xaml.cs
+
+        // ▼▼▼ 이 메서드 전체를 교체하세요 ▼▼▼
         private void EditTodoButton_Click(object sender, RoutedEventArgs e)
         {
-            if (TodoTreeView.SelectedItem is not TodoItem selectedTodo)
+            // --- ▼▼▼ [수정된 부분 시작] ▼▼▼ ---
+            TodoItem selectedTodo = null;
+
+            // 1. 클릭된 버튼(sender)에서 DataContext(TodoItem)를 가져옵니다.
+            if (sender is FrameworkElement button && button.DataContext is TodoItem todoFromButton)
+            {
+                selectedTodo = todoFromButton;
+            }
+            // 2. (예외 처리) 만약 DataContext가 없으면, 기존 방식(선택된 항목)을 사용합니다.
+            else if (TodoTreeView.SelectedItem is TodoItem todoFromTree)
+            {
+                selectedTodo = todoFromTree;
+            }
+
+            // 3. 그래도 없으면 수정할 대상이 없는 것입니다.
+            if (selectedTodo == null)
             {
                 MessageBox.Show("수정할 할 일을 목록에서 선택해주세요.", "알림", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
+            // --- ▲▲▲ [수정된 부분 끝] ▲▲▲ ---
 
+
+            // --- (이하는 기존 수정 로직과 동일) ---
             var inputWindow = new InputWindow("할 일 수정", selectedTodo.Text) { Owner = Window.GetWindow(this) };
             if (inputWindow.ShowDialog() == true)
             {

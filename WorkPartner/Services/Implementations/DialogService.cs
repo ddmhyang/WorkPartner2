@@ -19,7 +19,8 @@ namespace WorkPartner.Services.Implementations
             // 메인 윈도우를 주인으로 설정하여 화면 중앙에 표시되도록 합니다.
             if (Application.Current.MainWindow != null && Application.Current.MainWindow.IsVisible)
             {
-                alertWindow.Owner = Application.Current.MainWindow;
+                alertWindow.Owner = null;     // 👈 [수정 1] 소유권 연결을 끊습니다.
+                alertWindow.Topmost = true;
                 alertWindow.WindowStartupLocation = WindowStartupLocation.CenterOwner;
             }
             else

@@ -247,8 +247,15 @@ namespace WorkPartner.ViewModels
                     }
                 }
             }
+
+            // 업무상태 아닐 때 로직
             else
             {
+                bool isDistraction = _settings.DistractionProcesses.Any(p =>
+                    activeProcess.Contains(p) ||
+                    (!string.IsNullOrEmpty(activeUrl) && activeUrl.Contains(p)) ||
+                    (!string.IsNullOrEmpty(activeTitle) && activeTitle.Contains(p))
+                );
                 if (_stopwatch.IsRunning)
                 {
                     _stopwatch.Stop();
@@ -264,15 +271,18 @@ namespace WorkPartner.ViewModels
                         IsRunningChanged?.Invoke(false);
                         _isInGracePeriod = false;
                     }
+                    if (isDistraction && _settings.IsFocusModeEnabled)
+                    {
+                        var elapsedSinceLastNag = (DateTime.Now - _lastFocusNagTime).TotalSeconds;
+                        if (elapsedSinceLastNag > _settings.FocusModeNagIntervalSeconds)
+                        {
+                            _lastFocusNagTime = DateTime.Now;
+                            _dialogService.ShowAlert(_settings.FocusModeNagMessage, "집중 모드 경고");
+                        }
+                    }
                 }
                 else
                 {
-                    bool isDistraction = _settings.DistractionProcesses.Any(p =>
-                        activeProcess.Contains(p) ||
-                        (!string.IsNullOrEmpty(activeUrl) && activeUrl.Contains(p)) ||
-                        (!string.IsNullOrEmpty(activeTitle) && activeTitle.Contains(p))
-                    );
-
                     if (isDistraction && _settings.IsFocusModeEnabled)
                     {
                         var elapsedSinceLastNag = (DateTime.Now - _lastFocusNagTime).TotalSeconds;

@@ -96,7 +96,9 @@ namespace WorkPartner
                 {
                     _miniTimer = new MiniTimerWindow
                     {
-                        Owner = this // 오류가 해결된 상태이므로 이 코드를 그대로 둡니다.
+                        //Owner = this // 오류가 해결된 상태이므로 이 코드를 그대로 둡니다.
+                        Owner = null,        // 👈 [수정 1] 소유권 연결을 끊습니다.
+                        Topmost = true
                     };
                     _miniTimer.Closed += (s, e) => _miniTimer = null;
                     _dashboardPage.SetMiniTimerReference(_miniTimer);
