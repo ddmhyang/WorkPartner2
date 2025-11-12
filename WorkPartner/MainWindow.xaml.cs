@@ -28,12 +28,17 @@ namespace WorkPartner
 
         private void MainWindow_Closing(object sender, CancelEventArgs e)
         {
-            // 대시보드 페이지에 연결된 ViewModel(두뇌)을 가져옵니다.
+            // 1. 미니 타이머가 열려있으면 닫습니다. (종료 문제의 원인)
+            _miniTimer?.Close();
+
+            // 2. 뷰모델(두뇌)에게 종료를 알립니다. (데이터 최종 저장)
             if (_dashboardPage.DataContext is ViewModels.DashboardViewModel vm)
             {
-                // ViewModel에게 "지금 종료하니 마지막 작업 저장해!"라고 알립니다.
                 vm.Shutdown();
             }
+
+            // 3. [중요] 어떤 방식으로 닫든(X버튼, Close 버튼), 앱 전체를 강제 종료합니다.
+            Application.Current.Shutdown();
         }
 
         private async void NavButton_Click(object sender, RoutedEventArgs e)
@@ -116,7 +121,7 @@ namespace WorkPartner
                 this.DragMove();
         }
 
-        private void CloseButton_Click(object sender, RoutedEventArgs e) => Application.Current.Shutdown();
+        private void CloseButton_Click(object sender, RoutedEventArgs e) => this.Close(); // 👈 그냥 창을 닫으라고만 요청
         private void MinimizeButton_Click(object sender, RoutedEventArgs e) => this.WindowState = WindowState.Minimized;
 
 
