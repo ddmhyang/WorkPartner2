@@ -1218,6 +1218,19 @@ namespace WorkPartner
                 oldVm.TimerStoppedAndSaved -= OnViewModelTimerStopped;
                 oldVm.CurrentTaskChanged -= OnViewModelTaskChanged;
                 oldVm.PropertyChanged -= OnViewModelPropertyChanged; // ◀◀ [이 줄 추가]
+                oldVm.PropertyChanged -= OnViewModelPropertyChanged;
+
+                // ▼▼▼ [추가] '할 일' 목록 이벤트 구독 해제 ▼▼▼
+                if (oldVm.TodoItems != null)
+                {
+                    oldVm.TodoItems.CollectionChanged -= TodoItems_CollectionChanged;
+                }
+
+                // ▼▼▼ [추가] '시간 기록' 목록 이벤트 구독 해제 ▼▼▼
+                if (oldVm.TimeLogEntries != null)
+                {
+                    oldVm.TimeLogEntries.CollectionChanged -= TimeLogEntries_CollectionChanged;
+                }
             }
             if (e.NewValue is ViewModels.DashboardViewModel newVm)
             {
@@ -1226,6 +1239,17 @@ namespace WorkPartner
                 newVm.CurrentTaskChanged += OnViewModelTaskChanged;
                 newVm.PropertyChanged += OnViewModelPropertyChanged; // ◀◀ [이 줄 추가]
 
+                if (newVm.TodoItems != null)
+                {
+                    newVm.TodoItems.CollectionChanged += TodoItems_CollectionChanged;
+                }
+
+                if (newVm.TimeLogEntries != null)
+                {
+                    newVm.TimeLogEntries.CollectionChanged += TimeLogEntries_CollectionChanged;
+                }
+                // ▲▲▲ [추가 완료] ▲▲▲
+
                 TaskListBox.ItemsSource = newVm.TaskItems;
                 // ▲▲▲ [여기까지 추가] ▲▲▲
                 RecalculateAllTotals();
@@ -1233,6 +1257,24 @@ namespace WorkPartner
                 UpdateCharacterInfoPanel();
                 FilterTodos(); // '두뇌'가 연결되었으니, '할 일' 목록을 즉시 필터링합니다.
             }
+        }
+        private void TimeLogEntries_CollectionChanged(object sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+        {
+            // '두뇌'의 시간 기록이 바뀌었으니, '얼굴'의 타임라인과 계산을 모두 새로고침합니다.
+            // (UI 스레드에서 실행되도록 보장합니다.)
+            Dispatcher.Invoke(() =>
+            {
+                RecalculateAllTotals();
+                RenderTimeTable();
+            });
+        }
+
+        private void TodoItems_CollectionChanged(object sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+        {
+            Dispatcher.Invoke(() =>
+            {
+                FilterTodos();
+            });
         }
 
         private void OnViewModelTimerStopped(object sender, EventArgs e)
