@@ -498,7 +498,7 @@ namespace WorkPartner.ViewModels
                 TimeLogEntries.Add(entry);
 
                 // 3. '즉시 저장' 호출
-                _timeLogService.SaveTimeLogsAsync(TimeLogEntries).GetAwaiter().GetResult();
+                _timeLogService.SaveTimeLogsAsync(TimeLogEntries); // 👈 [문제의 코드]
                 // ▲▲▲ [수정 완료] ▲▲▲
 
                 Debug.WriteLine("VM Shutdown: Final session saved.");
