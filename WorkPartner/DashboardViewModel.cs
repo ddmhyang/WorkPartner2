@@ -9,6 +9,9 @@ using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using System.Windows.Media.Animation;
 using WorkPartner.Services;
+using System.IO;          // 👈 File.Exists 사용
+using System.Text.Json;   // 👈 JsonSerializer 사용
+
 
 namespace WorkPartner.ViewModels
 {
@@ -38,6 +41,10 @@ namespace WorkPartner.ViewModels
         private const int IdleGraceSeconds = 10;
 
         public ObservableCollection<TimeLogEntry> TimeLogEntries { get; private set; }
+        public ObservableCollection<TodoItem> TodoItems { get; private set; }
+        public ObservableCollection<MemoItem> AllMemos { get; private set; }
+        private readonly string _todosFilePath = DataManager.TodosFilePath;
+        private readonly string _memosFilePath = DataManager.MemosFilePath;
         public event Action<string> TimeUpdated;
         public event Action<string> CurrentTaskChanged;
         public event Action<bool> IsRunningChanged;
@@ -102,11 +109,96 @@ namespace WorkPartner.ViewModels
             TaskItems = new ObservableCollection<TaskItem>();
             TimeLogEntries = new ObservableCollection<TimeLogEntry>();
 
+            TodoItems = new ObservableCollection<TodoItem>();
+            AllMemos = new ObservableCollection<MemoItem>();
+
             _timerService.Tick += OnTimerTick;
 
             DataManager.SettingsUpdated += OnSettingsUpdated;
 
             LoadInitialDataAsync();
+            _ = InitializeTasksAsync(); // 👈 과목 데이터를 비동기로 로드합니다.
+            _ = InitializeTodosAsync();
+            _ = InitializeMemosAsync();
+        }
+
+        // 파일: DashboardViewModel.cs
+        // (클래스 내부에 이 메서드 전체를 추가하세요)
+
+        /// <summary>
+        /// ViewModel이 생성될 때 과목 목록을 비동기적으로 불러옵니다.
+        /// </summary>
+        private async Task InitializeTasksAsync()
+        {
+            // 1. 서비스(ITaskService)를 통해 과목 데이터를 로드합니다.
+            var loadedTasks = await _taskService.LoadTasksAsync();
+            if (loadedTasks == null) return;
+
+            // 2. (중요) ViewModel의 TaskItems 컬렉션을 채웁니다.
+            TaskItems.Clear();
+            foreach (var task in loadedTasks)
+            {
+                // 3. 설정에 저장된 과목별 색상을 적용합니다.
+                if (_settings.TaskColors.TryGetValue(task.Text, out var colorHex))
+                {
+                    try
+                    {
+                        // (이 부분은 UI와 관련되지만, TaskItem 모델 자체가 Brush를 갖고 있으므로 허용)
+                        task.ColorBrush = (System.Windows.Media.SolidColorBrush)new System.Windows.Media.BrushConverter().ConvertFromString(colorHex);
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"Invalid color hex for task {task.Text}: {colorHex} - {ex.Message}");
+                        task.ColorBrush = System.Windows.Media.Brushes.Gray; // 👈 오류 시 기본색
+                    }
+                }
+                TaskItems.Add(task);
+            }
+        }
+        private async Task InitializeTodosAsync()
+        {
+            if (!File.Exists(_todosFilePath)) return;
+            try
+            {
+                await using var stream = new FileStream(_todosFilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                var loadedTodos = await JsonSerializer.DeserializeAsync<ObservableCollection<TodoItem>>(stream);
+                if (loadedTodos == null) return;
+
+                // (UI 스레드에서 컬렉션을 채우도록 보장 - WPF 안정성)
+                System.Windows.Application.Current.Dispatcher.Invoke(() =>
+                {
+                    TodoItems.Clear();
+                    foreach (var todo in loadedTodos) TodoItems.Add(todo);
+                });
+            }
+            catch (Exception ex) { Debug.WriteLine($"Error loading todos: {ex.Message}"); }
+        }
+
+        public void SaveTodos()
+        {
+            // ViewModel이 소유한 TodoItems 컬렉션을 DataManager를 통해 저장합니다.
+            DataManager.SaveTodos(TodoItems);
+        }
+
+        /// <summary>
+        /// ViewModel이 생성될 때 메모 목록을 비동기적으로 불러옵니다.
+        /// </summary>
+        private async Task InitializeMemosAsync()
+        {
+            if (!File.Exists(_memosFilePath)) return;
+            try
+            {
+                await using var stream = new FileStream(_memosFilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                var loadedMemos = await JsonSerializer.DeserializeAsync<ObservableCollection<MemoItem>>(stream);
+                if (loadedMemos == null) return;
+
+                System.Windows.Application.Current.Dispatcher.Invoke(() =>
+                {
+                    AllMemos.Clear();
+                    foreach (var memo in loadedMemos) AllMemos.Add(memo);
+                });
+            }
+            catch (Exception ex) { Debug.WriteLine($"Error loading memos: {ex.Message}"); }
         }
 
         private void OnSettingsUpdated()

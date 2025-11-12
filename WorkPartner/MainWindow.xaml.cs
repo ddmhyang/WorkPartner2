@@ -54,7 +54,6 @@ namespace WorkPartner
             {
                 case "Dashboard":
                     MainFrame.Navigate(_dashboardPage);
-                    await _dashboardPage.LoadAllDataAsync();
                     break;
                 case "Avatar":
                     if (_avatarPage == null) _avatarPage = new AvatarPage();

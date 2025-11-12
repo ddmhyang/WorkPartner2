@@ -23,20 +23,17 @@ namespace WorkPartner
     {
         #region 변수 선언
         private readonly string _tasksFilePath = DataManager.TasksFilePath;
-        private readonly string _todosFilePath = DataManager.TodosFilePath;
         private readonly string _timeLogFilePath = DataManager.TimeLogFilePath;
-        private readonly string _memosFilePath = DataManager.MemosFilePath;
 
         public ObservableCollection<TaskItem> TaskItems { get; set; }
-        public ObservableCollection<TodoItem> TodoItems { get; set; }
         public ObservableCollection<TodoItem> FilteredTodoItems { get; set; }
         //public ObservableCollection<TimeLogEntry> TimeLogEntries { get; set; } // ◀◀ [이 줄 삭제 또는 주석 처리]
-        public ObservableCollection<MemoItem> AllMemos { get; set; }
 
         private MainWindow _parentWindow;
         private AppSettings _settings;
         private MemoWindow _memoWindow;
         private MiniTimerWindow _miniTimer;
+        private ViewModels.DashboardViewModel ViewModel => DataContext as ViewModels.DashboardViewModel;
 
         private readonly double _blockWidth = 35, _blockHeight = 17;
         private readonly double _hourLabelWidth = 30;
@@ -117,12 +114,10 @@ namespace WorkPartner
 
         private void InitializeData()
         {
-            TodoItems = new ObservableCollection<TodoItem>();
             FilteredTodoItems = new ObservableCollection<TodoItem>();
             TodoTreeView.ItemsSource = FilteredTodoItems;
 
             // TimeLogEntries = new ObservableCollection<TimeLogEntry>(); // ◀◀ [이 줄 삭제]
-            AllMemos = new ObservableCollection<MemoItem>();
         }
 
         private void InitializeSoundPlayers()
@@ -147,55 +142,16 @@ namespace WorkPartner
         public void LoadSettings() { _settings = DataManager.LoadSettings(); }
         private void SaveSettings() { DataManager.SaveSettings(_settings); }
 
-        private async Task LoadTasksAsync()
-        {
-            if (!File.Exists(_tasksFilePath)) return;
-            try
-            {
-                await using var stream = new FileStream(_tasksFilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-                var loadedTasks = await JsonSerializer.DeserializeAsync<List<TaskItem>>(stream);
-                if (loadedTasks == null) return;
-
-                Application.Current.Dispatcher.Invoke(() =>
-                {
-                    TaskItems.Clear();
-                    _taskBrushCache.Clear();
-                    foreach (var task in loadedTasks)
-                    {
-                        if (_settings.TaskColors.TryGetValue(task.Text, out var colorHex))
-                        {
-                            task.ColorBrush = (SolidColorBrush)new BrushConverter().ConvertFromString(colorHex);
-                        }
-                        TaskItems.Add(task);
-                    }
-                });
-            }
-            catch (Exception ex) { Debug.WriteLine($"Error loading tasks: {ex.Message}"); }
-        }
-
         private void SaveTasks()
         {
             DataManager.SaveTasks(TaskItems);
         }
 
-        private async Task LoadTodosAsync()
-        {
-            if (!File.Exists(_todosFilePath)) return;
-            try
-            {
-                await using var stream = new FileStream(_todosFilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-                var loadedTodos = await JsonSerializer.DeserializeAsync<ObservableCollection<TodoItem>>(stream);
-                if (loadedTodos == null) return;
-                TodoItems.Clear();
-                foreach (var todo in loadedTodos) TodoItems.Add(todo);
-                FilterTodos();
-            }
-            catch (Exception ex) { Debug.WriteLine($"Error loading todos: {ex.Message}"); }
-        }
+
 
         private void SaveTodos()
         {
-            DataManager.SaveTodos(TodoItems);
+            ViewModel?.SaveTodos();
         }
 
         // ▼▼▼ [오류 327] 이 메서드는 OnViewModelTimerStopped에서 사용되므로, VM 리스트를 채우도록 수정 ▼▼▼
@@ -222,31 +178,6 @@ namespace WorkPartner
             // DataManager.SaveTimeLogsImmediately(TimeLogEntries); // ◀ (오류 342 수정)
         }
 
-        private async Task LoadMemosAsync()
-        {
-            if (!File.Exists(_memosFilePath)) return;
-            try
-            {
-                await using var stream = new FileStream(_memosFilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite); // ✨ [수정]
-                var loadedMemos = await JsonSerializer.DeserializeAsync<ObservableCollection<MemoItem>>(stream);
-                if (loadedMemos == null) return;
-                AllMemos.Clear();
-                foreach (var memo in loadedMemos) AllMemos.Add(memo);
-                UpdatePinnedMemoView();
-            }
-            catch (Exception ex) { Debug.WriteLine($"Error loading memos: {ex.Message}"); }
-        }
-
-        public async Task LoadAllDataAsync()
-        {
-            LoadSettings();
-            await LoadTasksAsync();
-            await LoadTodosAsync();
-            await LoadMemosAsync();
-            UpdateCharacterInfoPanel();
-            RecalculateAllTotals();
-            RenderTimeTable();
-        }
 
         #endregion
 
@@ -256,7 +187,7 @@ namespace WorkPartner
         {
             if (e.NewValue is true)
             {
-                await LoadAllDataAsync();
+                //await LoadAllDataAsync();
             }
         }
 
@@ -482,7 +413,7 @@ namespace WorkPartner
             }
             else
             {
-                TodoItems.Add(newTodo);
+                ViewModel?.TodoItems.Add(newTodo);
             }
 
             TodoInput.Clear();
@@ -555,7 +486,7 @@ namespace WorkPartner
             // ▼▼▼ (기존 로직 동일) ▼▼▼
             if (MessageBox.Show($"'{selectedTodo.Text}' 할 일을 삭제하시겠습니까?", "삭제 확인", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
             {
-                RemoveTodoItem(TodoItems, selectedTodo);
+                if (ViewModel != null) RemoveTodoItem(ViewModel.TodoItems, selectedTodo);
                 SaveTodos();
                 FilterTodos();
             }
@@ -1049,7 +980,7 @@ namespace WorkPartner
         private void FilterTodos()
         {
             FilteredTodoItems.Clear();
-            var filtered = TodoItems.Where(t => t.Date.Date == _currentDateForTimeline.Date);
+            if (ViewModel == null) return; var filtered = ViewModel.TodoItems.Where(t => t.Date.Date == _currentDateForTimeline.Date);
             foreach (var item in filtered) FilteredTodoItems.Add(item);
         }
 
@@ -1196,7 +1127,7 @@ namespace WorkPartner
 
         private void UpdatePinnedMemoView()
         {
-            var pinnedMemo = AllMemos.FirstOrDefault(m => m.IsPinned);
+            if (ViewModel == null) return; var pinnedMemo = ViewModel.AllMemos.FirstOrDefault(m => m.IsPinned);
             if (pinnedMemo != null && !string.IsNullOrWhiteSpace(pinnedMemo.Content))
             {
                 PinnedMemoView.Visibility = Visibility.Visible;
@@ -1213,7 +1144,7 @@ namespace WorkPartner
         private void PinnedMemo_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             var memoWindow = new MemoWindow { Owner = Window.GetWindow(this) };
-            memoWindow.Closed += async (s, args) => await LoadMemosAsync();
+            memoWindow.Closed += (s, args) => UpdatePinnedMemoView();
             memoWindow.ShowDialog();
         }
 
@@ -1368,11 +1299,7 @@ namespace WorkPartner
                 newVm.CurrentTaskChanged += OnViewModelTaskChanged;
                 newVm.PropertyChanged += OnViewModelPropertyChanged; // ◀◀ [이 줄 추가]
 
-            // ▼▼▼ [이 두 줄을 여기에 추가!] ▼▼▼
-            // 1. '화면'의 리스트가 '두뇌'의 리스트를 가리키게 합니다.
-            this.TaskItems = newVm.TaskItems;
-            // 2. 'TaskListBox'가 '두뇌'의 리스트를 직접 바라보게 합니다.
-            TaskListBox.ItemsSource = this.TaskItems;
+                TaskListBox.ItemsSource = newVm.TaskItems;
             // ▲▲▲ [여기까지 추가] ▲▲▲
             }
         }
