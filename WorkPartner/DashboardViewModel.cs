@@ -37,10 +37,10 @@ namespace WorkPartner.ViewModels
         /// <summary>
         /// 메인 타이머에 표시될 시간 (00:00:00)
         /// </summary>
-        public string MainTimeDisplay
+        public string MainTimeDisplayText // 👈 이름 변경 (Text 추가)
         {
             get => _mainTimeDisplay;
-            set { _mainTimeDisplay = value; OnPropertyChanged(); }
+            set { _mainTimeDisplay = value; OnPropertyChanged(); } // 👈 OnPropertyChanged() 호출은 유지
         }
 
         private string _totalTimeTodayDisplayText = "이날의 총 학습 시간: 0시간 0분";
@@ -62,6 +62,7 @@ namespace WorkPartner.ViewModels
         private bool _isPausedForIdle = false;
         private DateTime _idleStartTime;
         private const int IdleGraceSeconds = 10;
+        private DateTime _currentDateForView = DateTime.Today;
 
         public ObservableCollection<TimeLogEntry> TimeLogEntries { get; private set; }
         public ObservableCollection<TodoItem> TodoItems { get; private set; }
@@ -255,22 +256,17 @@ namespace WorkPartner.ViewModels
 
         // 파일: DashboardViewModel.cs
 
+        // 파일: DashboardViewModel.cs
+
         private void OnSelectedTaskChanged(TaskItem newSelectedTask)
         {
             CurrentTaskDisplayText = newSelectedTask?.Text ?? "과목 없음";
             CurrentTaskChanged?.Invoke(CurrentTaskDisplayText);
 
-            // [수정 전]
-            // if (!IsRunning && newSelectedTask != null) // 👈 CS0103 오류 발생 지점
-            // {
-            //     MainTimeDisplay = newSelectedTask.TotalTime.ToString(@"hh\:mm\:ss");
-            // }
-
-            // ▼▼▼ [수정 후] ▼▼▼
-            // 스톱워치가 멈춰있고, '유예 기간'도 아닐 때만 시간을 갱신합니다.
             if (!_stopwatch.IsRunning && !_isInGracePeriod && newSelectedTask != null)
             {
-                MainTimeDisplay = newSelectedTask.TotalTime.ToString(@"hh\:mm\:ss");
+                // ▼▼▼ [수정] 'MainTimeDisplay' -> 'MainTimeDisplayText'로 변경 ▼▼▼
+                MainTimeDisplayText = newSelectedTask.TotalTime.ToString(@"hh\:mm\:ss");
             }
         }
 
@@ -308,15 +304,19 @@ namespace WorkPartner.ViewModels
         }
 
 
+        // 파일: DashboardViewModel.cs
+
+        // ▼▼▼ 이 메서드 전체를 교체하세요 ▼▼▼
         private void HandleStopwatchMode()
         {
             if (_settings == null) return;
 
+            // --- 1. 현재 상태 파악 ---
             string activeProcess = ActiveWindowHelper.GetActiveProcessName().ToLower();
             string activeUrl = ActiveWindowHelper.GetActiveBrowserTabUrl()?.ToLower() ?? string.Empty;
             string activeTitle = ActiveWindowHelper.GetActiveWindowTitle()?.ToLower() ?? string.Empty;
 
-            CheckTagRules(activeTitle, activeUrl);
+            CheckTagRules(activeTitle, activeUrl); // (AI 태그 자동 변경)
 
             bool isWorkApp = _settings.WorkProcesses.Any(p =>
                 activeProcess.Contains(p) ||
@@ -329,28 +329,69 @@ namespace WorkPartner.ViewModels
                 (!string.IsNullOrEmpty(activeTitle) && activeTitle.Contains(p))
             );
 
+            // --- 2. [활성화] 자리 비움 감지 로직 ---
             bool isCurrentlyIdle = false;
-
-            if (!isPassiveApp)
+            if (!isPassiveApp) // '수동 앱'(영상 시청 등)이 아닐 때만
             {
-                isCurrentlyIdle = ActiveWindowHelper.GetIdleTime().TotalSeconds >= 10;
+                if (ActiveWindowHelper.GetIdleTime().TotalSeconds >= IdleGraceSeconds) // 10초 이상 유휴 상태면
+                {
+                    isCurrentlyIdle = true;
+                    if (!_isPausedForIdle)
+                    {
+                        // "방금" 유휴 상태가 됨
+                        _isPausedForIdle = true;
+                        _idleStartTime = DateTime.Now; // 유휴 시작 시간 기록 (현재는 사용X, 추후 분석용)
+                        Debug.WriteLine("Idle detected: Pausing timer.");
+                    }
+                }
+                else
+                {
+                    isCurrentlyIdle = false;
+                    if (_isPausedForIdle)
+                    {
+                        // "방금" 유휴 상태에서 복귀함
+                        _isPausedForIdle = false;
+                        Debug.WriteLine("User returned: Resuming timer.");
+                    }
+                }
             }
+            else
+            {
+                _isPausedForIdle = false; // 수동 앱 시청 중에는 유휴 상태가 아님
+            }
+            // --- [활성화 완료] ---
 
-            bool isWorkState = (isWorkApp || isPassiveApp) && !isCurrentlyIdle;
+            // 3. 최종 '업무 상태' 판정
+            bool isWorkState = (isWorkApp || isPassiveApp) && !isCurrentlyIdle; // 👈 isCurrentlyIdle 변수 사용
 
+            // 4. '업무 상태'일 때
             if (isWorkState)
             {
-                if (_isInGracePeriod)
+                if (_isInGracePeriod) // (딴짓하다가 120초 안에 복귀)
                 {
                     _isInGracePeriod = false;
                     _stopwatch.Start();
                 }
-                else if (!_stopwatch.IsRunning)
+                else if (!_stopwatch.IsRunning) // (새 업무 시작 또는 유휴 상태에서 복귀)
                 {
                     _currentWorkingTask = SelectedTaskItem ?? TaskItems.FirstOrDefault();
                     if (_currentWorkingTask != null)
                     {
-                        _sessionStartTime = DateTime.Now;
+                        // [로그 병합 로직] - 마지막 로그가 120초 이내 같은 과목이면 이어붙이기
+                        var lastLog = TimeLogEntries.LastOrDefault();
+                        if (lastLog != null &&
+                            lastLog.TaskText == _currentWorkingTask.Text &&
+                            (DateTime.Now - lastLog.EndTime).TotalSeconds < GracePeriodSeconds)
+                        {
+                            _sessionStartTime = lastLog.StartTime; // 마지막 로그의 시작 시간 계승
+                            TimeLogEntries.Remove(lastLog); // 이전 로그 삭제 (나중에 합쳐서 새로 저장)
+                            Debug.WriteLine($"Log stitched: Resuming '{_currentWorkingTask.Text}'");
+                        }
+                        else
+                        {
+                            _sessionStartTime = DateTime.Now; // 새 세션 시작
+                        }
+
                         _stopwatch.Start();
                         IsRunningChanged?.Invoke(true);
                         CurrentTaskDisplayText = _currentWorkingTask.Text;
@@ -358,8 +399,7 @@ namespace WorkPartner.ViewModels
                     }
                 }
             }
-
-            // 업무상태 아닐 때 로직
+            // 5. '업무 상태'가 아닐 때 (딴짓 또는 자리 비움)
             else
             {
                 bool isDistraction = _settings.DistractionProcesses.Any(p =>
@@ -367,22 +407,25 @@ namespace WorkPartner.ViewModels
                     (!string.IsNullOrEmpty(activeUrl) && activeUrl.Contains(p)) ||
                     (!string.IsNullOrEmpty(activeTitle) && activeTitle.Contains(p))
                 );
-                if (_stopwatch.IsRunning)
+
+                if (_stopwatch.IsRunning) // (방금 딴짓/자리비움 시작)
                 {
                     _stopwatch.Stop();
-                    _isInGracePeriod = true;
+                    _isInGracePeriod = true; // 120초 로그 병합 유예 시간 시작
                     _gracePeriodStartTime = DateTime.Now;
                 }
-                else if (_isInGracePeriod)
+                else if (_isInGracePeriod) // (유예 시간 진행 중)
                 {
+                    // 120초가 지났는데도 복귀 안 함
                     if ((DateTime.Now - _gracePeriodStartTime).TotalSeconds > GracePeriodSeconds)
                     {
-                        LogWorkSession();
-                        // _stopwatch.Reset(); // ◀ LogWorkSession에서 Reset
+                        LogWorkSession(); // 로그 저장
                         IsRunningChanged?.Invoke(false);
-                        _isInGracePeriod = false;
+                        _isInGracePeriod = false; // 유예 시간 종료
                     }
-                    if (isDistraction && _settings.IsFocusModeEnabled)
+
+                    // [방해금지 경고] - 유예 시간 *중에도* 경고는 울림 (자리 비움 아닐 때만)
+                    if (isDistraction && !_isPausedForIdle && _settings.IsFocusModeEnabled)
                     {
                         var elapsedSinceLastNag = (DateTime.Now - _lastFocusNagTime).TotalSeconds;
                         if (elapsedSinceLastNag > _settings.FocusModeNagIntervalSeconds)
@@ -392,9 +435,10 @@ namespace WorkPartner.ViewModels
                         }
                     }
                 }
-                else
+                else // (유예 시간도 끝난 상태 - 완전히 멈춤)
                 {
-                    if (isDistraction && _settings.IsFocusModeEnabled)
+                    // [방해금지 경고] - (자리 비움 아닐 때만)
+                    if (isDistraction && !_isPausedForIdle && _settings.IsFocusModeEnabled)
                     {
                         var elapsedSinceLastNag = (DateTime.Now - _lastFocusNagTime).TotalSeconds;
                         if (elapsedSinceLastNag > _settings.FocusModeNagIntervalSeconds)
@@ -451,20 +495,64 @@ namespace WorkPartner.ViewModels
         // 파일: DashboardViewModel.cs (약 445줄)
 
         // ▼▼▼ 이 메서드 전체를 교체하세요 ▼▼▼
+        // 파일: DashboardViewModel.cs (약 447줄)
+
+        // ▼▼▼ 이 메서드 전체를 아래 코드로 교체하세요 ▼▼▼
         private void UpdateLiveTimeDisplays()
         {
-            if (_currentWorkingTask == null) return;
+            // 1. '얼굴'이 '오늘' 날짜를 보고 있는지 확인합니다.
+            bool isViewingToday = (_currentDateForView.Date == DateTime.Today.Date);
 
-            TimeSpan elapsed = _stopwatch.Elapsed;
-            // '두뇌'의 리스트에서 현재 과목의 총 시간을 다시 계산 (오늘 날짜 기준)
-            TimeSpan totalTime = _currentWorkingTask.TotalTime + elapsed;
+            // 2. '오늘의 총 작업 시간' 텍스트 계산
+            var totalTimeToday = _totalTimeTodayFromLogs;
 
-            // 1. [수정] MainTimeDisplay 속성을 업데이트 (UI가 자동으로 갱신됨)
-            MainTimeDisplay = totalTime.ToString(@"hh\:mm\:ss");
+            // ▼ [수정] '오늘'을 보고 있을 때만, 실시간 시간을 더합니다.
+            if (isViewingToday && (_stopwatch.IsRunning || _isInGracePeriod))
+            {
+                totalTimeToday += _stopwatch.Elapsed;
+            }
+            TotalTimeTodayDisplayText = $"오늘의 작업 시간 | {totalTimeToday:hh\\:mm\\:ss}";
 
-            // 2. [수정] 'TimeUpdated' 이벤트는 미니 타이머를 위해서만 호출
-            //    (DashboardPage가 이 이벤트를 받을 필요가 없어짐)
-            TimeUpdated?.Invoke(MainTimeDisplay);
+            // 3. '메인 타이머' (선택된 과목) 시간 계산
+            var timeForSelectedTask = TimeSpan.Zero;
+            if (SelectedTaskItem != null && _dailyTaskTotals.TryGetValue(SelectedTaskItem.Text, out var storedTime))
+            {
+                timeForSelectedTask = storedTime;
+            }
+
+            // ▼ [수정] '오늘'을 보고 있고, 해당 과목이 실행 중일 때만 실시간 시간을 더합니다.
+            if (isViewingToday && (_stopwatch.IsRunning || _isInGracePeriod) && _currentWorkingTask == SelectedTaskItem)
+            {
+                timeForSelectedTask += _stopwatch.Elapsed;
+            }
+            string newTime = timeForSelectedTask.ToString(@"hh\:mm\:ss");
+            MainTimeDisplayText = newTime;
+
+            // 4. 미니 타이머는 날짜와 상관없이 '현재 작업'의 실시간 시간을 받아야 함 (이건 OK)
+            TimeUpdated?.Invoke(newTime);
+
+
+            // 5. '과목 목록 (TaskListBox)'의 실시간 시간 업데이트
+            // ▼ [수정] '오늘'을 보고 있을 때만, 과목 목록 전체의 시간을 실시간으로 갱신합니다.
+            if (isViewingToday)
+            {
+                foreach (var task in TaskItems)
+                {
+                    TimeSpan taskTotalTime = TimeSpan.Zero;
+                    if (_dailyTaskTotals.TryGetValue(task.Text, out var storedTaskTime))
+                    {
+                        taskTotalTime = storedTaskTime;
+                    }
+
+                    if ((_stopwatch.IsRunning || _isInGracePeriod) && _currentWorkingTask == task)
+                    {
+                        taskTotalTime += _stopwatch.Elapsed;
+                    }
+                    task.TotalTime = taskTotalTime; // (UI 자동 갱신)
+                }
+            }
+            // (만약 '어제'를 보고 있다면, 이 foreach를 실행하지 않고
+            // RecalculateTodaySummary에서 계산한 '어제'의 TotalTime 값을 그대로 유지합니다.)
         }
 
         #region --- Public CRUD Methods for Page ---
@@ -582,9 +670,6 @@ namespace WorkPartner.ViewModels
             }
         }
 
-        /// <summary>
-        /// 특정 날짜의 '총 학습 시간' 요약 텍스트를 갱신합니다.
-        /// </summary>
         // 파일: DashboardViewModel.cs (약 780줄)
 
         /// <summary>
@@ -592,6 +677,7 @@ namespace WorkPartner.ViewModels
         /// </summary>
         public void RecalculateTodaySummary(DateTime date)
         {
+            _currentDateForView = date.Date;
             var todayLogs = TimeLogEntries
                 .Where(log => log.StartTime.Date == date.Date);
 
@@ -623,7 +709,7 @@ namespace WorkPartner.ViewModels
             }
             else
             {
-                MainTimeDisplay = "00:00:00"; // 선택된 과목이 없으면 0으로 리셋
+                MainTimeDisplayText = "00:00:00"; // 선택된 과목이 없으면 0으로 리셋
             }
             // ▲▲▲ [수정 완료] ▲▲▲
         }
