@@ -491,49 +491,51 @@ namespace WorkPartner.ViewModels
             _stopwatch.Reset(); // ◀ (중요) 모든 계산이 끝난 후 리셋
             DataManager.SaveTimeLogsImmediately(TimeLogEntries);
         }
-
-        // 파일: DashboardViewModel.cs (약 445줄)
-
-        // ▼▼▼ 이 메서드 전체를 교체하세요 ▼▼▼
-        // 파일: DashboardViewModel.cs (약 447줄)
+        // 파일: DashboardViewModel.cs
 
         // ▼▼▼ 이 메서드 전체를 아래 코드로 교체하세요 ▼▼▼
         private void UpdateLiveTimeDisplays()
         {
-            // 1. '얼굴'이 '오늘' 날짜를 보고 있는지 확인합니다.
             bool isViewingToday = (_currentDateForView.Date == DateTime.Today.Date);
-
-            // 2. '오늘의 총 작업 시간' 텍스트 계산
             var totalTimeToday = _totalTimeTodayFromLogs;
+            // (실시간 시간은 한 번만 계산)
+            TimeSpan liveElapsed = (_stopwatch.IsRunning || _isInGracePeriod) ? _stopwatch.Elapsed : TimeSpan.Zero;
 
-            // ▼ [수정] '오늘'을 보고 있을 때만, 실시간 시간을 더합니다.
-            if (isViewingToday && (_stopwatch.IsRunning || _isInGracePeriod))
+            // --- 1. '오늘의 총 작업 시간' 텍스트 계산 (날짜 뷰에 의존) ---
+            if (isViewingToday)
             {
-                totalTimeToday += _stopwatch.Elapsed;
+                totalTimeToday += liveElapsed;
             }
             TotalTimeTodayDisplayText = $"오늘의 작업 시간 | {totalTimeToday:hh\\:mm\\:ss}";
 
-            // 3. '메인 타이머' (선택된 과목) 시간 계산
+            // --- 2. '메인 타이머' (선택된 과목) 시간 계산 (날짜 뷰에 의존) ---
             var timeForSelectedTask = TimeSpan.Zero;
             if (SelectedTaskItem != null && _dailyTaskTotals.TryGetValue(SelectedTaskItem.Text, out var storedTime))
             {
                 timeForSelectedTask = storedTime;
             }
-
-            // ▼ [수정] '오늘'을 보고 있고, 해당 과목이 실행 중일 때만 실시간 시간을 더합니다.
-            if (isViewingToday && (_stopwatch.IsRunning || _isInGracePeriod) && _currentWorkingTask == SelectedTaskItem)
+            if (isViewingToday && _currentWorkingTask == SelectedTaskItem)
             {
-                timeForSelectedTask += _stopwatch.Elapsed;
+                timeForSelectedTask += liveElapsed;
             }
-            string newTime = timeForSelectedTask.ToString(@"hh\:mm\:ss");
-            MainTimeDisplayText = newTime;
+            MainTimeDisplayText = timeForSelectedTask.ToString(@"hh\:mm\:ss");
 
-            // 4. 미니 타이머는 날짜와 상관없이 '현재 작업'의 실시간 시간을 받아야 함 (이건 OK)
-            TimeUpdated?.Invoke(newTime);
+            // --- 3. '미니 타이머' 시간 계산 (날짜 뷰와 *독립적*) ---
+            TimeSpan timeForMiniTimer = TimeSpan.Zero;
+            if (_currentWorkingTask != null) // 현재 '실행 중인' 과목이 있다면
+            {
+                // 그 과목의 오늘 기록된 시간을 가져오고
+                if (_dailyTaskTotals.TryGetValue(_currentWorkingTask.Text, out var storedCurrentTime))
+                {
+                    timeForMiniTimer = storedCurrentTime;
+                }
+                // 실시간 시간을 더합니다.
+                timeForMiniTimer += liveElapsed;
+            }
+            // [버그 1 수정] '미니 타이머'에는 항상 '실행 중인 과목'의 '실시간' 시간을 전달
+            TimeUpdated?.Invoke(timeForMiniTimer.ToString(@"hh\:mm\:ss"));
 
-
-            // 5. '과목 목록 (TaskListBox)'의 실시간 시간 업데이트
-            // ▼ [수정] '오늘'을 보고 있을 때만, 과목 목록 전체의 시간을 실시간으로 갱신합니다.
+            // --- 4. '과목 목록 (TaskListBox)'의 실시간 시간 업데이트 (날짜 뷰에 의존) ---
             if (isViewingToday)
             {
                 foreach (var task in TaskItems)
@@ -543,16 +545,13 @@ namespace WorkPartner.ViewModels
                     {
                         taskTotalTime = storedTaskTime;
                     }
-
-                    if ((_stopwatch.IsRunning || _isInGracePeriod) && _currentWorkingTask == task)
+                    if (_currentWorkingTask == task) // 실행 중인 과목에만 실시간 시간 추가
                     {
-                        taskTotalTime += _stopwatch.Elapsed;
+                        taskTotalTime += liveElapsed;
                     }
                     task.TotalTime = taskTotalTime; // (UI 자동 갱신)
                 }
             }
-            // (만약 '어제'를 보고 있다면, 이 foreach를 실행하지 않고
-            // RecalculateTodaySummary에서 계산한 '어제'의 TotalTime 값을 그대로 유지합니다.)
         }
 
         #region --- Public CRUD Methods for Page ---
@@ -672,21 +671,26 @@ namespace WorkPartner.ViewModels
 
         // 파일: DashboardViewModel.cs (약 780줄)
 
+        // 파일: DashboardViewModel.cs (약 780줄)
+
         /// <summary>
         /// 특정 날짜의 '총 학습 시간' 요약 텍스트를 갱신합니다.
+        /// (날짜 변경 시 '얼굴'이 호출)
         /// </summary>
         public void RecalculateTodaySummary(DateTime date)
         {
-            _currentDateForView = date.Date;
+            _currentDateForView = date.Date; // '두뇌'가 현재 보는 날짜를 기억 (중요!)
+
             var todayLogs = TimeLogEntries
                 .Where(log => log.StartTime.Date == date.Date);
 
+            // 1. "이날의 총 학습 시간" 계산 (기존 로직)
             var totalTimeToday = new TimeSpan(todayLogs.Sum(log => log.Duration.Ticks));
-
             TotalTimeTodayDisplayText = $"이날의 총 학습 시간: {(int)totalTimeToday.TotalHours}시간 {totalTimeToday.Minutes}분";
 
             // ▼▼▼ [핵심 수정] 이 블록을 추가하세요! ▼▼▼
-            // (날짜가 바뀌었으니, TaskItem 목록의 시간도 이 날짜 기준으로 새로고침합니다)
+
+            // 2. "과목 목록" 시간 계산 (날짜 기준)
             var logsByTask = todayLogs.GroupBy(log => log.TaskText);
             foreach (var task in TaskItems)
             {
@@ -702,9 +706,11 @@ namespace WorkPartner.ViewModels
                 }
             }
 
-            // ▼▼▼ [추가] 선택된 과목의 메인 타이머 시간도 갱신합니다 ▼▼▼
+            // 3. "메인 타이머" 시간 갱신 (선택된 과목 기준)
             if (SelectedTaskItem != null)
             {
+                // OnSelectedTaskChanged를 호출하여
+                // "타이머가 멈춘" 상태의 메인 타이머 시간을 갱신시킵니다.
                 OnSelectedTaskChanged(SelectedTaskItem);
             }
             else

@@ -1306,13 +1306,23 @@ namespace WorkPartner
 
         // 파일: DashboardPage.xaml.cs (약 1284줄)
 
+        // 파일: DashboardPage.xaml.cs (약 1284줄)
+
+        // ▼▼▼ 이 메서드 전체를 아래 코드로 교체하세요 ▼▼▼
         private void TimeLogEntries_CollectionChanged(object sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
         {
             Dispatcher.Invoke(() =>
             {
-                // ▼▼▼ [삭제] '두뇌'가 스스로 계산하므로 이 줄 삭제 ▼▼▼
-                // RecalculateAllTotals(); 
-                RenderTimeTable();
+                // ▼▼▼ [버그 2 수정] 시간 기록이 로드/변경되면, 계산을 다시 실행하도록 호출! ▼▼▼
+                if (ViewModel != null)
+                {
+                    // '두뇌'에게 현재 '얼굴'이 보고 있는 날짜를 기준으로
+                    // 모든 계산(총 시간, 과목 목록, 메인 타이머)을 다시 하라고 명령합니다.
+                    ViewModel.RecalculateTodaySummary(_currentDateForTimeline);
+                }
+                // ▲▲▲ [수정 완료] ▲▲▲
+
+                RenderTimeTable(); // 타임라인 그리기는 그대로 유지
             });
         }
 
