@@ -493,6 +493,10 @@ namespace WorkPartner.ViewModels
         }
         // 파일: DashboardViewModel.cs
 
+        // 파일: DashboardViewModel.cs
+
+        // 파일: DashboardViewModel.cs
+
         // ▼▼▼ 이 메서드 전체를 아래 코드로 교체하세요 ▼▼▼
         private void UpdateLiveTimeDisplays()
         {
@@ -520,7 +524,7 @@ namespace WorkPartner.ViewModels
             }
             MainTimeDisplayText = timeForSelectedTask.ToString(@"hh\:mm\:ss");
 
-            // --- 3. '미니 타이머' 시간 계산 (날짜 뷰와 *독립적*) ---
+            // --- 3. [미니 타이머 버그 수정] (날짜 뷰와 *독립적*) ---
             TimeSpan timeForMiniTimer = TimeSpan.Zero;
             if (_currentWorkingTask != null) // 현재 '실행 중인' 과목이 있다면
             {
@@ -532,7 +536,7 @@ namespace WorkPartner.ViewModels
                 // 실시간 시간을 더합니다.
                 timeForMiniTimer += liveElapsed;
             }
-            // [버그 1 수정] '미니 타이머'에는 항상 '실행 중인 과목'의 '실시간' 시간을 전달
+            // '미니 타이머'에는 항상 '실행 중인 과목'의 '실시간' 시간을 전달
             TimeUpdated?.Invoke(timeForMiniTimer.ToString(@"hh\:mm\:ss"));
 
             // --- 4. '과목 목록 (TaskListBox)'의 실시간 시간 업데이트 (날짜 뷰에 의존) ---
@@ -553,7 +557,6 @@ namespace WorkPartner.ViewModels
                 }
             }
         }
-
         #region --- Public CRUD Methods for Page ---
 
         /// <summary>
@@ -669,10 +672,9 @@ namespace WorkPartner.ViewModels
             }
         }
 
-        // 파일: DashboardViewModel.cs (약 780줄)
+        // 파일: DashboardViewModel.cs
 
-        // 파일: DashboardViewModel.cs (약 780줄)
-
+        // ▼▼▼ 이 메서드 전체를 아래 코드로 교체하세요 ▼▼▼
         /// <summary>
         /// 특정 날짜의 '총 학습 시간' 요약 텍스트를 갱신합니다.
         /// (날짜 변경 시 '얼굴'이 호출)
@@ -688,7 +690,7 @@ namespace WorkPartner.ViewModels
             var totalTimeToday = new TimeSpan(todayLogs.Sum(log => log.Duration.Ticks));
             TotalTimeTodayDisplayText = $"이날의 총 학습 시간: {(int)totalTimeToday.TotalHours}시간 {totalTimeToday.Minutes}분";
 
-            // ▼▼▼ [핵심 수정] 이 블록을 추가하세요! ▼▼▼
+            // ▼▼▼ [핵심 수정] 과목 목록 시간 계산 로직 추가 ▼▼▼
 
             // 2. "과목 목록" 시간 계산 (날짜 기준)
             var logsByTask = todayLogs.GroupBy(log => log.TaskText);
@@ -717,7 +719,6 @@ namespace WorkPartner.ViewModels
             {
                 MainTimeDisplayText = "00:00:00"; // 선택된 과목이 없으면 0으로 리셋
             }
-            // ▲▲▲ [수정 완료] ▲▲▲
         }
 
         // ▼▼▼ [추가] PropertyChanged 이벤트 핸들러 (이미 있다면 추가 X) ▼▼▼

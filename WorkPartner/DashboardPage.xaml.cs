@@ -1302,8 +1302,6 @@ namespace WorkPartner
                 UpdatePinnedMemoView();
             });
         }
-
-
         // 파일: DashboardPage.xaml.cs (약 1284줄)
 
         // 파일: DashboardPage.xaml.cs (약 1284줄)
@@ -1313,7 +1311,7 @@ namespace WorkPartner
         {
             Dispatcher.Invoke(() =>
             {
-                // ▼▼▼ [버그 2 수정] 시간 기록이 로드/변경되면, 계산을 다시 실행하도록 호출! ▼▼▼
+                // ▼▼▼ [핵심 수정] 시간 기록이 로드/변경되면, 계산을 다시 실행하도록 호출! ▼▼▼
                 if (ViewModel != null)
                 {
                     // '두뇌'에게 현재 '얼굴'이 보고 있는 날짜를 기준으로

@@ -116,7 +116,10 @@
             <!-- 메인 타이머 및 상태 표시 -->
             <TextBlock x:Name="CurrentTaskDisplay" Width="250" Canvas.Left="80" Canvas.Top="74" Text="{Binding CurrentTaskDisplayText}" TextAlignment="Center" Foreground="{DynamicResource PrimaryTextBrush}" FontFamily="Pretendard" FontSize="14" FontWeight="SemiBold" HorizontalAlignment="Left" VerticalAlignment="Center"/>
 
-            <TextBlock x:Name="MainTimeDisplay" Canvas.Left="123" Canvas.Top="92" Width="180" Text="{Binding MainTimeDisplay}" TextAlignment="Center" FontFamily="Pretendard" FontSize="40" FontWeight="SemiBold" Foreground="{DynamicResource PrimaryTextBrush}"/>
+            <TextBlock x:Name="MainTimeDisplay" Canvas.Left="123" Canvas.Top="92" Width="180" 
+           Text="{Binding MainTimeDisplayText}" TextAlignment="Center" FontFamily="Pretendard" 
+           FontSize="40" FontWeight="SemiBold" 
+           Foreground="{DynamicResource PrimaryTextBrush}"/>
 
             <TextBlock x:Name="SelectedTaskTotalTimeDisplay" Width="220" Canvas.Left="95" Canvas.Top="145" Text="{Binding TotalTimeTodayDisplayText}" TextAlignment="Center" Foreground="{DynamicResource PrimaryTextBrush}" FontFamily="Pretendard" FontSize="8" FontWeight="Medium" HorizontalAlignment="Left" VerticalAlignment="Center"/>
             <!-- 타임라인 영역 -->
