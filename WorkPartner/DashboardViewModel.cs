@@ -296,15 +296,19 @@ namespace WorkPartner.ViewModels
         }
 
 
+        // 파일: DashboardViewModel.cs
+
+        // ▼▼▼ 이 메서드 전체를 교체하세요 ▼▼▼
         private void HandleStopwatchMode()
         {
             if (_settings == null) return;
 
+            // --- 1. 현재 상태 파악 ---
             string activeProcess = ActiveWindowHelper.GetActiveProcessName().ToLower();
             string activeUrl = ActiveWindowHelper.GetActiveBrowserTabUrl()?.ToLower() ?? string.Empty;
             string activeTitle = ActiveWindowHelper.GetActiveWindowTitle()?.ToLower() ?? string.Empty;
 
-            CheckTagRules(activeTitle, activeUrl);
+            CheckTagRules(activeTitle, activeUrl); // (AI 태그 자동 변경)
 
             bool isWorkApp = _settings.WorkProcesses.Any(p =>
                 activeProcess.Contains(p) ||
@@ -317,28 +321,69 @@ namespace WorkPartner.ViewModels
                 (!string.IsNullOrEmpty(activeTitle) && activeTitle.Contains(p))
             );
 
+            // --- 2. [활성화] 자리 비움 감지 로직 ---
             bool isCurrentlyIdle = false;
-
-            if (!isPassiveApp)
+            if (!isPassiveApp) // '수동 앱'(영상 시청 등)이 아닐 때만
             {
-                isCurrentlyIdle = ActiveWindowHelper.GetIdleTime().TotalSeconds >= 10;
+                if (ActiveWindowHelper.GetIdleTime().TotalSeconds >= IdleGraceSeconds) // 10초 이상 유휴 상태면
+                {
+                    isCurrentlyIdle = true;
+                    if (!_isPausedForIdle)
+                    {
+                        // "방금" 유휴 상태가 됨
+                        _isPausedForIdle = true;
+                        _idleStartTime = DateTime.Now; // 유휴 시작 시간 기록 (현재는 사용X, 추후 분석용)
+                        Debug.WriteLine("Idle detected: Pausing timer.");
+                    }
+                }
+                else
+                {
+                    isCurrentlyIdle = false;
+                    if (_isPausedForIdle)
+                    {
+                        // "방금" 유휴 상태에서 복귀함
+                        _isPausedForIdle = false;
+                        Debug.WriteLine("User returned: Resuming timer.");
+                    }
+                }
             }
+            else
+            {
+                _isPausedForIdle = false; // 수동 앱 시청 중에는 유휴 상태가 아님
+            }
+            // --- [활성화 완료] ---
 
-            bool isWorkState = (isWorkApp || isPassiveApp) && !isCurrentlyIdle;
+            // 3. 최종 '업무 상태' 판정
+            bool isWorkState = (isWorkApp || isPassiveApp) && !isCurrentlyIdle; // 👈 isCurrentlyIdle 변수 사용
 
+            // 4. '업무 상태'일 때
             if (isWorkState)
             {
-                if (_isInGracePeriod)
+                if (_isInGracePeriod) // (딴짓하다가 120초 안에 복귀)
                 {
                     _isInGracePeriod = false;
                     _stopwatch.Start();
                 }
-                else if (!_stopwatch.IsRunning)
+                else if (!_stopwatch.IsRunning) // (새 업무 시작 또는 유휴 상태에서 복귀)
                 {
                     _currentWorkingTask = SelectedTaskItem ?? TaskItems.FirstOrDefault();
                     if (_currentWorkingTask != null)
                     {
-                        _sessionStartTime = DateTime.Now;
+                        // [로그 병합 로직] - 마지막 로그가 120초 이내 같은 과목이면 이어붙이기
+                        var lastLog = TimeLogEntries.LastOrDefault();
+                        if (lastLog != null &&
+                            lastLog.TaskText == _currentWorkingTask.Text &&
+                            (DateTime.Now - lastLog.EndTime).TotalSeconds < GracePeriodSeconds)
+                        {
+                            _sessionStartTime = lastLog.StartTime; // 마지막 로그의 시작 시간 계승
+                            TimeLogEntries.Remove(lastLog); // 이전 로그 삭제 (나중에 합쳐서 새로 저장)
+                            Debug.WriteLine($"Log stitched: Resuming '{_currentWorkingTask.Text}'");
+                        }
+                        else
+                        {
+                            _sessionStartTime = DateTime.Now; // 새 세션 시작
+                        }
+
                         _stopwatch.Start();
                         IsRunningChanged?.Invoke(true);
                         CurrentTaskDisplayText = _currentWorkingTask.Text;
@@ -346,8 +391,7 @@ namespace WorkPartner.ViewModels
                     }
                 }
             }
-
-            // 업무상태 아닐 때 로직
+            // 5. '업무 상태'가 아닐 때 (딴짓 또는 자리 비움)
             else
             {
                 bool isDistraction = _settings.DistractionProcesses.Any(p =>
@@ -355,22 +399,25 @@ namespace WorkPartner.ViewModels
                     (!string.IsNullOrEmpty(activeUrl) && activeUrl.Contains(p)) ||
                     (!string.IsNullOrEmpty(activeTitle) && activeTitle.Contains(p))
                 );
-                if (_stopwatch.IsRunning)
+
+                if (_stopwatch.IsRunning) // (방금 딴짓/자리비움 시작)
                 {
                     _stopwatch.Stop();
-                    _isInGracePeriod = true;
+                    _isInGracePeriod = true; // 120초 로그 병합 유예 시간 시작
                     _gracePeriodStartTime = DateTime.Now;
                 }
-                else if (_isInGracePeriod)
+                else if (_isInGracePeriod) // (유예 시간 진행 중)
                 {
+                    // 120초가 지났는데도 복귀 안 함
                     if ((DateTime.Now - _gracePeriodStartTime).TotalSeconds > GracePeriodSeconds)
                     {
-                        LogWorkSession();
-                        // _stopwatch.Reset(); // ◀ LogWorkSession에서 Reset
+                        LogWorkSession(); // 로그 저장
                         IsRunningChanged?.Invoke(false);
-                        _isInGracePeriod = false;
+                        _isInGracePeriod = false; // 유예 시간 종료
                     }
-                    if (isDistraction && _settings.IsFocusModeEnabled)
+
+                    // [방해금지 경고] - 유예 시간 *중에도* 경고는 울림 (자리 비움 아닐 때만)
+                    if (isDistraction && !_isPausedForIdle && _settings.IsFocusModeEnabled)
                     {
                         var elapsedSinceLastNag = (DateTime.Now - _lastFocusNagTime).TotalSeconds;
                         if (elapsedSinceLastNag > _settings.FocusModeNagIntervalSeconds)
@@ -380,9 +427,10 @@ namespace WorkPartner.ViewModels
                         }
                     }
                 }
-                else
+                else // (유예 시간도 끝난 상태 - 완전히 멈춤)
                 {
-                    if (isDistraction && _settings.IsFocusModeEnabled)
+                    // [방해금지 경고] - (자리 비움 아닐 때만)
+                    if (isDistraction && !_isPausedForIdle && _settings.IsFocusModeEnabled)
                     {
                         var elapsedSinceLastNag = (DateTime.Now - _lastFocusNagTime).TotalSeconds;
                         if (elapsedSinceLastNag > _settings.FocusModeNagIntervalSeconds)
@@ -703,7 +751,7 @@ namespace WorkPartner.ViewModels
                 TimeLogEntries.Add(entry);
 
                 // 3. '즉시 저장' 호출
-                _timeLogService.SaveTimeLogs(TimeLogEntries); // 👈 'Async' 삭제
+                DataManager.SaveTimeLogsImmediately(TimeLogEntries);
                 // ▲▲▲ [수정 완료] ▲▲▲
 
                 Debug.WriteLine("VM Shutdown: Final session saved.");
