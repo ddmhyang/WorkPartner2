@@ -59,21 +59,15 @@ namespace WorkPartner
         }
 
         // 11. [수정] 핀 고정 로직
-        private void PinCheckBox_Click(object sender, RoutedEventArgs e)
+        private void PinCheckBox_Checked(object sender, RoutedEventArgs e)
         {
             if (MemoListBox.SelectedItem is MemoItem selectedMemo)
             {
-                // 핀 상태 토글
-                selectedMemo.IsPinned = !selectedMemo.IsPinned;
-
-                // 다른 모든 메모의 핀 상태는 false로 변경
+                // '두뇌'의 다른 모든 메모를 핀 해제합니다.
                 foreach (var memo in _viewModel.AllMemos.Where(m => m != selectedMemo))
                 {
                     memo.IsPinned = false;
                 }
-
-                // (UI 갱신은 MemoItem의 INotifyPropertyChanged가 처리할 것입니다)
-                // (저장은 창이 닫힐 때 한꺼번에 처리)
             }
         }
 

@@ -1239,6 +1239,11 @@ namespace WorkPartner
                 {
                     oldVm.TimeLogEntries.CollectionChanged -= TimeLogEntries_CollectionChanged;
                 }
+
+                if (oldVm.AllMemos != null)
+                {
+                    oldVm.AllMemos.CollectionChanged -= Memos_CollectionChanged;
+                }
             }
             if (e.NewValue is ViewModels.DashboardViewModel newVm)
             {
@@ -1258,6 +1263,10 @@ namespace WorkPartner
                 }
                 // ▲▲▲ [추가 완료] ▲▲▲
 
+                if (newVm.AllMemos != null)
+                {
+                    newVm.AllMemos.CollectionChanged += Memos_CollectionChanged;
+                }
                 TaskListBox.ItemsSource = newVm.TaskItems;
                 // ▲▲▲ [여기까지 추가] ▲▲▲
                 RecalculateAllTotals();
@@ -1266,6 +1275,17 @@ namespace WorkPartner
                 FilterTodos(); // '두뇌'가 연결되었으니, '할 일' 목록을 즉시 필터링합니다.
             }
         }
+
+        private void Memos_CollectionChanged(object sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+        {
+            // '두뇌'의 메모 목록이 바뀌었으니, '얼굴'의 고정된 메모 뷰도 갱신합니다.
+            Dispatcher.Invoke(() =>
+            {
+                UpdatePinnedMemoView();
+            });
+        }
+
+
         private void TimeLogEntries_CollectionChanged(object sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
         {
             // '두뇌'의 시간 기록이 바뀌었으니, '얼굴'의 타임라인과 계산을 모두 새로고침합니다.
