@@ -614,7 +614,7 @@ namespace WorkPartner
                 var otherDateLogs = vm.TimeLogEntries
                     .Where(log => log.StartTime.Date == _currentDateForTimeline.Date).ToList();
                 var totalTimeOtherDate = new TimeSpan(otherDateLogs.Sum(log => log.Duration.Ticks));
-                SelectedTaskTotalTimeDisplay.Text = $"이날의 총 학습 시간: {(int)totalTimeOtherDate.TotalHours}시간 {totalTimeOtherDate.Minutes}분";
+                SelectedTaskTotalTimeDisplay.Text = $"오늘의 작업 시간 | {totalTimeOtherDate:hh\\:mm\\:ss}";
             }
             // '오늘' 날짜면, 아무것도 하지 않습니다.
             // (아래 2, 3단계에서 추가할 이벤트 핸들러가 '두뇌'의 값을 받아 처리)
