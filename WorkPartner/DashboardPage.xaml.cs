@@ -53,6 +53,7 @@ namespace WorkPartner
         private readonly Dictionary<string, SolidColorBrush> _taskBrushCache = new();
         private static readonly SolidColorBrush DefaultGrayBrush = new SolidColorBrush(Colors.Gray);
 
+        private readonly ObservableCollection<TaskItem> _offlineTaskItems = new ObservableCollection<TaskItem>();
         #endregion
 
         public DashboardPage()
@@ -585,79 +586,99 @@ namespace WorkPartner
         // 
         // ▼▼▼ 이 메서드 전체를 아래 코드로 교체하세요 ▼▼▼
 
+        // 파일: DashboardPage.xaml.cs (약 624줄 근처)
+        //
+        // ▼▼▼ 이 메서드 전체를 아래 코드로 교체하세요 ▼▼▼
+
+        // [복원 후 ✅]
         private void UpdateMainTimeDisplay()
         {
-            // ▼▼▼ [수정] VM을 먼저 가져옵니다. ▼▼▼
             if (DataContext is not ViewModels.DashboardViewModel vm) return;
 
-            // 1. [수정] 현재 선택된 과목을 단순하게 가져옵니다.
             TaskItem selectedTask = TaskListBox.SelectedItem as TaskItem;
-
-            // 2. [!!! BUG FIX !!!]
-            // 선택이 null일 때 첫 번째 항목을 강제로 다시 선택하는
-            // "로직 폭탄" 코드를 완전히 제거합니다.
-            /*
-            if (selectedTask == null && TaskItems.Any())
-            {
-                selectedTask = TaskItems.FirstOrDefault(); 
-                if (TaskListBox.SelectedItem == null)
-                {
-                    TaskListBox.SelectedItem = selectedTask; 
-                }
-            }
-            */
-            // [!!! BUG FIX 완료 !!!]
-
-
-            // 3. [수정] selectedTask가 null일 수 있으므로, null일 때는 0초를 표시
             TimeSpan timeToShow = TimeSpan.Zero;
+
             if (selectedTask != null)
             {
-                // (우리가 이전에 수정한 코드로 인해 TotalTime은 실시간으로 업데이트됨)
+                // (RecalculateAllTotals가 계산한 TotalTime을 사용)
                 timeToShow = selectedTask.TotalTime;
             }
 
             // 1. 메인 타이머 업데이트
-            MainTimeDisplay.Text = timeToShow.ToString(@"hh\:mm\:ss");
+            if (_currentDateForTimeline.Date != DateTime.Today.Date)
+            {
+                // "다른 날짜"면, 무조건 선택한 과목의 '해당 날짜 총 시간'을 표시
+                MainTimeDisplay.Text = timeToShow.ToString(@"hh\:mm\:ss");
+            }
+            else
+            {
+                // "오늘"이면, '두뇌'(ViewModel)의 타이머가 멈춰 있을 때만
+                // 선택한 과목의 누적 시간을 표시합니다.
+                if (vm.IsTimerRunning == false)
+                {
+                    MainTimeDisplay.Text = timeToShow.ToString(@"hh\:mm\:ss");
+                }
+                // (타이머가 실행 중이면 OnViewModelTimeUpdated가 처리)
+            }
 
-            // 2. 하단 총 학습 시간 업데이트
-            // ▼▼▼ [핵심 수정] Page의 리스트가 아닌 VM의 리스트(vm.TimeLogEntries)를 사용
+            // 2. 하단 총 학습 시간 (이건 '오늘' 기준인 VM 값을 써도 무방)
             var todayLogs = vm.TimeLogEntries
                 .Where(log => log.StartTime.Date == _currentDateForTimeline.Date).ToList();
-            // ▲▲▲
             var totalTimeToday = new TimeSpan(todayLogs.Sum(log => log.Duration.Ticks));
             SelectedTaskTotalTimeDisplay.Text = $"이날의 총 학습 시간: {(int)totalTimeToday.TotalHours}시간 {totalTimeToday.Minutes}분";
         }
 
+        // [복원 후 ✅] (맨 처음 버그 수정했던 그 코드입니다)
         private void RecalculateAllTotals()
         {
-            // ▼▼▼ [수정] '두뇌'가 없으면 즉시 종료 ▼▼▼
             if (ViewModel == null) return;
 
-            // '두뇌'의 TimeLogEntries 리스트를 사용
-            var todayLogs = ViewModel.TimeLogEntries
+            var selectedDateLogs = ViewModel.TimeLogEntries
                 .Where(log => log.StartTime.Date == _currentDateForTimeline.Date).ToList();
 
-            // ▼▼▼ [수정] Page의 TaskItems 대신 '두뇌'의 TaskItems를 사용 ▼▼▼
-            foreach (var task in ViewModel.TaskItems)
+            if (_currentDateForTimeline.Date == DateTime.Today.Date)
             {
-                var taskLogs = todayLogs.Where(log => log.TaskText == task.Text);
-                task.TotalTime = new TimeSpan(taskLogs.Sum(log => log.Duration.Ticks));
+                // "오늘"이면 '두뇌'(ViewModel)의 '실시간' 목록을 업데이트
+                foreach (var task in ViewModel.TaskItems)
+                {
+                    var taskLogs = selectedDateLogs.Where(log => log.TaskText == task.Text);
+                    task.TotalTime = new TimeSpan(taskLogs.Sum(log => log.Duration.Ticks));
+                }
+            }
+            else
+            {
+                // "다른 날짜"면 '오프라인' 목록을 새로 채웁니다.
+                _offlineTaskItems.Clear();
+                foreach (var vmTask in ViewModel.TaskItems)
+                {
+                    var taskLogs = selectedDateLogs.Where(log => log.TaskText == vmTask.Text);
+                    TimeSpan totalTime = new TimeSpan(taskLogs.Sum(log => log.Duration.Ticks));
+
+                    var offlineTask = new TaskItem
+                    {
+                        Text = vmTask.Text,
+                        TotalTime = totalTime,
+                        ColorBrush = GetColorForTask(vmTask.Text)
+                    };
+                    _offlineTaskItems.Add(offlineTask);
+                }
             }
 
-            UpdateMainTimeDisplay();
-
-            if (TaskListBox != null)
-            {
-                TaskListBox.Items.Refresh();
-            }
+            UpdateMainTimeDisplay(); // 👈 이게 꼭 마지막에 호출되어야 함
         }
 
+        // [복원 후 ✅]
         private void TaskListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
+            // [복원] '얼굴'이 UI를 직접 업데이트하도록 합니다.
             UpdateMainTimeDisplay();
-        }
 
+            // [유지] '두뇌'에게 선택 항목이 바뀐 것을 '알려는' 줍니다.
+            if (ViewModel != null)
+            {
+                ViewModel.SelectedTaskItem = TaskListBox.SelectedItem as TaskItem;
+            }
+        }
         // 파일: DashboardPage.xaml.cs (약 700줄)
 
         private SolidColorBrush GetColorForTask(string taskName)
@@ -894,10 +915,26 @@ namespace WorkPartner
 
             CurrentDayDisplay.Text = _currentDateForTimeline.ToString("ddd");
 
+            // ▼▼▼ [여기부터 수정] ▼▼▼
+            if (ViewModel == null) return;
+
+            if (_currentDateForTimeline.Date == DateTime.Today.Date)
+            {
+                // 오늘 날짜면 '두뇌'(ViewModel)의 실시간 리스트에 연결
+                TaskListBox.ItemsSource = ViewModel.TaskItems;
+            }
+            else
+            {
+                // 다른 날짜면 '두뇌'와 연결을 끊고, 복사된 '오프라인' 리스트 사용
+                TaskListBox.ItemsSource = _offlineTaskItems;
+            }
+            // ▲▲▲ [여기까지 수정] ▲▲▲
+
             RenderTimeTable();
-            RecalculateAllTotals();
+            RecalculateAllTotals(); // 이제 이 메서드는 올바른 목록을 채울 것입니다.
             FilterTodos();
         }
+
 
         private void PrevDayButton_Click(object sender, RoutedEventArgs e)
         {
@@ -1320,18 +1357,19 @@ namespace WorkPartner
         // 파일: DashboardPage.xaml.cs
         // 메서드: OnViewModelTimeUpdated (약 1157줄 근처)
 
+        // [복원 후 ✅]
         private void OnViewModelTimeUpdated(string newTime)
         {
             if (_miniTimer != null && _miniTimer.IsVisible)
             {
-                // '두뇌'의 설정이 준비되었는지 확인하고, '두뇌'의 설정을 전달합니다.
                 if (ViewModel?.Settings == null) return;
-                _miniTimer.UpdateData(ViewModel.Settings, CurrentTaskDisplay.Text, newTime);
+                _miniTimer.UpdateData(ViewModel.Settings, ViewModel.CurrentTaskDisplayText, newTime);
             }
 
-            // 2. 메인 타이머 업데이트 (이 코드는 그대로 둡니다)
+            // [복원] '오늘' 날짜가 아니면 실시간 업데이트를 무시
             if (_currentDateForTimeline.Date != DateTime.Today.Date) return;
 
+            // [복원] '오늘' 날짜일 때만 '얼굴'의 텍스트를 직접 업데이트
             Dispatcher.Invoke(() =>
             {
                 MainTimeDisplay.Text = newTime;
@@ -1357,18 +1395,20 @@ namespace WorkPartner
 
         private void OnViewModelTaskChanged(string newTaskName)
         {
-            // 1. 메인 과목 텍스트(CurrentTaskDisplay)는 "항상" ViewModel의 값을 따릅니다.
+            // ▼▼▼ [수정] '오늘' 날짜가 아니면, '두뇌'의 변경 사항을 
+            // '얼굴'의 메인 디스플레이에 반영하지 않습니다.
+            if (_currentDateForTimeline.Date != DateTime.Today.Date) return;
+            // ▲▲▲
+
+            // 1. 메인 과목 텍스트(CurrentTaskDisplay) 업데이트
             Dispatcher.Invoke(() =>
             {
                 CurrentTaskDisplay.Text = newTaskName;
             });
 
-            // 2. 메인 대시보드 UI(TaskListBox)는 "오늘 날짜를 볼 때만" 동기화합니다.
-            if (_currentDateForTimeline.Date != DateTime.Today.Date) return;
-
+            // 2. 메인 대시보드 UI(TaskListBox) 동기화
             Dispatcher.Invoke(() =>
             {
-                // ▼▼▼ [수정] '얼굴'의 TaskItems 대신 '두뇌'의 ViewModel.TaskItems를 사용 ▼▼▼
                 var foundTask = ViewModel.TaskItems.FirstOrDefault(t => t.Text == newTaskName);
 
                 if (foundTask != null && TaskListBox.SelectedItem != foundTask)

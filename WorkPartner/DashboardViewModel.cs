@@ -30,7 +30,7 @@ namespace WorkPartner.ViewModels
         private readonly Stopwatch _stopwatch;
         private AppSettings _settings;
         public AppSettings Settings => _settings; // '얼굴'이 _settings를 읽을 수 있게 공개
-
+        public bool IsTimerRunning => _stopwatch.IsRunning;
         private bool _isInGracePeriod = false;
         private DateTime _gracePeriodStartTime;
         private const int GracePeriodSeconds = 120; // 👈 2분(120초)간의 유예 시간 (이 시간은 조절 가능)
@@ -487,11 +487,11 @@ namespace WorkPartner.ViewModels
         private void UpdateLiveTimeDisplays()
         {
             var totalTimeToday = _totalTimeTodayFromLogs;
-            // (이전 수정) 스톱워치가 실행 중이거나, 유예 기간 중일 때
             if (_stopwatch.IsRunning || _isInGracePeriod)
             {
                 totalTimeToday += _stopwatch.Elapsed;
             }
+            // [유지] 하단 텍스트는 '오늘' 기준이 맞으므로 둡니다.
             TotalTimeTodayDisplayText = $"오늘의 작업 시간 | {totalTimeToday:hh\\:mm\\:ss}";
 
             var timeForSelectedTask = TimeSpan.Zero;
@@ -499,41 +499,38 @@ namespace WorkPartner.ViewModels
             {
                 timeForSelectedTask = storedTime;
             }
-
-            // (이전 수정) 스톱워치가 실행 중이거나 유예 기간 중이고 + 현재 선택된 과목일 때
             if ((_stopwatch.IsRunning || _isInGracePeriod) && _currentWorkingTask == SelectedTaskItem)
             {
                 timeForSelectedTask += _stopwatch.Elapsed;
             }
 
             string newTime = timeForSelectedTask.ToString(@"hh\:mm\:ss");
-            MainTimeDisplayText = newTime;
 
+            // ▼▼▼ [수정] '두뇌'가 메인 시간을 덮어쓰지 않도록 주석 처리합니다. ▼▼▼
+            // MainTimeDisplayText = newTime; // 👈 [수정 1]
+            // ▲▲▲
+
+            // [유지] 미니 타이머는 '오늘' 실시간 시간이 필요하므로 둡니다.
             TimeUpdated?.Invoke(newTime);
 
 
-            // ▼▼▼ [이 코드 블록을 여기에 추가하세요] ▼▼▼
-            // (1초마다 모든 과목 목록의 시간을 실시간으로 업데이트)
+            // ▼▼▼ [수정] '두뇌'가 과목 목록 시간을 덮어쓰지 않도록 주석 처리합니다. ▼▼▼
+            /* // 👈 [수정 2]
             foreach (var task in TaskItems)
             {
-                // 1. 저장된 로그에서 기본 시간 가져오기
                 TimeSpan taskTotalTime = TimeSpan.Zero;
                 if (_dailyTaskTotals.TryGetValue(task.Text, out var storedTaskTime))
                 {
                     taskTotalTime = storedTaskTime;
                 }
-
-                // 2. 이 과목이 현재 실행 중인 과목이라면, 실시간 스톱워치 시간을 더하기
                 if ((_stopwatch.IsRunning || _isInGracePeriod) && _currentWorkingTask == task)
                 {
                     taskTotalTime += _stopwatch.Elapsed;
                 }
-
-                // 3. TaskItem의 TotalTime 속성을 업데이트합니다.
-                //    (이 속성이 변경되면 TaskItem.cs가 자동으로 UI를 갱신합니다)
                 task.TotalTime = taskTotalTime;
             }
-            // ▲▲▲ [여기까지 추가] ▲▲▲
+            */ // 👈 [수정 3]
+               // ▲▲▲
         }
 
         #region --- Public CRUD Methods for Page ---
