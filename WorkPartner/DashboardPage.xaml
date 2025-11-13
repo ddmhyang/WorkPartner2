@@ -250,7 +250,7 @@ Canvas.Top="12" Content=" 집중도 평가 " Height="17" Width="60" FontSize="8"
                                         <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Right">
                                             <TextBlock x:Name="TotalTimeTextBlock" Text="{Binding TotalTimeFormatted}" VerticalAlignment="Center" Foreground="{DynamicResource PrimaryTextBrush}" FontSize="10" Margin="0,0,10,0"/>
                                             <Button Content="✏️" FontSize="10" FontWeight="Bold" Background="Transparent" Foreground="{DynamicResource PrimaryTextBrush}"  BorderBrush="Transparent" VerticalAlignment="Center" Margin="0,0,5,0" Click="EditTaskButton_Click"/>
-                                            <Button Content="×" FontSize="8" Background="Transparent" Foreground="{DynamicResource PrimaryTextBrush}" BorderBrush="Transparent" VerticalAlignment="Center" Click="DeleteTaskButton_Click"/>
+                                            <Button Content="×" FontSize="8" FontWeight="Bold" Background="Transparent" Foreground="{DynamicResource PrimaryTextBrush}" BorderBrush="Transparent" VerticalAlignment="Center" Click="DeleteTaskButton_Click"/>
                                         </StackPanel>
                                     </Grid>
                                 </Border>
@@ -292,8 +292,10 @@ Canvas.Top="12" Content=" 집중도 평가 " Height="17" Width="60" FontSize="8"
                                             <TextBlock Text="{Binding Text}" VerticalAlignment="Center" Foreground="{DynamicResource PrimaryTextBrush}" FontSize="12"/>
                                         </StackPanel>
 
-                                        <Button Content="✏️" FontSize="8" Background="Transparent"  Foreground="{DynamicResource PrimaryTextBrush}"  BorderBrush="Transparent" VerticalAlignment="Center" Click="EditTodoButton_Click"/>
-                                        <Button Grid.Column="1" Content="×" FontSize="8" Background="Transparent" Foreground="{DynamicResource PrimaryTextBrush}" BorderBrush="Transparent" VerticalAlignment="Center" Click="DeleteTodoButton_Click"/>
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                            <Button Content="✏️" FontSize="10" FontWeight="Bold" Background="Transparent"  Foreground="{DynamicResource PrimaryTextBrush}"  BorderBrush="Transparent" VerticalAlignment="Center" Click="EditTodoButton_Click" Margin="0,0,5,0"/>
+                                            <Button Content="×" FontSize="8" FontWeight="Bold" Background="Transparent" Foreground="{DynamicResource PrimaryTextBrush}" BorderBrush="Transparent" VerticalAlignment="Center" Click="DeleteTodoButton_Click"/>
+                                        </StackPanel>
                                     </Grid>
                                 </Border>
                             </DataTemplate>

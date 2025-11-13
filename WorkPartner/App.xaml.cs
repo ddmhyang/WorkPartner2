@@ -31,6 +31,8 @@ namespace WorkPartner
             var mainWindow = new MainWindow();
             mainWindow.SetDashboardViewModel(dashboardViewModel);
             mainWindow.Show();
+            mainWindow.Activate();
+
             var settings = DataManager.LoadSettings();
             ApplyTheme(settings);
         }
