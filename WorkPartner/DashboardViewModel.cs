@@ -337,35 +337,81 @@ namespace WorkPartner.ViewModels
             DataManager.SaveTimeLogsImmediately(TimeLogEntries);
         }
 
+        // 파일: WorkPartner/DashboardViewModel.cs
+        // (약 320줄 근처)
+
+        // ▼▼▼ 이 메서드 전체를 아래 코드로 교체하세요 ▼▼▼
+
         private void UpdateLiveTimeDisplays()
         {
+            // 1. 오늘의 총 시간 (로그 + 실시간) 계산
             var totalTimeToday = _totalTimeTodayFromLogs;
-            // (이전 수정) 스톱워치가 실행 중이거나, 유예 기간 중일 때
             if (_stopwatch.IsRunning || _isInGracePeriod)
             {
                 totalTimeToday += _stopwatch.Elapsed;
             }
             TotalTimeTodayDisplayText = $"오늘의 작업 시간 | {totalTimeToday:hh\\:mm\\:ss}";
 
+            // --- ▼▼▼ [수정된 부분 시작] ---
+
+            // 2. (중요) 모든 과목의 TotalTime을 로그 기반 시간으로 '초기화'합니다.
+            foreach (var task in TaskItems)
+            {
+                if (_dailyTaskTotals.TryGetValue(task.Text, out var storedTime))
+                {
+                    // TaskItem.cs의 INotifyPropertyChanged가 UI를 업데이트합니다.
+                    task.TotalTime = storedTime;
+                }
+                else
+                {
+                    task.TotalTime = TimeSpan.Zero;
+                }
+            }
+
+            // 3. '현재 작업 중인 과목'(_currentWorkingTask)을 찾아서 '실시간 시간(스톱워치)'을 더해줍니다.
+            if ((_stopwatch.IsRunning || _isInGracePeriod) && _currentWorkingTask != null)
+            {
+                var liveTask = TaskItems.FirstOrDefault(t => t.Text == _currentWorkingTask.Text);
+                if (liveTask != null)
+                {
+                    // (중요) VM의 TaskItems 컬렉션에 있는 객체의 'TotalTime'을 직접 업데이트합니다.
+                    // (로그 시간 + 스톱워치 시간)
+                    liveTask.TotalTime = liveTask.TotalTime.Add(_stopwatch.Elapsed);
+                }
+            }
+
+            // 4. 'UI에서 현재 선택된 과목'(SelectedTaskItem)의 시간을 가져옵니다. (MainTimeDisplay 용)
+            var timeForSelectedTask = TimeSpan.Zero;
+            if (SelectedTaskItem != null && TaskItems.FirstOrDefault(t => t.Text == SelectedTaskItem.Text) is TaskItem selectedTask)
+            {
+                // 5. TaskItems에서 방금 업데이트된 최신 시간을 가져옵니다.
+                timeForSelectedTask = selectedTask.TotalTime;
+            }
+            // (선택이 없다면 timeForSelectedTask는 0으로 유지됩니다)
+
+            // 6. 메인 디스플레이 텍스트를 설정합니다.
+            string newTime = timeForSelectedTask.ToString(@"hh\:mm\:ss");
+            MainTimeDisplayText = newTime;
+
+            // 7. 미니 타이머와 Page(OnViewModelTimeUpdated)에 이 텍스트를 보냅니다.
+            TimeUpdated?.Invoke(newTime);
+
+            // --- ▲▲▲ [수정된 부분 끝] ---
+
+            /* --- [기존 로직은 삭제] ---
             var timeForSelectedTask = TimeSpan.Zero;
             if (SelectedTaskItem != null && _dailyTaskTotals.TryGetValue(SelectedTaskItem.Text, out var storedTime))
             {
                 timeForSelectedTask = storedTime;
             }
-
-            // (이전 수정) 스톱워치가 실행 중이거나 유예 기간 중이고 + 현재 선택된 과목일 때
             if ((_stopwatch.IsRunning || _isInGracePeriod) && _currentWorkingTask == SelectedTaskItem)
             {
                 timeForSelectedTask += _stopwatch.Elapsed;
             }
-
             string newTime = timeForSelectedTask.ToString(@"hh\:mm\:ss");
             MainTimeDisplayText = newTime;
-
             TimeUpdated?.Invoke(newTime);
-
-
-
+            */
         }
 
         #region --- Public CRUD Methods for Page ---
