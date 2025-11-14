@@ -58,7 +58,7 @@ namespace WorkPartner.ViewModels
             set => SetProperty(ref _mainTimeDisplayText, value);
         }
 
-        public string _totalTimeTodayDisplayText = "오늘의 작업 시간 | 00:00:00";
+        public string _totalTimeTodayDisplayText = "총3 작업 시간 | 00:00:00";
         public string TotalTimeTodayDisplayText
         {
             get => _totalTimeTodayDisplayText;
@@ -350,7 +350,7 @@ namespace WorkPartner.ViewModels
             {
                 totalTimeToday += _stopwatch.Elapsed;
             }
-            TotalTimeTodayDisplayText = $"오늘의 작업 시간 | {totalTimeToday:hh\\:mm\\:ss}";
+            TotalTimeTodayDisplayText = $"총 작업 시간 | {totalTimeToday:hh\\:mm\\:ss}";
 
             // --- ▼▼▼ [수정된 부분 시작] ---
 

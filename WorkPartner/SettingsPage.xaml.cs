@@ -96,6 +96,8 @@ namespace WorkPartner
             CoinTextBlock.Text = Settings.Coins.ToString("N0");
             UsernameTextBox.Text = Settings.Username;
 
+            MiniTimerCheckBox.IsChecked = Settings.IsMiniTimerEnabled;
+
             if (Settings.Theme == "Dark")
                 DarkModeRadioButton.IsChecked = true;
             else
@@ -179,11 +181,12 @@ namespace WorkPartner
             // --- 설정 저장 및 전파 ---
             SaveSettings(); // 👈 모든 변경 사항을 파일에 저장
 
-            // (기존) 미니 타이머 토글 로직
-            if (sender == MiniTimerCheckBox)
-            {
-                _mainWindow?.ToggleMiniTimer(Settings.IsMiniTimerEnabled);
-            }
+            //// (기존) 미니 타이머 토글 로직
+            //if (sender == MiniTimerCheckBox)
+            //{
+            //    _mainWindow?.ToggleMiniTimer(Settings.IsMiniTimerEnabled);
+            //}
+            _mainWindow?.ToggleMiniTimer(Settings.IsMiniTimerEnabled);
         }
 
         // 🎯 [수정 4] SettingsPage.xaml.cs (Setting_Changed 메서드 다음)

@@ -59,6 +59,7 @@ namespace WorkPartner
         private readonly Dictionary<string, SolidColorBrush> _taskBrushCache = new();
         private static readonly SolidColorBrush DefaultGrayBrush = new SolidColorBrush(Colors.Gray);
 
+        private bool _layoutMeasured = false;
         #endregion
 
         public DashboardPage()
@@ -92,7 +93,7 @@ namespace WorkPartner
             RenderOptions.SetBitmapScalingMode(this, BitmapScalingMode.LowQuality);
             RenderOptions.SetEdgeMode(this, EdgeMode.Aliased);
 
-            _rowHeight = _blockHeight + (_verticalMargin * 2.65) + _borderBottomThickness;
+            //_rowHeight = _blockHeight + (_verticalMargin * 2) + _borderBottomThickness;
             _cellWidth = _blockWidth + (_horizontalMargin * 2) + _borderLeftThickness;
         }
 
@@ -739,7 +740,7 @@ namespace WorkPartner
             var todayLogs = vm.TimeLogEntries
                 .Where(log => log.StartTime.Date == _currentDateForTimeline.Date).ToList();
             var totalTimeToday = new TimeSpan(todayLogs.Sum(log => log.Duration.Ticks));
-            SelectedTaskTotalTimeDisplay.Text = $"이날의 총 학습 시간: {(int)totalTimeToday.TotalHours}시간 {totalTimeToday.Minutes}분";
+            SelectedTaskTotalTimeDisplay.Text = $"총 작업 시간 | {totalTimeToday:hh\\:mm\\:ss}";
         }
 
         private void RecalculateAllTotals()
@@ -925,7 +926,7 @@ namespace WorkPartner
             }
 
             // Canvas 높이 보정
-            SelectionCanvas.Height = (24 * _rowHeight) + _verticalMargin; // 👈 _(언더스코어) 사용
+            SelectionCanvas.Height = (24 * _rowHeight);
 
             if (_selectionBox != null) Panel.SetZIndex(_selectionBox, 100);
 
@@ -941,9 +942,6 @@ namespace WorkPartner
             // 배경 그리기
             TimeTableContainer.Children.Clear();
 
-            // ❗️ [수정] 모든 로컬 변수 선언을 삭제하고,
-            // ❗️ 클래스 필드(_blockWidth, _rowHeight 등)를 사용합니다.
-
             for (int hour = 0; hour < 24; hour++)
             {
                 var hourRowPanel = new StackPanel
@@ -952,8 +950,14 @@ namespace WorkPartner
                     Margin = new Thickness(0, _verticalMargin, 0, _verticalMargin) // 👈 _(언더스코어) 사용
                 };
 
+                // ▼▼▼ [DPI 수정] 측정할 수 있도록 0시와 1시 행에 Name을 부여합니다. ▼▼▼
+                if (hour == 0) hourRowPanel.Name = "HourRow_0";
+                if (hour == 1) hourRowPanel.Name = "HourRow_1";
+                // ▲▲▲ [DPI 수정 완료] ▲▲▲
+
                 var hourLabel = new TextBlock
                 {
+                    // ...
                     Text = $"{hour:00}",
                     Width = _hourLabelWidth,   // 👈 _(언더스코어) 사용
                     Height = _blockHeight,     // 👈 _(언더스코어) 사용
@@ -1399,9 +1403,7 @@ namespace WorkPartner
             // 1. 미니 타이머는 "항상" 오늘의 실시간 데이터로 업데이트합니다.
             if (_miniTimer != null && _miniTimer.IsVisible)
             {
-                if (_settings == null) LoadSettings();
-
-                // (위 1번 수정으로 CurrentTaskDisplay.Text는 항상 최신 상태가 보장됨)
+                LoadSettings();
                 _miniTimer.UpdateData(_settings, CurrentTaskDisplay.Text, newTime);
             }
 

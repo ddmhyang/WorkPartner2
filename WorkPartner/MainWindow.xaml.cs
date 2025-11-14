@@ -98,6 +98,10 @@ namespace WorkPartner
             }
         }
 
+        // 파일: WorkPartner/MainWindow.xaml.cs
+        // (약 120줄 근처의 ToggleMiniTimer 메서드)
+
+        // ▼▼▼ 이 메서드 전체를 아래 코드로 교체하세요 ▼▼▼
         public void ToggleMiniTimer(bool? isEnabled = null)
         {
             // ✨ [수정] 
@@ -107,17 +111,26 @@ namespace WorkPartner
 
             if (enabled)
             {
-                if (_miniTimer == null)
+                // --- ▼▼▼ [버그 2 수정] ---
+                // 설정이 변경되어 이미 열린 타이머를 새로고침해야 할 수 있으므로,
+                // 이미 열려있다면(null이 아니라면) 닫아서 재생성합니다.
+                if (_miniTimer != null)
                 {
-                    _miniTimer = new MiniTimerWindow
-                    {
-                        //Owner = this // 오류가 해결된 상태이므로 이 코드를 그대로 둡니다.
-                        Owner = null,        // 👈 [수정 1] 소유권 연결을 끊습니다.
-                        Topmost = true
-                    };
-                    _miniTimer.Closed += (s, e) => _miniTimer = null;
-                    _dashboardPage.SetMiniTimerReference(_miniTimer);
+                    _miniTimer.Close();
+                    _miniTimer = null;
                 }
+                // --- ▲▲▲ [수정 완료] ---
+
+                // (기존 생성 로직)
+                _miniTimer = new MiniTimerWindow
+                {
+                    //Owner = this // 오류가 해결된 상태이므로 이 코드를 그대로 둡니다.
+                    Owner = null,        // 👈 [수정 1] 소유권 연결을 끊습니다.
+                    Topmost = true
+                };
+                _miniTimer.Closed += (s, e) => _miniTimer = null;
+                _dashboardPage.SetMiniTimerReference(_miniTimer);
+
                 _miniTimer.Show();
             }
             else

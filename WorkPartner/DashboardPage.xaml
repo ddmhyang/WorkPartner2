@@ -8,6 +8,7 @@
              mc:Ignorable="d" 
              d:DesignHeight="526" d:DesignWidth="682"
              Loaded="Window_Loaded" IsVisibleChanged="DashboardPage_IsVisibleChanged"
+             UseLayoutRounding="True"
              FontFamily="Pretendard">
     <UserControl.Resources>
         <!-- 스타일 리소스는 변경 없이 그대로 유지됩니다. -->
@@ -114,30 +115,30 @@
             </Button>
 
             <!-- 메인 타이머 및 상태 표시 -->
-            <TextBlock x:Name="CurrentTaskDisplay" Width="250" Canvas.Left="80" Canvas.Top="74" Text="{Binding CurrentTaskDisplayText}" TextAlignment="Center" Foreground="{DynamicResource PrimaryTextBrush}" FontFamily="Pretendard" FontSize="14" FontWeight="SemiBold" HorizontalAlignment="Left" VerticalAlignment="Center"/>
-            <TextBlock x:Name="MainTimeDisplay" Canvas.Left="123" Canvas.Top="92" Width="180" TextAlignment="Center" FontFamily="Pretendard" FontSize="40" FontWeight="SemiBold" Foreground="{DynamicResource PrimaryTextBrush}"
+            <TextBlock x:Name="CurrentTaskDisplay" Width="250" Canvas.Left="80" Canvas.Top="68" Text="{Binding CurrentTaskDisplayText}" TextAlignment="Center" Foreground="{DynamicResource PrimaryTextBrush}" FontFamily="Pretendard" FontSize="16" FontWeight="SemiBold" HorizontalAlignment="Left" VerticalAlignment="Center"/>
+            <TextBlock x:Name="MainTimeDisplay" Canvas.Left="94" Canvas.Top="88" Width="220" TextAlignment="Center" FontFamily="Pretendard" FontSize="44" FontWeight="SemiBold" Foreground="{DynamicResource PrimaryTextBrush}"
            Text="{Binding ElementName=TaskListBox, Path=SelectedItem.TotalTime, StringFormat=hh\\:mm\\:ss, FallbackValue='00:00:00'}"/>
-            <TextBlock x:Name="SelectedTaskTotalTimeDisplay" Width="220" Canvas.Left="95" Canvas.Top="145" Text="{Binding TotalTimeTodayDisplayText}" TextAlignment="Center" Foreground="{DynamicResource PrimaryTextBrush}" FontFamily="Pretendard" FontSize="8" FontWeight="Medium" HorizontalAlignment="Left" VerticalAlignment="Center"/>
+            <TextBlock x:Name="SelectedTaskTotalTimeDisplay" Width="220" Canvas.Left="95" Canvas.Top="142" Text="{Binding TotalTimeTodayDisplayText}" TextAlignment="Center" Foreground="{DynamicResource PrimaryTextBrush}" FontFamily="Pretendard" FontSize="12" FontWeight="Medium" HorizontalAlignment="Left" VerticalAlignment="Center"/>
 
             <!-- 타임라인 영역 -->
             <Border Canvas.Left="19" Canvas.Top="173" Width="388" Height="331" BorderBrush="#f0f0f0" BorderThickness="2" CornerRadius="10">
                 <Canvas Margin="0,0,0,-3">
 
                     <Button x:Name="EvaluateDayButton" Click="EvaluateDayButton_Click" Canvas.Left="30" 
-Canvas.Top="12" Content=" 집중도 평가 " Height="17" Width="60" FontSize="8" Foreground="White" Style="{StaticResource RoundedButtonStyle}" Background="{DynamicResource AccentColorBrush}" HorizontalAlignment="Left" VerticalAlignment="Center"/>
+Canvas.Top="10" Content=" 집중도 평가 " Height="20" Width="68" FontSize="10" Foreground="White" Style="{StaticResource RoundedButtonStyle}" Background="{DynamicResource AccentColorBrush}" HorizontalAlignment="Left" VerticalAlignment="Center"/>
                     <Grid Canvas.Left="135" Canvas.Top="11" Width="120" Height="20">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
-                        <Button Grid.Column="0" Content="&lt;" Click="PrevDayButton_Click" VerticalAlignment="Center" Background="Transparent" BorderBrush="Transparent" Margin="-9,0,10,0" Foreground="{DynamicResource PrimaryTextBrush}"/>
-                        <TextBlock x:Name="CurrentDateDisplay" Text="2025-08-12" VerticalAlignment="Center" FontSize="8" FontFamily= "Pretendard" HorizontalAlignment="Left" Padding= "21, 3, 21, 3" Background="#F0F0F0" FontWeight="SemiBold" Grid.ColumnSpan="2" Margin="5,0,0,0"/>
-                        <TextBlock x:Name="CurrentDayDisplay" Text="수" FontSize="8" FontWeight="Bold" Grid.Column="1" Margin="85,6,2,4" Width="8" Height="10" Foreground="{DynamicResource PrimaryTextBrush}"/>
-                        <Button Grid.Column="2" Content="&gt;" Click="NextDayButton_Click" VerticalAlignment="Center" Background="Transparent" BorderBrush="Transparent" Foreground="{DynamicResource PrimaryTextBrush}"/>
+                        <Button Grid.Column="0" Content="&lt;" Click="PrevDayButton_Click" VerticalAlignment="Center" Background="Transparent" BorderBrush="Transparent" Margin="-20,-1,10,0" Foreground="{DynamicResource PrimaryTextBrush}"/>
+                        <TextBlock x:Name="CurrentDateDisplay" Text="2025-08-12" VerticalAlignment="Center" FontSize="10" FontFamily= "Pretendard" HorizontalAlignment="Left" Padding= "18, 3, 18, 3" Background="#F0F0F0" FontWeight="SemiBold" Grid.ColumnSpan="2" Margin="0,0,0,0"/>
+                        <TextBlock x:Name="CurrentDayDisplay" Text="수" FontSize="10" FontWeight="Bold" Grid.Column="1" Margin="95,4,2,4" Width="12" Height="12" Foreground="{DynamicResource PrimaryTextBrush}"/>
+                        <Button Grid.Column="2" Content="&gt;" Click="NextDayButton_Click" VerticalAlignment="Center" Margin="0,-1,-2,0" Background="Transparent" BorderBrush="Transparent" Foreground="{DynamicResource PrimaryTextBrush}"/>
                     </Grid>
 
-                    <Button Canvas.Left="296" Canvas.Top="12" Content="+ 기록 직접 추가" Click="AddManualLogButton_Click" Height="17" Width="69" FontSize="8" Foreground="White" Style="{StaticResource RoundedButtonStyle}" Background="{DynamicResource AccentColorBrush}"/>
+                    <Button Canvas.Left="288" Canvas.Top="10" Content="+ 기록 직접 추가" Click="AddManualLogButton_Click" Height="20" Width="78" FontSize="10" Foreground="White" Style="{StaticResource RoundedButtonStyle}" Background="{DynamicResource AccentColorBrush}"/>
                     <ScrollViewer Canvas.Left="0" Canvas.Top="38" Width="262" Height="264" VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled">
                         <Grid UseLayoutRounding="True" SnapsToDevicePixels="True">
                             <StackPanel x:Name="TimeTableContainer" />
