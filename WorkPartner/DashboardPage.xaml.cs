@@ -716,83 +716,80 @@ namespace WorkPartner
 
         #region 화면 렌더링 및 UI 업데이트
 
-        // (약 510줄 근처)
-        // 
+        // 파일: DashboardPage.xaml.cs (약 535줄)
+        //
         // ▼▼▼ 이 메서드 전체를 아래 코드로 교체하세요 ▼▼▼
 
-        private void UpdateMainTimeDisplay()
+        // private void UpdateMainTimeDisplay(TimeSpan? timeForMainDisplay = null) 
+        private void UpdateMainTimeDisplay() // 👈 파라미터 삭제
         {
-            // ▼▼▼ [수정] VM을 먼저 가져옵니다. ▼▼▼
             if (DataContext is not ViewModels.DashboardViewModel vm) return;
 
-            // 1. [수정] 현재 선택된 과목을 단순하게 가져옵니다.
-            TaskItem selectedTask = TaskListBox.SelectedItem as TaskItem;
-
-            // 2. [!!! BUG FIX !!!]
-            // 선택이 null일 때 첫 번째 항목을 강제로 다시 선택하는
-            // "로직 폭탄" 코드를 완전히 제거합니다.
-            /*
-            if (selectedTask == null && TaskItems.Any())
-            {
-                selectedTask = TaskItems.FirstOrDefault(); 
-                if (TaskListBox.SelectedItem == null)
-                {
-                    TaskListBox.SelectedItem = selectedTask; 
-                }
-            }
-            */
-            // [!!! BUG FIX 완료 !!!]
-
-
-            // 3. [수정] selectedTask가 null일 수 있으므로, null일 때는 0초를 표시
-            TimeSpan timeToShow = TimeSpan.Zero;
-            if (selectedTask != null)
-            {
-                // (우리가 이전에 수정한 코드로 인해 TotalTime은 실시간으로 업데이트됨)
-                timeToShow = selectedTask.TotalTime;
-            }
-
+            // ▼▼▼ [수정] MainTimeDisplay.Text를 설정하는 '모든' 로직 삭제 ▼▼▼
+            //
             // 1. 메인 타이머 업데이트
-            MainTimeDisplay.Text = timeToShow.ToString(@"hh\:mm\:ss");
+            // TimeSpan timeToShow = TimeSpan.Zero;
+            // ... (관련 로직 전부 삭제) ...
+            // MainTimeDisplay.Text = timeToShow.ToString(@"hh\:mm\:ss");
+            //
+            // ▲▲▲ [삭제 완료] ▲▲▲
 
-            // 2. 하단 총 학습 시간 업데이트
-            // ▼▼▼ [핵심 수정] Page의 리스트가 아닌 VM의 리스트(vm.TimeLogEntries)를 사용
+
+            // 2. 하단 총 학습 시간 업데이트 (이 로직은 남겨둬야 함)
             var todayLogs = vm.TimeLogEntries
                 .Where(log => log.StartTime.Date == _currentDateForTimeline.Date).ToList();
-            // ▲▲▲
             var totalTimeToday = new TimeSpan(todayLogs.Sum(log => log.Duration.Ticks));
             SelectedTaskTotalTimeDisplay.Text = $"이날의 총 학습 시간: {(int)totalTimeToday.TotalHours}시간 {totalTimeToday.Minutes}분";
         }
 
-        // ▼▼▼ [V6 수정] (오류 CS0103) VM 리스트 사용 ▼▼▼
         private void RecalculateAllTotals()
         {
-            // ▼▼▼ [수정] VM을 먼저 가져옵니다. ▼▼▼
+            // '진짜' 계산 메서드를 호출 (이때는 이벤트 중이 아니므로 SelectedItem이 안정적임)
+            RecalculateAllTotals(TaskListBox.SelectedItem as TaskItem);
+        }
+
+        private void RecalculateAllTotals(TaskItem selectedTask)
+        {
             if (DataContext is not ViewModels.DashboardViewModel vm) return;
 
-            // ▼▼▼ [핵심 수정] Page의 리스트가 아닌 VM의 리스트(vm.TimeLogEntries)를 사용
             var todayLogs = vm.TimeLogEntries
                 .Where(log => log.StartTime.Date == _currentDateForTimeline.Date).ToList();
-            // ▲▲▲
+
+            // TimeSpan selectedTaskTime = TimeSpan.Zero; // 👈 [삭제]
 
             foreach (var task in TaskItems)
             {
                 var taskLogs = todayLogs.Where(log => log.TaskText == task.Text);
+
+                // 이 줄이 실행되면, XAML 바인딩이 'TotalTime' 변경을 감지하고
+                // 'TaskListBox'의 시간과 'MainTimeDisplay'의 시간을 '자동으로' 업데이트합니다.
                 task.TotalTime = new TimeSpan(taskLogs.Sum(log => log.Duration.Ticks));
+
+                // if (task == selectedTask) 
+                // {
+                //    selectedTaskTime = task.TotalTime; 
+                // } 
+                // 👆 [삭제] 더 이상 MainTimeDisplay에 수동으로 전달할 필요 없음
             }
 
+            // if (TaskListBox != null) ... Items.Refresh() ... // 👈 (이전 단계에서 삭제함)
 
-            if (TaskListBox != null)
-            {
-                TaskListBox.Items.Refresh();
-            }
+            // [수정] 파라미터 없이 하단 텍스트만 업데이트하도록 호출
             UpdateMainTimeDisplay();
         }
 
         private void TaskListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            //UpdateMainTimeDisplay();
-            RecalculateAllTotals();
+            // 1. 이벤트(e)에서 '진짜' 새로 선택된 항목을 가져옵니다.
+            TaskItem newSelectedItem = null;
+            if (e.AddedItems.Count > 0)
+            {
+                newSelectedItem = e.AddedItems[0] as TaskItem;
+            }
+
+            // 2. '진짜' 항목을 RecalculateAllTotals에 전달합니다.
+            RecalculateAllTotals(newSelectedItem);
+
             RenderTimeTable();
         }
 
@@ -1393,7 +1390,10 @@ namespace WorkPartner
             });
         }
 
-        // (약 1157줄 근처)
+        // 파일: DashboardPage.xaml.cs (약 1157줄)
+        //
+        // ▼▼▼ OnViewModelTimeUpdated 메서드 전체를 아래 코드로 교체하세요 ▼▼▼
+
         private void OnViewModelTimeUpdated(string newTime)
         {
             // 1. 미니 타이머는 "항상" 오늘의 실시간 데이터로 업데이트합니다.
@@ -1405,17 +1405,18 @@ namespace WorkPartner
                 _miniTimer.UpdateData(_settings, CurrentTaskDisplay.Text, newTime);
             }
 
-            // 2. 메인 대시보드 UI(메인 타이머)는 "오늘 날짜를 볼 때만" 업데이트합니다.
-            if (_currentDateForTimeline.Date != DateTime.Today.Date) return;
+            // ▼▼▼ [!!! 여기가 핵심 수정입니다 !!!] ▼▼▼
 
-            Dispatcher.Invoke(() =>
+            // 3. '두뇌'(VM)의 실시간 데이터를 '화면'(Page)의 TotalTime 속성에 동기화합니다.
+            // [수정] 이 작업은 '오늘 날짜'를 보고 있을 때만 수행해야 합니다.
+            // (다른 날짜를 볼 때는 RecalculateAllTotals가 TotalTime을 책임져야 함)
+            if (_currentDateForTimeline.Date != DateTime.Today.Date)
             {
-                // 1. 메인 타이머 업데이트
-                MainTimeDisplay.Text = newTime;
-            });
+                return; // 👈 오늘 날짜가 아니면, 아래 실시간 동기화 로직(데이터 오염)을 실행하지 않음
+            }
 
-            // ▼▼▼ [이 코드 블록을 여기에 추가하세요!] ▼▼▼
-            // 3. (중요) '두뇌'(ViewModel)의 리스트와 '화면'(Page)의 리스트를 동기화합니다.
+            // 3-1. (오늘 날짜일 때만 실행됨)
+            // (중요) '두뇌'(ViewModel)의 리스트와 '화면'(Page)의 리스트를 동기화합니다.
             if (DataContext is ViewModels.DashboardViewModel vm)
             {
                 // '두뇌'의 실시간 업데이트된 과목 리스트를 순회합니다.
@@ -1433,8 +1434,9 @@ namespace WorkPartner
                     }
                 }
             }
-            // ▲▲▲ [여기까지 추가] ▲▲▲
+            // ▲▲▲ [!!! 여기까지 수정 !!!] ▲▲▲
         }
+
         private void OnViewModelPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
             // 오늘 날짜가 아니면 VM 업데이트 무시
