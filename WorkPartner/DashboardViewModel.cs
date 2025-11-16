@@ -511,102 +511,94 @@ namespace WorkPartner.ViewModels
             UpdateLiveTimeDisplays();
         }
 
-
-        // 파일: DashboardViewModel.cs
-        // (약 455줄 근처)
-
         public void Shutdown()
         {
-            if (_stopwatch.IsRunning || _isInGracePeriod)
+            if ((_stopwatch.IsRunning || _isInGracePeriod) && _currentWorkingTask != null)
             {
-                // ▼▼▼ [수정] 비동기 저장을 동기(즉시) 저장으로 변경 ▼▼▼
-
                 // 1. 마지막 로그 항목 생성
                 var entry = new TimeLogEntry
                 {
                     StartTime = _sessionStartTime,
                     EndTime = DateTime.Now, // 종료 시점의 현재 시간
-                    TaskText = _currentWorkingTask.Text
+                    TaskText = _currentWorkingTask.Text // 👈 null이 아님을 확인했으므로 안전
                 };
 
                 // 2. VM 리스트에 추가
                 TimeLogEntries.Add(entry);
 
-                // 3. '즉시 저장' 호출
-                _timeLogService.SaveTimeLogsAsync(TimeLogEntries); // 👈 [문제의 코드]
-                // ▲▲▲ [수정 완료] ▲▲▲
+                // 3. '즉시 저장' 호출 (null 안전하게)
+                _timeLogService?.SaveTimeLogsAsync(TimeLogEntries);
 
                 Debug.WriteLine("VM Shutdown: Final session saved.");
             }
+
+            // --- 2. 최종 설정 저장 ---
+
+            _settingsService?.SaveSettings(_settings);
         }
 
-        /// <summary>
-/// 작업 시간을 기반으로 경험치와 레벨을 계산하고 적용합니다.
-/// (TimeSpan.Negate()를 사용하여 경험치를 차감할 수도 있습니다.)
-/// </summary>
-/// <param name="workDuration">적용할 작업 시간</param>
-private void GrantExperience(TimeSpan workDuration)
-{
-    try
-    {
-        double minutesWorked = workDuration.TotalMinutes;
-        if (Math.Abs(minutesWorked) < 0.01) return; // 변경 값 없음
-
-        // (중요) 기존 설정을 '미리' 로드합니다.
-        _settings = _settingsService.LoadSettings();
-
-        double totalPendingMinutes = _settings.PendingWorkMinutes + minutesWorked;
-        int currentLevel = _settings.Level;
-        int minutesPerXpChunk = currentLevel;
-        int xpPerChunk = 10;
-        int xpToLevelUp = 100;
-        int coinsPerLevel = 50;
-
-        if (totalPendingMinutes >= minutesPerXpChunk)
+        private void GrantExperience(TimeSpan workDuration)
         {
-            // ... (기존 레벨업 로직과 동일) ...
-            int chunksEarned = (int)Math.Floor(totalPendingMinutes / minutesPerXpChunk);
-            int xpGained = chunksEarned * xpPerChunk;
-            double remainingMinutes = totalPendingMinutes % minutesPerXpChunk;
-
-            _settings.Experience += xpGained;
-            _settings.PendingWorkMinutes = remainingMinutes;
-
-            bool leveledUp = false;
-            while (_settings.Experience >= xpToLevelUp)
+            try
             {
-                _settings.Level++;
-                _settings.Experience -= xpToLevelUp;
-                _settings.Coins += coinsPerLevel;
-                leveledUp = true;
-            }
+                double minutesWorked = workDuration.TotalMinutes;
+                if (Math.Abs(minutesWorked) < 0.01) return; // 변경 값 없음
 
-            if (leveledUp)
+                // (중요) 기존 설정을 '미리' 로드합니다.
+                _settings = _settingsService.LoadSettings();
+
+                double totalPendingMinutes = _settings.PendingWorkMinutes + minutesWorked;
+                int currentLevel = _settings.Level;
+                int minutesPerXpChunk = currentLevel;
+                int xpPerChunk = 10;
+                int xpToLevelUp = 100;
+                int coinsPerLevel = 50;
+
+                if (totalPendingMinutes >= minutesPerXpChunk)
+                {
+                    // ... (기존 레벨업 로직과 동일) ...
+                    int chunksEarned = (int)Math.Floor(totalPendingMinutes / minutesPerXpChunk);
+                    int xpGained = chunksEarned * xpPerChunk;
+                    double remainingMinutes = totalPendingMinutes % minutesPerXpChunk;
+
+                    _settings.Experience += xpGained;
+                    _settings.PendingWorkMinutes = remainingMinutes;
+
+                    bool leveledUp = false;
+                    while (_settings.Experience >= xpToLevelUp)
+                    {
+                        _settings.Level++;
+                        _settings.Experience -= xpToLevelUp;
+                        _settings.Coins += coinsPerLevel;
+                        leveledUp = true;
+                    }
+
+                    if (leveledUp)
+                    {
+                        _dialogService.ShowAlert(
+                            $"🎉 축하합니다! 레벨 업! 🎉\n\n레벨 {_settings.Level}이(가) 되었습니다.\n보상으로 {coinsPerLevel}코인을 획득했습니다!",
+                            "레벨 업!"
+                        );
+                    }
+                }
+                else if (totalPendingMinutes < 0)
+                {
+                    // (경험치 차감 로직 - 레벨 다운은 구현되지 않음)
+                    _settings.PendingWorkMinutes = totalPendingMinutes;
+                    // 참고: 경험치(XP)가 음수가 되는 것을 방지하는 로직이 필요할 수 있습니다.
+                    // 예: _settings.Experience = Math.Max(0, _settings.Experience + xpGained);
+                }
+                else
+                {
+                    _settings.PendingWorkMinutes = totalPendingMinutes;
+                }
+
+                _settingsService.SaveSettings(_settings);
+            }
+            catch (Exception ex)
             {
-                _dialogService.ShowAlert(
-                    $"🎉 축하합니다! 레벨 업! 🎉\n\n레벨 {_settings.Level}이(가) 되었습니다.\n보상으로 {coinsPerLevel}코인을 획득했습니다!",
-                    "레벨 업!"
-                );
+                Debug.WriteLine($"[Error] GrantExperience Failed: {ex.Message}");
             }
         }
-        else if (totalPendingMinutes < 0)
-        {
-            // (경험치 차감 로직 - 레벨 다운은 구현되지 않음)
-            _settings.PendingWorkMinutes = totalPendingMinutes;
-            // 참고: 경험치(XP)가 음수가 되는 것을 방지하는 로직이 필요할 수 있습니다.
-            // 예: _settings.Experience = Math.Max(0, _settings.Experience + xpGained);
-        }
-        else
-        {
-            _settings.PendingWorkMinutes = totalPendingMinutes;
-        }
-
-        _settingsService.SaveSettings(_settings);
-    }
-    catch (Exception ex)
-    {
-        Debug.WriteLine($"[Error] GrantExperience Failed: {ex.Message}");
-    }
-}
     }
 }

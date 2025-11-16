@@ -57,6 +57,33 @@
     "IconPath": "/images/character/background2.png",
     "CanChangeColor": true
   },
+  {
+    "Id": "20000000-0000-0000-0000-000000000003",
+    "Name": "배경 3",
+    "Type": "Background",
+    "Price": 100,
+    "ImagePath": "/images/character/background3.png",
+    "IconPath": "/images/character/background3.png",
+    "CanChangeColor": true
+  },
+  {
+    "Id": "20000000-0000-0000-0000-000000000004",
+    "Name": "배경 4",
+    "Type": "Background",
+    "Price": 100,
+    "ImagePath": "/images/character/background4.png",
+    "IconPath": "/images/character/background4.png",
+    "CanChangeColor": true
+  },
+  {
+    "Id": "20000000-0000-0000-0000-000000000005",
+    "Name": "배경 5",
+    "Type": "Background",
+    "Price": 100,
+    "ImagePath": "/images/character/background5.png",
+    "IconPath": "/images/character/background5.png",
+    "CanChangeColor": true
+  },
 
   // Type: Tail (꼬리 6개 - 6개 부족)
   {
