@@ -6,11 +6,19 @@
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         Topmost="True" ShowInTaskbar="False"
         MouseLeftButtonDown="Window_MouseLeftButtonDown">
-    <Border x:Name="TimerBorder" Background="#88000000" CornerRadius="10">
+    <Border x:Name="TimerBorder" Background="#88000000" CornerRadius="10" ClipToBounds="True">
         <Grid>
-            <Image x:Name="BackgroundImage" Stretch="UniformToFill" Opacity="0.5"/>
+            <!-- [삭제] 기존 BackgroundImage는 사용하지 않음 -->
+            <!-- <Image x:Name="BackgroundImage" Stretch="UniformToFill" Opacity="0.5"/> -->
 
-            <!-- [수정] C#에서 제어할 수 있도록 MainContentGrid 라는 이름을 부여합니다. -->
+            <!-- ▼▼▼ [추가] 1. 배경 전용 CharacterDisplay (맨 아래) ▼▼▼ -->
+            <!-- 이 컨트롤은 아바타의 배경(Part_Background)만 표시하는 용도입니다. -->
+            <local:CharacterDisplay x:Name="BackgroundCharacterDisplay"
+                                    Visibility="Collapsed" />
+            <!-- ▲▲▲ -->
+
+
+            <!-- [수정] 2. 컨텐츠 Grid (배경 위) -->
             <Grid x:Name="MainContentGrid">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
@@ -24,6 +32,9 @@
                         Margin="5,0,0,0" 
                         ClipToBounds="True" 
                         Visibility="Collapsed">
+
+                    <!-- [수정] 3. 캐릭터 전용 CharacterDisplay (맨 위) -->
+                    <!-- 이 컨트롤은 배경을 제외한 '캐릭터'만 표시하는 용도입니다. -->
                     <local:CharacterDisplay x:Name="MiniCharacterDisplay" 
                                             Width="128" 
                                             Height="128" 
@@ -31,16 +42,13 @@
                                             Margin="-36,0,0,0" />
                 </Border>
 
-                <!-- [수정] 
-                     1. C#에서 제어할 수 있도록 InfoStackPanel 이라는 이름을 부여합니다.
-                     2. VerticalAlignment="Center"를 추가합니다. 
-                        (Goal 1: 추가 정보가 숨겨질 때 시간이 자동으로 세로 중앙 정렬됩니다.)
-                -->
-                <StackPanel x:Name="InfoStackPanel" Grid.Column="0" Margin="20,0,10,0" VerticalAlignment="Center">
+                <!-- [수정] 4. 텍스트 (배경 위) -->
+                <StackPanel x:Name="InfoStackPanel" Grid.Column="0" Margin="10,0,10,0" VerticalAlignment="Center">
 
                     <TextBlock x:Name="UsernameLevelTextBlock" Text="사용자 (Lv.1)" Foreground="White" FontSize="11" FontWeight="Bold" HorizontalAlignment="Left" Visibility="Collapsed"/>
 
                     <StackPanel x:Name="CoinStackPanel" Orientation="Horizontal" HorizontalAlignment="Left" Visibility="Collapsed" Margin="0,2,0,0">
+                        <Image Source="/images/coin.png" Width="12" Height="12"/>
                         <TextBlock x:Name="CoinAmountTextBlock" Text="0" Foreground="White" FontSize="11" Margin="4,0,0,0"/>
                     </StackPanel>
 

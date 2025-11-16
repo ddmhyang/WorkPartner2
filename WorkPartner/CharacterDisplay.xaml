@@ -8,7 +8,9 @@
              d:DesignHeight="300" d:DesignWidth="300">
 
     <Grid>
-        <Image x:Name="Part_Background" RenderOptions.BitmapScalingMode="NearestNeighbor" />
+        <!-- ▼▼▼ [수정] Stretch="UniformToFill"로 변경하여 꽉 채우도록 합니다. ▼▼▼ -->
+        <Image x:Name="Part_Background" RenderOptions.BitmapScalingMode="NearestNeighbor" Stretch="UniformToFill" />
+        <!-- ▲▲▲ -->
         <Image x:Name="Part_Tail" RenderOptions.BitmapScalingMode="NearestNeighbor" />
         <Image x:Name="Part_Lower" RenderOptions.BitmapScalingMode="NearestNeighbor" />
         <Image x:Name="Part_Bottom" RenderOptions.BitmapScalingMode="NearestNeighbor" />

@@ -143,7 +143,7 @@
 
             <Border Canvas.Left="19" Canvas.Top="95" Width="247" Height="130" BorderBrush="{DynamicResource AccentColorBrush}" BorderThickness="2" CornerRadius="10">
                 <Grid>
-                    <local:CharacterDisplay x:Name="CharacterPreview" Width="128" Height="128" HorizontalAlignment="Left" Margin="115,-2,0,-2"/>
+                    <local:CharacterDisplay x:Name="CharacterPreview" ForceHideBackground="True" Width="128" Height="128" HorizontalAlignment="Left" Margin="115,-2,0,-2"/>
 
                     <StackPanel Orientation="Vertical" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="15,15,0,0">
                         <StackPanel Orientation="Horizontal">

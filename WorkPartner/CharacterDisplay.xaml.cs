@@ -32,6 +32,15 @@ namespace WorkPartner
         private string _originalLowerUriPath;
         private Color _currentSkinColor;
 
+        // ▼▼▼ [추가] 미니 타이머에서 배경을 강제로 숨기기 위한 속성 ▼▼▼
+        /// <summary>
+        /// true로 설정하면, 장착한 배경 아이템이 있더라도 강제로 숨깁니다. (미니 타이머용)
+        /// </summary>
+        public bool ForceHideBackground { get; set; } = false;
+        public bool ForceShowOnlyBackground { get; set; } = false;
+
+        // ▲▲▲
+
 
         public CharacterDisplay()
         {
@@ -103,7 +112,26 @@ namespace WorkPartner
             }
 
             // 1. 단일 파츠 렌더링
-            SetImagePart(Part_Background, settings.EquippedParts.GetValueOrDefault(ItemType.Background));
+
+            if (ForceShowOnlyBackground)
+            {
+                // 이 스위치가 켜져있으면 배경만 그리고 즉시 종료
+                SetImagePart(Part_Background, settings.EquippedParts.GetValueOrDefault(ItemType.Background));
+                return; // 👈 (중요) 캐릭터의 다른 파츠를 그리지 않고 여기서 중단
+            }
+
+            // ▼▼▼ [수정] 배경화면(Part_Background) 로직을 ForceHideBackground와 연동합니다. ▼▼▼
+            if (ForceHideBackground)
+            {
+                Part_Background.Source = null; // 강제 숨김이 켜져 있으면 배경을 무조건 null로 설정
+            }
+            else
+            {
+                // 강제 숨김이 꺼져 있을 때만(AvatarPage, 미니타이머 배경) 장착한 배경을 표시
+                SetImagePart(Part_Background, settings.EquippedParts.GetValueOrDefault(ItemType.Background));
+            }
+            // ▲▲▲
+
             SetImagePart(Part_Tail, settings.EquippedParts.GetValueOrDefault(ItemType.Tail));
             SetImagePart(Part_Lower, settings.EquippedParts.GetValueOrDefault(ItemType.Lower));
             SetImagePart(Part_Bottom, settings.EquippedParts.GetValueOrDefault(ItemType.Bottom));
