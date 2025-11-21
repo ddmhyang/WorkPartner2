@@ -7,13 +7,46 @@
              d:DesignHeight="800" d:DesignWidth="682"
              Background="{DynamicResource MainBackgroundBrush}">
 
+    <UserControl.Resources>
+
+        <Style x:Key="RoundedButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="{DynamicResource AccentColorBrush}"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Padding" Value="10,5"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" CornerRadius="8" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Opacity" Value="0.9"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <DataTemplate x:Key="ProcessItemTemplate">
+            <DockPanel>
+                <TextBlock Text="{Binding ProcessName}" Foreground="{DynamicResource PrimaryTextBrush}" VerticalAlignment="Center"/>
+                <Button Content="-" Click="DeleteProcessButton_Click" DockPanel.Dock="Right" HorizontalAlignment="Right" Margin="10,0,0,0" Background="Transparent" BorderThickness="0" Foreground="Red"/>
+            </DockPanel>
+        </DataTemplate>
+
+    </UserControl.Resources>
+
     <Viewbox Stretch="Uniform">
         <Canvas Width="682" Height="800">
             <TextBlock Text="설정" Canvas.Left="30" Canvas.Top="40" FontSize="24" FontWeight="Bold" Foreground="{DynamicResource PrimaryTextBrush}"/>
 
             <ScrollViewer Canvas.Left="30" Canvas.Top="90" Width="622" Height="680" VerticalScrollBarVisibility="Hidden">
                 <StackPanel>
-
                     <Border Background="{DynamicResource SecondaryBackgroundBrush}" CornerRadius="10" Padding="15" Margin="0,0,0,15">
                         <StackPanel>
                             <TextBlock Text="사용자 정보" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource PrimaryTextBrush}" Margin="0,0,0,10"/>
@@ -93,9 +126,9 @@
                         <StackPanel>
                             <TextBlock Text="데이터 관리" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource PrimaryTextBrush}" Margin="0,0,0,10"/>
                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                                <Button Content="내보내기" Click="ExportDataButton_Click" Margin="0,0,10,0" Padding="10,5" Style="{StaticResource RoundedButtonStyle}"/>
-                                <Button Content="불러오기" Click="ImportDataButton_Click" Margin="0,0,10,0" Padding="10,5" Style="{StaticResource RoundedButtonStyle}"/>
-                                <Button Content="초기화" Click="ResetDataButton_Click" Padding="10,5" Background="#FF5555" Foreground="White" Style="{StaticResource RoundedButtonStyle}"/>
+                                <Button Content="내보내기" Click="ExportDataButton_Click" Margin="0,0,10,0" Style="{StaticResource RoundedButtonStyle}"/>
+                                <Button Content="불러오기" Click="ImportDataButton_Click" Margin="0,0,10,0" Style="{StaticResource RoundedButtonStyle}"/>
+                                <Button Content="초기화" Click="ResetDataButton_Click" Background="#FF5555" Style="{StaticResource RoundedButtonStyle}"/>
                             </StackPanel>
                         </StackPanel>
                     </Border>
@@ -104,13 +137,4 @@
             </ScrollViewer>
         </Canvas>
     </Viewbox>
-
-    <UserControl.Resources>
-        <DataTemplate x:Key="ProcessItemTemplate">
-            <DockPanel>
-                <TextBlock Text="{Binding ProcessName}" Foreground="{DynamicResource PrimaryTextBrush}" VerticalAlignment="Center"/>
-                <Button Content="-" Click="DeleteProcessButton_Click" DockPanel.Dock="Right" HorizontalAlignment="Right" Margin="10,0,0,0" Background="Transparent" BorderThickness="0" Foreground="Red"/>
-            </DockPanel>
-        </DataTemplate>
-    </UserControl.Resources>
 </UserControl>

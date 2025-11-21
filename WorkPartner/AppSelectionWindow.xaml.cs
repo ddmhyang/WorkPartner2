@@ -4,12 +4,12 @@ using System.Diagnostics;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input; // MouseButtonEventArgs를 위해 필요
 
 namespace WorkPartner
 {
     public partial class AppSelectionWindow : Window
     {
-        // ▼ 이 속성을 추가해서 SettingsPage에서 읽을 수 있게 함
         public string SelectedAppName { get; private set; }
 
         public AppSelectionWindow()
@@ -18,19 +18,15 @@ namespace WorkPartner
             LoadRunningProcesses();
         }
 
-        // 파라미터가 있는 생성자는 삭제하고, 내부에서 로드합니다.
         private void LoadRunningProcesses()
         {
             var processes = Process.GetProcesses()
                 .Select(p => p.ProcessName)
                 .Distinct()
                 .OrderBy(n => n)
-                .Select(n => new InstalledProgram { ProcessName = n, DisplayName = n }) // InstalledProgram 클래스 활용
+                .Select(n => new InstalledProgram { ProcessName = n, DisplayName = n })
                 .ToList();
 
-            // XAML에 ListBox 이름이 'AppListBox'라고 가정합니다.
-            // 만약 XAML에 이름이 없다면 AppSelectionWindow.xaml도 확인해야 하지만, 
-            // 보통 이런 이름입니다. (오류 나면 알려주세요)
             if (this.FindName("AppListBox") is ListBox listBox)
             {
                 listBox.ItemsSource = processes;
@@ -38,6 +34,17 @@ namespace WorkPartner
         }
 
         private void OkButton_Click(object sender, RoutedEventArgs e)
+        {
+            ConfirmSelection();
+        }
+
+        // ▼ [추가] XAML에서 찾는 더블클릭 이벤트 핸들러
+        private void AppListView_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+        {
+            ConfirmSelection();
+        }
+
+        private void ConfirmSelection()
         {
             if (this.FindName("AppListBox") is ListBox listBox && listBox.SelectedItem is InstalledProgram selected)
             {
