@@ -1,4 +1,5 @@
 ﻿// 파일: DashboardPage.xaml.cs
+using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -12,6 +13,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 using System.Windows.Threading;
 using WorkPartner;
@@ -29,7 +31,6 @@ namespace WorkPartner
         public ObservableCollection<TaskItem> TaskItems { get; set; }
         public ObservableCollection<TodoItem> TodoItems { get; set; }
         public ObservableCollection<TodoItem> FilteredTodoItems { get; set; }
-        //public ObservableCollection<TimeLogEntry> TimeLogEntries { get; set; } // ◀◀ [이 줄 삭제 또는 주석 처리]
         public ObservableCollection<MemoItem> AllMemos { get; set; }
 
         private MainWindow _parentWindow;
@@ -43,7 +44,6 @@ namespace WorkPartner
         private readonly double _borderLeftThickness = 1;
         private readonly double _borderBottomThickness = 1;
 
-        // 계산된 값 (생성자에서 초기화)
         private readonly double _rowHeight;
         private readonly double _cellWidth;
 
@@ -121,7 +121,6 @@ namespace WorkPartner
             FilteredTodoItems = new ObservableCollection<TodoItem>();
             TodoTreeView.ItemsSource = FilteredTodoItems;
 
-            // TimeLogEntries = new ObservableCollection<TimeLogEntry>(); // ◀◀ [이 줄 삭제]
             AllMemos = new ObservableCollection<MemoItem>();
         }
 
@@ -144,7 +143,19 @@ namespace WorkPartner
         }
 
         #region 데이터 저장 / 불러오기
-        public void LoadSettings() { _settings = DataManager.LoadSettings(); }
+
+        private void LoadSettings()
+        {
+            // (혹시 모르니 여기서도 한 번 더 로드)
+            if (_settings == null) _settings = DataManager.LoadSettings();
+
+            // 2. 이미지 로드 (여기가 중요!)
+            LoadUserImage();
+
+            // 3. 현재 작업
+            if (CurrentTaskTextBlock != null)
+                CurrentTaskTextBlock.Text = $"현재 작업 : {_settings.CurrentTask}";
+        }
         private void SaveSettings() { DataManager.SaveSettings(_settings); }
 
         private async Task LoadTasksAsync()
@@ -198,30 +209,6 @@ namespace WorkPartner
             DataManager.SaveTodos(TodoItems);
         }
 
-        // ▼▼▼ [오류 327] 이 메서드는 OnViewModelTimerStopped에서 사용되므로, VM 리스트를 채우도록 수정 ▼▼▼
-        private async Task LoadTimeLogsAsync()
-        {
-            if (!File.Exists(_timeLogFilePath)) return;
-            try
-            {
-                await using var stream = new FileStream(_timeLogFilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-                var loadedLogs = await JsonSerializer.DeserializeAsync<ObservableCollection<TimeLogEntry>>(stream);
-                if (loadedLogs == null) return;
-
-                if (DataContext is ViewModels.DashboardViewModel vm)
-                {
-                    vm.TimeLogEntries.Clear(); // ◀ (오류 327 수정)
-                    foreach (var log in loadedLogs) vm.TimeLogEntries.Add(log);
-                }
-            }
-            catch (Exception ex) { Debug.WriteLine($"Error loading time logs: {ex.Message}"); }
-        }
-
-        private void SaveTimeLogs()
-        {
-            // DataManager.SaveTimeLogsImmediately(TimeLogEntries); // ◀ (오류 342 수정)
-        }
-
         private async Task LoadMemosAsync()
         {
             if (!File.Exists(_memosFilePath)) return;
@@ -237,8 +224,9 @@ namespace WorkPartner
             catch (Exception ex) { Debug.WriteLine($"Error loading memos: {ex.Message}"); }
         }
 
-        public async Task LoadAllDataAsync()
+        public async System.Threading.Tasks.Task LoadAllDataAsync()
         {
+            _settings = DataManager.LoadSettings();
             LoadSettings();
             await LoadTasksAsync();
             await LoadTodosAsync();
@@ -268,9 +256,6 @@ namespace WorkPartner
             RenderTimeTable();
         }
 
-        // 파일: ddmhyang/workpartner2/WorkPartner2-6/WorkPartner/DashboardPage.xaml.cs
-
-        // [수정 후 ✅]
         private void AddTaskButton_Click(object sender, RoutedEventArgs e)
         {
             string newTaskText = TaskInput.Text.Trim();
@@ -284,9 +269,6 @@ namespace WorkPartner
             var newTask = new TaskItem { Text = newTaskText };
             TaskItems.Add(newTask);
 
-            // --- ▼▼▼ [수정된 부분 시작] ▼▼▼ ---
-
-            // --- ▼▼▼ [수정된 부분 시작] ▼▼▼ ---
             var palette = new HslColorPicker();
             var confirmButton = new Button
             {
@@ -294,28 +276,23 @@ namespace WorkPartner
                 Margin = new Thickness(0, 10, 0, 0)
             };
 
-            // 1. StackPanel 대신 DockPanel 사용
             var panel = new DockPanel
             {
                 Margin = new Thickness(10),
-                LastChildFill = true // 👈 (중요) 마지막 자식이 남은 공간을 모두 채우도록 설정
+                LastChildFill = true
             };
 
-            // 2. '확인' 버튼을 DockPanel의 '아래(Bottom)'에 고정
             DockPanel.SetDock(confirmButton, Dock.Bottom);
             panel.Children.Add(confirmButton);
 
-            // 3. 'palette'를 마지막에 추가하여 남은 공간을 모두 채우게 함
             panel.Children.Add(palette);
-            // --- ▲▲▲ [수정된 부분 끝] ▲▲▲ ---
 
             var window = new Window
             {
                 Title = "과목 색상 선택",
                 Content = panel,
-                Width = 280,  // 👈 (수정) 사용자가 지정한 너비
-                Height = 380, // 👈 (수정) 사용자가 지정한 높이
-                              // SizeToContent = SizeToContent.WidthAndHeight, // 👈 (삭제) 고정 크기를 사용할 것이므로 삭제
+                Width = 280,
+                Height = 380,
                 WindowStyle = WindowStyle.ToolWindow,
                 ResizeMode = ResizeMode.NoResize,
                 WindowStartupLocation = WindowStartupLocation.CenterOwner,
@@ -328,20 +305,15 @@ namespace WorkPartner
                 window.Close();
             };
 
-            // 5. 'ShowDialog()'를 호출하고, 그 결과가 true일 때만 (확인 버튼 클릭 시) 저장
             if (window.ShowDialog() == true)
             {
-                // 6. 팔레트에서 최종 선택된 색상을 가져옴
                 var newColor = palette.SelectedColor;
 
-                // 7. [문제 1 해결] newTask 객체의 Brush를 직접 업데이트
                 newTask.ColorBrush = new SolidColorBrush(newColor);
 
-                // 8. 설정 파일에 저장
                 _settings.TaskColors[newTask.Text] = newColor.ToString();
                 SaveSettings();
             }
-            // --- ▲▲▲ [수정된 부분 끝] ▲▲▲ ---
 
             TaskInput.Clear();
             SaveTasks();
@@ -350,33 +322,26 @@ namespace WorkPartner
 
         private void EditTaskButton_Click(object sender, RoutedEventArgs e)
         {
-            // 1. VM 가져오기 (기존과 동일)
             if (DataContext is not ViewModels.DashboardViewModel vm) return;
 
-            // --- ▼▼▼ [수정된 부분 시작] ▼▼▼ ---
             TaskItem selectedTask = null;
 
-            // 2. 클릭된 버튼(sender)에서 DataContext(TaskItem)를 가져옵니다.
             if (sender is FrameworkElement button && button.DataContext is TaskItem taskFromButton)
             {
                 selectedTask = taskFromButton;
             }
-            // 3. (예외 처리) 만약 DataContext가 없으면, 기존 방식(선택된 항목)을 사용합니다.
             else if (TaskListBox.SelectedItem is TaskItem taskFromList)
             {
                 selectedTask = taskFromList;
             }
 
-            // 4. 그래도 없으면 수정할 대상이 없는 것입니다.
             if (selectedTask == null)
             {
                 MessageBox.Show("수정할 과목을 목록에서 선택해주세요.", "알림", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
-            // --- ▲▲▲ [수정된 부분 끝] ▲▲▲ ---
 
 
-            // --- (이하는 기존 수정 로직과 동일) ---
             var inputWindow = new InputWindow("과목 이름 수정", selectedTask.Text) { Owner = Window.GetWindow(this) };
             if (inputWindow.ShowDialog() != true) return;
 
@@ -415,29 +380,22 @@ namespace WorkPartner
         {
             if (DataContext is not ViewModels.DashboardViewModel vm) return;
 
-            // --- ▼▼▼ [수정된 부분 시작] ▼▼▼ ---
             TaskItem selectedTask = null;
 
-            // 1. 클릭된 버튼(sender)에서 DataContext(TaskItem)를 가져옵니다.
             if (sender is FrameworkElement button && button.DataContext is TaskItem taskFromButton)
             {
                 selectedTask = taskFromButton;
             }
-            // 2. (예외 처리) 만약 DataContext가 없으면, 기존 방식(선택된 항목)을 사용합니다.
             else if (TaskListBox.SelectedItem is TaskItem taskFromList)
             {
                 selectedTask = taskFromList;
             }
 
-            // 3. 그래도 없으면 삭제할 대상이 없는 것입니다.
             if (selectedTask == null)
             {
                 MessageBox.Show("삭제할 과목을 목록에서 선택해주세요.", "알림", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
-            // --- ▲▲▲ [수정된 부분 끝] ▲▲▲ ---
-
-            // ▼▼▼ (기존 로직 동일) ▼▼▼
             if (MessageBox.Show($"'{selectedTask.Text}' 과목을 삭제하시겠습니까?\n관련된 모든 학습 기록도 삭제됩니다.", "삭제 확인", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
                 return;
 
@@ -458,7 +416,7 @@ namespace WorkPartner
             }
 
             SaveTasks();
-            DataManager.SaveTimeLogs(vm.TimeLogEntries); // 👈 (이전 단계에서 수정했어야 함) vm.DeleteLog(log)를 사용하거나, 이 라인을 _timeLogService.SaveTimeLogsAsync(vm.TimeLogEntries)로 바꿔야 하지만, 지금은 시연이 우선이니 그대로 둡니다.
+            DataManager.SaveTimeLogs(vm.TimeLogEntries);
             RenderTimeTable();
         }
 
@@ -490,35 +448,23 @@ namespace WorkPartner
             FilterTodos();
         }
 
-        // 파일: DashboardPage.xaml.cs
-
-        // ▼▼▼ 이 메서드 전체를 교체하세요 ▼▼▼
         private void EditTodoButton_Click(object sender, RoutedEventArgs e)
         {
-            // --- ▼▼▼ [수정된 부분 시작] ▼▼▼ ---
             TodoItem selectedTodo = null;
 
-            // 1. 클릭된 버튼(sender)에서 DataContext(TodoItem)를 가져옵니다.
             if (sender is FrameworkElement button && button.DataContext is TodoItem todoFromButton)
             {
                 selectedTodo = todoFromButton;
             }
-            // 2. (예외 처리) 만약 DataContext가 없으면, 기존 방식(선택된 항목)을 사용합니다.
             else if (TodoTreeView.SelectedItem is TodoItem todoFromTree)
             {
                 selectedTodo = todoFromTree;
             }
-
-            // 3. 그래도 없으면 수정할 대상이 없는 것입니다.
             if (selectedTodo == null)
             {
                 MessageBox.Show("수정할 할 일을 목록에서 선택해주세요.", "알림", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
-            // --- ▲▲▲ [수정된 부분 끝] ▲▲▲ ---
-
-
-            // --- (이하는 기존 수정 로직과 동일) ---
             var inputWindow = new InputWindow("할 일 수정", selectedTodo.Text) { Owner = Window.GetWindow(this) };
             if (inputWindow.ShowDialog() == true)
             {
@@ -529,30 +475,24 @@ namespace WorkPartner
 
         private void DeleteTodoButton_Click(object sender, RoutedEventArgs e)
         {
-            // --- ▼▼▼ [수정된 부분 시작] ▼▼▼ ---
             TodoItem selectedTodo = null;
 
-            // 1. 클릭된 버튼(sender)에서 DataContext(TodoItem)를 가져옵니다.
             if (sender is FrameworkElement button && button.DataContext is TodoItem todoFromButton)
             {
                 selectedTodo = todoFromButton;
             }
-            // 2. (예외 처리) 만약 DataContext가 없으면, 기존 방식(선택된 항목)을 사용합니다.
             else if (TodoTreeView.SelectedItem is TodoItem todoFromTree)
             {
                 selectedTodo = todoFromTree;
             }
 
-            // 3. 그래도 없으면 삭제할 대상이 없는 것입니다.
             if (selectedTodo == null)
             {
                 MessageBox.Show("삭제할 할 일을 목록에서 선택해주세요.", "알림", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
-            // --- ▲▲▲ [수정된 부분 끝] ▲▲▲ ---
 
 
-            // ▼▼▼ (기존 로직 동일) ▼▼▼
             if (MessageBox.Show($"'{selectedTodo.Text}' 할 일을 삭제하시겠습니까?", "삭제 확인", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
             {
                 RemoveTodoItem(TodoItems, selectedTodo);
@@ -568,20 +508,6 @@ namespace WorkPartner
 
         private void SaveTodos_Event(object sender, RoutedEventArgs e)
         {
-            // 🗑️ [삭제] 코인 보상 로직 전체 제거
-            /*
-            if (sender is CheckBox { DataContext: TodoItem todoItem })
-            {
-                if (todoItem.IsCompleted && !todoItem.HasBeenRewarded)
-                {
-                    _settings.Coins += 10; ...
-                }
-                else if (!todoItem.IsCompleted && todoItem.HasBeenRewarded)
-                {
-                    _settings.Coins -= 10; ...
-                }
-            }
-            */
             SaveTodos(); // 저장 기능만 남김
         }
 
@@ -606,13 +532,8 @@ namespace WorkPartner
 
         private void AddManualLogButton_Click(object sender, RoutedEventArgs e)
         {
-            // 1. VM 가져오기
             if (DataContext is not ViewModels.DashboardViewModel vm) return;
 
-            // --- ▼▼▼ [수정된 부분 시작] ▼▼▼ ---
-
-            // 2. [신규] 현재 타임라인 날짜를 기준으로 '임시 로그' 생성
-            // (시간은 현재 시간의 '시'를 가져오고, 분/초는 0으로)
             var now = DateTime.Now;
             var defaultStartTime = new DateTime(
                 _currentDateForTimeline.Year,
@@ -626,24 +547,19 @@ namespace WorkPartner
             var templateLog = new TimeLogEntry
             {
                 StartTime = defaultStartTime,
-                EndTime = defaultStartTime.AddHours(1), // 기본 1시간
-                TaskText = TaskItems.FirstOrDefault()?.Text ?? "과목 없음" // 첫 번째 과목 선택
+                EndTime = defaultStartTime.AddHours(1),
+                TaskText = TaskItems.FirstOrDefault()?.Text ?? "과목 없음"
             };
 
-            // 3. [수정] '편집' 생성자를 사용하여 팝업을 띄웁니다.
             var win = new AddLogWindow(TaskItems, templateLog) { Owner = Window.GetWindow(this) };
             if (win.ShowDialog() != true) return;
 
-            // 4. [신규] 사용자가 '삭제'를 눌러 템플릿 생성을 취소한 경우
             if (win.IsDeleted) return;
 
-            // 5. [기존 로직] win.NewLogEntry에는 팝업에서 수정한 최종 결과가 담겨있음
             if (win.NewLogEntry != null)
             {
-                // 6. [핵심] Page 리스트가 아닌 VM의 public 메서드 호출
-                vm.AddManualLog(win.NewLogEntry); // ◀ (오류 370 수정) - [기존 코드 재사용]
+                vm.AddManualLog(win.NewLogEntry); 
 
-                // (과목 선택 로직은 그대로 둠)
                 var addedTaskName = win.NewLogEntry.TaskText;
                 var taskToSelect = TaskItems.FirstOrDefault(t => t.Text == addedTaskName);
                 if (taskToSelect != null)
@@ -652,9 +568,6 @@ namespace WorkPartner
                 }
             }
 
-            // --- ▲▲▲ [수정된 부분 끝] ▲▲▲ ---
-
-            // (기존 코드 재사용)
             RecalculateAllTotals();
             RenderTimeTable();
         }
@@ -662,16 +575,13 @@ namespace WorkPartner
         private void TimeLogRect_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             if ((sender as FrameworkElement)?.Tag is not TimeLogEntry log) return;
-            // 1. VM 가져오기
             if (DataContext is not ViewModels.DashboardViewModel vm) return;
 
-            // [중요] 수정 시 VM에 있는 '원본' 객체를 전달해야 함
             var originalLog = vm.TimeLogEntries.FirstOrDefault(l =>
                 l.StartTime == log.StartTime &&
                 l.TaskText == log.TaskText &&
                 l.EndTime == log.EndTime
             );
-            // (만약 못찾으면 Page의 log 객체라도 사용)
             if (originalLog == null) originalLog = log;
 
             var win = new AddLogWindow(TaskItems, originalLog) { Owner = Window.GetWindow(this) };
@@ -679,15 +589,12 @@ namespace WorkPartner
 
             if (win.IsDeleted)
             {
-                // 2. [핵심] Page 리스트가 아닌 VM의 public 메서드 호출
                 vm.DeleteLog(originalLog);
             }
             else
             {
-                // 2. [핵심] Page 리스트가 아닌 VM의 public 메서드 호출
                 vm.UpdateLog(originalLog, win.NewLogEntry);
 
-                // (과목 선택 로직은 그대로 둠)
                 var editedTaskName = win.NewLogEntry.TaskText;
                 var taskToSelect = TaskItems.FirstOrDefault(t => t.Text == editedTaskName);
                 if (taskToSelect != null)
@@ -695,41 +602,16 @@ namespace WorkPartner
                     TaskListBox.SelectedItem = taskToSelect;
                 }
             }
-
-            // 3. [삭제] Page가 직접 저장/계산하지 않음
-            // DataManager.SaveTimeLogsImmediately(TimeLogEntries);
-
-            // 4. [수정] VM이 계산했으니, Page는 VM 리스트를 사용해 그리기만 함
             RecalculateAllTotals();
             RenderTimeTable();
-
-            // 5. [삭제] VM은 이미 스스로 갱신했으므로 이 로직 필요 없음
-            // if (DataContext is ViewModels.DashboardViewModel vm) ...
         }
         #endregion
 
         #region 화면 렌더링 및 UI 업데이트
 
-        // 파일: DashboardPage.xaml.cs (약 535줄)
-        //
-        // ▼▼▼ 이 메서드 전체를 아래 코드로 교체하세요 ▼▼▼
-
-        // private void UpdateMainTimeDisplay(TimeSpan? timeForMainDisplay = null) 
         private void UpdateMainTimeDisplay() // 👈 파라미터 삭제
         {
             if (DataContext is not ViewModels.DashboardViewModel vm) return;
-
-            // ▼▼▼ [수정] MainTimeDisplay.Text를 설정하는 '모든' 로직 삭제 ▼▼▼
-            //
-            // 1. 메인 타이머 업데이트
-            // TimeSpan timeToShow = TimeSpan.Zero;
-            // ... (관련 로직 전부 삭제) ...
-            // MainTimeDisplay.Text = timeToShow.ToString(@"hh\:mm\:ss");
-            //
-            // ▲▲▲ [삭제 완료] ▲▲▲
-
-
-            // 2. 하단 총 학습 시간 업데이트 (이 로직은 남겨둬야 함)
             var todayLogs = vm.TimeLogEntries
                 .Where(log => log.StartTime.Date == _currentDateForTimeline.Date).ToList();
             var totalTimeToday = new TimeSpan(todayLogs.Sum(log => log.Duration.Ticks));
@@ -738,7 +620,6 @@ namespace WorkPartner
 
         private void RecalculateAllTotals()
         {
-            // '진짜' 계산 메서드를 호출 (이때는 이벤트 중이 아니므로 SelectedItem이 안정적임)
             RecalculateAllTotals(TaskListBox.SelectedItem as TaskItem);
         }
 
@@ -749,26 +630,11 @@ namespace WorkPartner
             var todayLogs = vm.TimeLogEntries
                 .Where(log => log.StartTime.Date == _currentDateForTimeline.Date).ToList();
 
-            // TimeSpan selectedTaskTime = TimeSpan.Zero; // 👈 [삭제]
-
             foreach (var task in TaskItems)
             {
                 var taskLogs = todayLogs.Where(log => log.TaskText == task.Text);
-
-                // 이 줄이 실행되면, XAML 바인딩이 'TotalTime' 변경을 감지하고
-                // 'TaskListBox'의 시간과 'MainTimeDisplay'의 시간을 '자동으로' 업데이트합니다.
                 task.TotalTime = new TimeSpan(taskLogs.Sum(log => log.Duration.Ticks));
-
-                // if (task == selectedTask) 
-                // {
-                //    selectedTaskTime = task.TotalTime; 
-                // } 
-                // 👆 [삭제] 더 이상 MainTimeDisplay에 수동으로 전달할 필요 없음
             }
-
-            // if (TaskListBox != null) ... Items.Refresh() ... // 👈 (이전 단계에서 삭제함)
-
-            // [수정] 파라미터 없이 하단 텍스트만 업데이트하도록 호출
             UpdateMainTimeDisplay();
         }
 
@@ -991,15 +857,6 @@ namespace WorkPartner
         private void UpdateCharacterInfoPanel(string status = null)
         {
             if (_settings == null) return;
-
-            // 이름은 표시하되, 레벨/경험치/코인은 업데이트하지 않음 (화면엔 0이나 기본값으로 남음)
-            UsernameTextBlock.Text = _settings.Username;
-
-            // LevelTextBlock.Text = $"Lv.{_settings.Level}"; // 🗑️ [삭제]
-            // ExperienceBar.Value = _settings.Experience;   // 🗑️ [삭제]
-            // UpdateCoinDisplay();                          // 🗑️ [삭제]
-
-            // CharacterPreview.UpdateCharacter();           // 🗑️ [삭제] 아바타 로직 제거
         }
 
         private void UpdateCoinDisplay()
@@ -1480,6 +1337,39 @@ namespace WorkPartner
         {
             // 🗑️ [삭제] 점수 평가 창 띄우는 로직 전체 제거
             MessageBox.Show("이 기능은 더 이상 사용되지 않습니다.", "알림");
+        }
+
+        private void LoadUserImage()
+        {
+            if (UserProfileImage == null) return;
+
+            // 설정에서 경로 가져오기
+            string imagePath = _settings.UserImagePath;
+
+            // GifHelper에게 "이 이미지 컨트롤에, 이 파일을 재생해줘"라고 명령
+            GifHelper.PlayGif(UserProfileImage, imagePath);
+        }
+
+
+        private void ChangeImageButton_Click(object sender, RoutedEventArgs e)
+        {
+            OpenFileDialog openFileDialog = new OpenFileDialog
+            {
+                Title = "이미지 선택",
+                Filter = "이미지 파일|*.jpg;*.jpeg;*.png;*.gif;*.bmp|모든 파일|*.*"
+            };
+
+            if (openFileDialog.ShowDialog() == true)
+            {
+                // 경로 저장
+                _settings.UserImagePath = openFileDialog.FileName;
+
+                // 파일에 즉시 쓰기 (가장 중요!)
+                DataManager.SaveSettings(_settings);
+
+                // 화면 갱신
+                LoadUserImage();
+            }
         }
     }
 }

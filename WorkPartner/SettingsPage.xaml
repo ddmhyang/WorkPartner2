@@ -8,7 +8,6 @@
              Background="{DynamicResource MainBackgroundBrush}">
 
     <UserControl.Resources>
-
         <Style x:Key="RoundedButtonStyle" TargetType="Button">
             <Setter Property="Background" Value="{DynamicResource AccentColorBrush}"/>
             <Setter Property="Foreground" Value="White"/>
@@ -38,29 +37,36 @@
                 <Button Content="-" Click="DeleteProcessButton_Click" DockPanel.Dock="Right" HorizontalAlignment="Right" Margin="10,0,0,0" Background="Transparent" BorderThickness="0" Foreground="Red"/>
             </DockPanel>
         </DataTemplate>
-
     </UserControl.Resources>
 
     <Viewbox Stretch="Uniform">
         <Canvas Width="682" Height="800">
             <TextBlock Text="설정" Canvas.Left="30" Canvas.Top="40" FontSize="24" FontWeight="Bold" Foreground="{DynamicResource PrimaryTextBrush}"/>
 
+        
             <ScrollViewer Canvas.Left="30" Canvas.Top="90" Width="622" Height="680" VerticalScrollBarVisibility="Hidden">
+
                 <StackPanel>
                     <Border Background="{DynamicResource SecondaryBackgroundBrush}" CornerRadius="10" Padding="15" Margin="0,0,0,15">
                         <StackPanel>
-                            <TextBlock Text="사용자 정보" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource PrimaryTextBrush}" Margin="0,0,0,10"/>
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Text="이름" VerticalAlignment="Center" Foreground="{DynamicResource SecondaryTextBrush}"/>
-                                <TextBlock x:Name="UsernameTextBlock" Text="사용자" Grid.Column="1" HorizontalAlignment="Right" FontWeight="Bold" Foreground="{DynamicResource PrimaryTextBrush}"/>
-                            </Grid>
+                            <TextBlock Text="미니 타이머 설정" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource PrimaryTextBrush}" Margin="0,0,0,10"/>
+
+                            <CheckBox x:Name="ShowMiniCharCheck" Content="캐릭터(이미지) 표시" 
+                      IsChecked="{Binding MiniTimerShowCharacter}" 
+                      Click="SaveSettings_Click"
+                      Foreground="{DynamicResource PrimaryTextBrush}" Margin="0,0,0,5"/>
+
+                            <CheckBox x:Name="ShowMiniInfoCheck" Content="작업 정보 텍스트 표시" 
+                      IsChecked="{Binding MiniTimerShowInfo}" 
+                      Click="SaveSettings_Click"
+                      Foreground="{DynamicResource PrimaryTextBrush}" Margin="0,0,0,5"/>
+
+                            <CheckBox x:Name="ShowMiniBgCheck" Content="배경 표시 (투명 모드 끄기)" 
+                      IsChecked="{Binding MiniTimerShowBackground}" 
+                      Click="SaveSettings_Click"
+                      Foreground="{DynamicResource PrimaryTextBrush}"/>
                         </StackPanel>
                     </Border>
-
                     <Border Background="{DynamicResource SecondaryBackgroundBrush}" CornerRadius="10" Padding="15" Margin="0,0,0,15">
                         <StackPanel>
                             <TextBlock Text="프로세스 관리" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource PrimaryTextBrush}" Margin="0,0,0,10"/>

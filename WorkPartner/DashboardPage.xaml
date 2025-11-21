@@ -184,18 +184,18 @@ Canvas.Top="10" Content=" 집중도 평가 " Height="20" Width="68" FontSize="10
                 </Canvas>
             </Border>
 
-            <!-- 캐릭터 디스플레이 영역 -->
             <Border Canvas.Left="417" Canvas.Top="40" Width="247" Height="130" 
                     BorderBrush="{DynamicResource AccentColorBrush}" BorderThickness="2" CornerRadius="10">
                 <Grid>
-                    <Image x:Name="UserProfileImage" Width="120" Height="120" 
-                           HorizontalAlignment="Right" VerticalAlignment="Bottom" 
-                           Margin="0,0,10,5" RenderOptions.BitmapScalingMode="HighQuality"/>
+                    <Image x:Name="UserProfileImage"
+                           Width="120" Height="120"
+                           HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                           Margin="0,0,10,5"
+                           Stretch="Uniform"
+                           RenderOptions.BitmapScalingMode="HighQuality"/>
 
                     <StackPanel Orientation="Vertical" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="15,15,0,0">
-                        <TextBlock x:Name="UsernameTextBlock" Text="사용자" FontSize="16" FontFamily="Pretendard" FontWeight="Bold" Foreground="{DynamicResource PrimaryTextBrush}"/>
-
-                        <TextBlock x:Name="CurrentTaskTextBlock" Text="현재 작업 : 없음" FontSize="11" Margin="0,8,0,0" Foreground="{DynamicResource SecondaryTextBrush}" FontWeight="SemiBold"/>
+                        <TextBlock x:Name="CurrentTaskTextBlock" Text="현재 작업 : 없음" FontSize="12" Margin="0,0,0,0" Foreground="{DynamicResource SecondaryTextBrush}" FontWeight="SemiBold"/>
                     </StackPanel>
 
                     <Button Content="이미지 변경" 
@@ -203,7 +203,8 @@ Canvas.Top="10" Content=" 집중도 평가 " Height="20" Width="68" FontSize="10
                             HorizontalAlignment="Left" VerticalAlignment="Bottom" 
                             Margin="15,0,0,15" Padding="8,4"
                             Style="{StaticResource RoundedButtonStyle}"
-                            Cursor="Hand"/>
+                            Cursor="Hand"
+                            Click="ChangeImageButton_Click"/>
                 </Grid>
             </Border>
 

@@ -1,5 +1,5 @@
 ﻿using System;
-using System.Collections.Generic; // Dictionary 사용을 위해 필요
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
@@ -18,8 +18,6 @@ namespace WorkPartner
         public ObservableCollection<ProcessViewModel> WorkProcessViewModels { get; set; }
         public ObservableCollection<ProcessViewModel> PassiveProcessViewModels { get; set; }
         public ObservableCollection<ProcessViewModel> DistractionProcessViewModels { get; set; }
-
-        // ▼ [추가] 태그 규칙용 리스트
         public ObservableCollection<TagRuleViewModel> TagRuleViewModels { get; set; }
 
         public SettingsPage()
@@ -28,7 +26,7 @@ namespace WorkPartner
             WorkProcessViewModels = new ObservableCollection<ProcessViewModel>();
             PassiveProcessViewModels = new ObservableCollection<ProcessViewModel>();
             DistractionProcessViewModels = new ObservableCollection<ProcessViewModel>();
-            TagRuleViewModels = new ObservableCollection<TagRuleViewModel>(); // 초기화
+            TagRuleViewModels = new ObservableCollection<TagRuleViewModel>();
         }
 
         public void SetParentWindow(MainWindow window)
@@ -40,14 +38,15 @@ namespace WorkPartner
         {
             _settings = DataManager.LoadSettings();
 
-            if (UsernameTextBlock != null) UsernameTextBlock.Text = _settings.Username;
-
+            if (ShowMiniCharCheck != null) ShowMiniCharCheck.IsChecked = _settings.MiniTimerShowCharacter;
+            if (ShowMiniInfoCheck != null) ShowMiniInfoCheck.IsChecked = _settings.MiniTimerShowInfo;
+            if (ShowMiniBgCheck != null) ShowMiniBgCheck.IsChecked = _settings.MiniTimerShowBackground;
             // 프로세스 로드
             LoadProcesses(_settings.WorkProcesses, WorkProcessViewModels);
             LoadProcesses(_settings.PassiveProcesses, PassiveProcessViewModels);
             LoadProcesses(_settings.DistractionProcesses, DistractionProcessViewModels);
 
-            // ▼ [추가] 태그 규칙 로드 (Dictionary -> ObservableCollection)
+            // 태그 규칙 로드
             TagRuleViewModels.Clear();
             if (_settings.TagRules != null)
             {
@@ -61,7 +60,7 @@ namespace WorkPartner
             if (WorkProcessList != null) WorkProcessList.ItemsSource = WorkProcessViewModels;
             if (PassiveProcessList != null) PassiveProcessList.ItemsSource = PassiveProcessViewModels;
             if (DistractionProcessList != null) DistractionProcessList.ItemsSource = DistractionProcessViewModels;
-            if (TagRuleList != null) TagRuleList.ItemsSource = TagRuleViewModels; // 연결
+            if (TagRuleList != null) TagRuleList.ItemsSource = TagRuleViewModels;
         }
 
         private void LoadProcesses(ObservableCollection<string> source, ObservableCollection<ProcessViewModel> target)
@@ -75,14 +74,12 @@ namespace WorkPartner
             _settings.WorkProcesses = new ObservableCollection<string>(WorkProcessViewModels.Select(vm => vm.ProcessName));
             _settings.PassiveProcesses = new ObservableCollection<string>(PassiveProcessViewModels.Select(vm => vm.ProcessName));
             _settings.DistractionProcesses = new ObservableCollection<string>(DistractionProcessViewModels.Select(vm => vm.ProcessName));
-
-            // ▼ [추가] 태그 규칙 저장 (ObservableCollection -> Dictionary)
             _settings.TagRules = TagRuleViewModels.ToDictionary(vm => vm.Keyword, vm => vm.Subject);
 
             DataManager.SaveSettings(_settings);
         }
 
-        // --- 앱 추가/삭제 (기존 코드 유지) ---
+        // --- 앱 추가 버튼 핸들러 ---
         private void AddWorkProcessButton_Click(object sender, RoutedEventArgs e) { _currentProcessType = "Work"; OpenProcessSelectionWindow(); }
         private void AddPassiveProcessButton_Click(object sender, RoutedEventArgs e) { _currentProcessType = "Passive"; OpenProcessSelectionWindow(); }
         private void AddDistractionProcessButton_Click(object sender, RoutedEventArgs e) { _currentProcessType = "Distraction"; OpenProcessSelectionWindow(); }
@@ -123,24 +120,24 @@ namespace WorkPartner
             }
         }
 
-        // ▼▼▼ [추가] 태그 규칙 추가/삭제 로직 ▼▼▼
+        private void SaveSettings_Click(object sender, RoutedEventArgs e)
+        {
+            // 체크박스 상태를 설정 객체에 반영
+            if (ShowMiniCharCheck != null) _settings.MiniTimerShowCharacter = ShowMiniCharCheck.IsChecked == true;
+            if (ShowMiniInfoCheck != null) _settings.MiniTimerShowInfo = ShowMiniInfoCheck.IsChecked == true;
+            if (ShowMiniBgCheck != null) _settings.MiniTimerShowBackground = ShowMiniBgCheck.IsChecked == true;
+
+            DataManager.SaveSettings(_settings);
+        }
+
+        // --- 태그 규칙 추가/삭제 ---
         private void AddTagRule_Click(object sender, RoutedEventArgs e)
         {
             string keyword = TagKeywordBox.Text.Trim();
             string subject = TagSubjectBox.Text.Trim();
 
-            if (string.IsNullOrEmpty(keyword) || string.IsNullOrEmpty(subject))
-            {
-                MessageBox.Show("키워드와 과목명을 모두 입력해주세요.");
-                return;
-            }
-
-            // 중복 체크
-            if (TagRuleViewModels.Any(x => x.Keyword == keyword))
-            {
-                MessageBox.Show("이미 등록된 키워드입니다.");
-                return;
-            }
+            if (string.IsNullOrEmpty(keyword) || string.IsNullOrEmpty(subject)) { MessageBox.Show("내용을 입력하세요."); return; }
+            if (TagRuleViewModels.Any(x => x.Keyword == keyword)) { MessageBox.Show("이미 등록된 키워드입니다."); return; }
 
             TagRuleViewModels.Add(new TagRuleViewModel { Keyword = keyword, Subject = subject });
             TagKeywordBox.Clear();
@@ -161,11 +158,7 @@ namespace WorkPartner
         private void ExportDataButton_Click(object sender, RoutedEventArgs e)
         {
             SaveFileDialog dlg = new SaveFileDialog { Filter = "JSON (*.json)|*.json", FileName = $"Backup_{DateTime.Now:yyyyMMdd}.json" };
-            if (dlg.ShowDialog() == true)
-            {
-                DataManager.ExportData(dlg.FileName);
-                MessageBox.Show("내보내기 완료!");
-            }
+            if (dlg.ShowDialog() == true) { DataManager.ExportData(dlg.FileName); MessageBox.Show("내보내기 완료!"); }
         }
 
         private void ImportDataButton_Click(object sender, RoutedEventArgs e)
@@ -193,13 +186,13 @@ namespace WorkPartner
         }
     }
 
+
     public class ProcessViewModel
     {
         public string ProcessName { get; set; }
         public ProcessViewModel(string name) { ProcessName = name; }
     }
 
-    // ▼ [추가] 태그 규칙용 뷰모델 클래스
     public class TagRuleViewModel
     {
         public string Keyword { get; set; }
