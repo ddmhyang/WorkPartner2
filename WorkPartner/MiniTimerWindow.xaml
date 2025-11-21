@@ -1,60 +1,71 @@
 ﻿<Window x:Class="WorkPartner.MiniTimerWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://expression.blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:WorkPartner"
-        Title="WorkPartner Timer" Height="80" Width="200"
-        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
-        Topmost="True" ShowInTaskbar="False"
-        MouseLeftButtonDown="Window_MouseLeftButtonDown">
-    <Border x:Name="TimerBorder" Background="#88000000" CornerRadius="10" ClipToBounds="True">
-        <Grid>
-            <!-- [삭제] 기존 BackgroundImage는 사용하지 않음 -->
-            <!-- <Image x:Name="BackgroundImage" Stretch="UniformToFill" Opacity="0.5"/> -->
+        mc:Ignorable="d"
+        Title="WorkPartner Mini" Height="160" Width="300"
+        WindowStyle="None"
+        ResizeMode="NoResize"
+        AllowsTransparency="True"
+        Background="Transparent"
+        Topmost="True"
+        ShowInTaskbar="False">
 
-            <!-- ▼▼▼ [추가] 1. 배경 전용 CharacterDisplay (맨 아래) ▼▼▼ -->
-            <!-- 이 컨트롤은 아바타의 배경(Part_Background)만 표시하는 용도입니다. -->
-            <local:CharacterDisplay x:Name="BackgroundCharacterDisplay"
-                                    Visibility="Collapsed" />
-            <!-- ▲▲▲ -->
+    <Window.Resources>
+        <Style x:Key="MiniButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" CornerRadius="5">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Opacity" Value="0.7"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
 
+    <Border Background="{DynamicResource MainBackgroundBrush}" CornerRadius="10" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+        <Grid Margin="10">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
 
-            <!-- [수정] 2. 컨텐츠 Grid (배경 위) -->
-            <Grid x:Name="MainContentGrid">
+            <Grid Grid.Row="0" MouseDown="Border_MouseDown" Background="Transparent">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="Work Partner" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource PrimaryTextBrush}" VerticalAlignment="Center"/>
+                </StackPanel>
+                <Button Content="×" HorizontalAlignment="Right" Click="CloseButton_Click" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource PrimaryTextBrush}" Style="{StaticResource MiniButtonStyle}" Width="20" Height="20"/>
+            </Grid>
+
+            <Grid Grid.Row="1" Margin="0,10,0,0">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
 
-                <Border x:Name="MiniCharacterContainer" 
-                        Grid.Column="1"  VerticalAlignment="Center"
-                        Width="64" 
-                        Height="64" 
-                        Margin="5,0,0,0" 
-                        ClipToBounds="True" 
-                        Visibility="Collapsed">
-
-                    <!-- [수정] 3. 캐릭터 전용 CharacterDisplay (맨 위) -->
-                    <!-- 이 컨트롤은 배경을 제외한 '캐릭터'만 표시하는 용도입니다. -->
-                    <local:CharacterDisplay x:Name="MiniCharacterDisplay" 
-                                            Width="128" 
-                                            Height="128" 
-                                            RenderOptions.BitmapScalingMode="NearestNeighbor"
-                                            Margin="-36,0,0,0" />
+                <Border x:Name="CharacterBorder" Grid.Column="0" Width="80" Height="80" CornerRadius="10" BorderBrush="{DynamicResource AccentColorBrush}" BorderThickness="2" Margin="0,0,10,0">
+                    <Grid>
+                        <Image x:Name="UserProfileImage" 
+                               Source="/images/character/head.png" 
+                               Stretch="Uniform" 
+                               Margin="5"/>
+                    </Grid>
                 </Border>
-
-                <!-- [수정] 4. 텍스트 (배경 위) -->
-                <StackPanel x:Name="InfoStackPanel" Grid.Column="0" Margin="10,0,10,0" VerticalAlignment="Center">
-
-                    <TextBlock x:Name="UsernameLevelTextBlock" Text="사용자 (Lv.1)" Foreground="White" FontSize="11" FontWeight="Bold" HorizontalAlignment="Left" Visibility="Collapsed"/>
-
-                    <StackPanel x:Name="CoinStackPanel" Orientation="Horizontal" HorizontalAlignment="Left" Visibility="Collapsed" Margin="0,2,0,0">
-                        <Image Source="/images/coin.png" Width="12" Height="12"/>
-                        <TextBlock x:Name="CoinAmountTextBlock" Text="0" Foreground="White" FontSize="11" Margin="4,0,0,0"/>
-                    </StackPanel>
-
-                    <TextBlock x:Name="TaskTextBlock" Text="과목 정보" Foreground="White" FontSize="12" HorizontalAlignment="Left" Visibility="Visible" Margin="0,5,0,0"/>
-
-                    <TextBlock x:Name="TimeTextBlock" Text="00:00:00" Foreground="White" FontSize="20" FontWeight="Bold" HorizontalAlignment="Left"/>
+                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                    <TextBlock x:Name="CurrentTaskText" Text="현재 과목: 코딩" FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,0,0,5"/>
+                    <TextBlock x:Name="TimeText" Text="01:23:45" FontSize="24" FontWeight="Bold" Foreground="{DynamicResource PrimaryTextBrush}"/>
                 </StackPanel>
             </Grid>
         </Grid>

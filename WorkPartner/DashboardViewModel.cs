@@ -312,7 +312,6 @@ namespace WorkPartner.ViewModels
                 EndTime = endTime ?? _sessionStartTime.Add(_stopwatch.Elapsed),
                 TaskText = _currentWorkingTask.Text
             };
-            GrantExperience(_stopwatch.Elapsed);
 
             TimeLogEntries.Insert(0, entry);
             // ▼▼▼ [수정] 비동기 저장을 호출
@@ -426,7 +425,6 @@ namespace WorkPartner.ViewModels
             DataManager.SaveTimeLogsImmediately(TimeLogEntries);
 
             // ▼▼▼ [추가] 수동 추가 시 경험치 부여 ▼▼▼
-            GrantExperience(newLog.Duration);
 
             RecalculateDailyTotals();
             UpdateLiveTimeDisplays();
@@ -452,7 +450,6 @@ namespace WorkPartner.ViewModels
                 DataManager.SaveTimeLogsImmediately(TimeLogEntries);
 
                 // ▼▼▼ [추가] 삭제 시 경험치 차감 ▼▼▼
-                GrantExperience(logInVm.Duration.Negate()); // 시간을 음수로 전달
 
                 RecalculateDailyTotals();
                 UpdateLiveTimeDisplays();
@@ -485,7 +482,6 @@ namespace WorkPartner.ViewModels
                 logInVm.FocusScore = updatedLog.FocusScore;
 
                 DataManager.SaveTimeLogsImmediately(TimeLogEntries);
-                GrantExperience(durationDifference);
                 RecalculateDailyTotals();
                 UpdateLiveTimeDisplays();
             }
@@ -535,70 +531,6 @@ namespace WorkPartner.ViewModels
             // --- 2. 최종 설정 저장 ---
 
             _settingsService?.SaveSettings(_settings);
-        }
-
-        private void GrantExperience(TimeSpan workDuration)
-        {
-            try
-            {
-                double minutesWorked = workDuration.TotalMinutes;
-                if (Math.Abs(minutesWorked) < 0.01) return; // 변경 값 없음
-
-                // (중요) 기존 설정을 '미리' 로드합니다.
-                _settings = _settingsService.LoadSettings();
-
-                double totalPendingMinutes = _settings.PendingWorkMinutes + minutesWorked;
-                int currentLevel = _settings.Level;
-                int minutesPerXpChunk = currentLevel;
-                int xpPerChunk = 10;
-                int xpToLevelUp = 100;
-                int coinsPerLevel = 50;
-
-                if (totalPendingMinutes >= minutesPerXpChunk)
-                {
-                    // ... (기존 레벨업 로직과 동일) ...
-                    int chunksEarned = (int)Math.Floor(totalPendingMinutes / minutesPerXpChunk);
-                    int xpGained = chunksEarned * xpPerChunk;
-                    double remainingMinutes = totalPendingMinutes % minutesPerXpChunk;
-
-                    _settings.Experience += xpGained;
-                    _settings.PendingWorkMinutes = remainingMinutes;
-
-                    bool leveledUp = false;
-                    while (_settings.Experience >= xpToLevelUp)
-                    {
-                        _settings.Level++;
-                        _settings.Experience -= xpToLevelUp;
-                        _settings.Coins += coinsPerLevel;
-                        leveledUp = true;
-                    }
-
-                    if (leveledUp)
-                    {
-                        _dialogService.ShowAlert(
-                            $"🎉 축하합니다! 레벨 업! 🎉\n\n레벨 {_settings.Level}이(가) 되었습니다.\n보상으로 {coinsPerLevel}코인을 획득했습니다!",
-                            "레벨 업!"
-                        );
-                    }
-                }
-                else if (totalPendingMinutes < 0)
-                {
-                    // (경험치 차감 로직 - 레벨 다운은 구현되지 않음)
-                    _settings.PendingWorkMinutes = totalPendingMinutes;
-                    // 참고: 경험치(XP)가 음수가 되는 것을 방지하는 로직이 필요할 수 있습니다.
-                    // 예: _settings.Experience = Math.Max(0, _settings.Experience + xpGained);
-                }
-                else
-                {
-                    _settings.PendingWorkMinutes = totalPendingMinutes;
-                }
-
-                _settingsService.SaveSettings(_settings);
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"[Error] GrantExperience Failed: {ex.Message}");
-            }
         }
     }
 }

@@ -1,37 +1,60 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
 using System.Windows;
-using System.Windows.Input;
+using System.Windows.Controls;
 
 namespace WorkPartner
 {
     public partial class AppSelectionWindow : Window
     {
-        public string SelectedAppKeyword { get; private set; }
+        // ▼ 이 속성을 추가해서 SettingsPage에서 읽을 수 있게 함
+        public string SelectedAppName { get; private set; }
 
-        public AppSelectionWindow(List<InstalledProgram> apps)
+        public AppSelectionWindow()
         {
             InitializeComponent();
-            AppListView.ItemsSource = apps; // Corrected control name
+            LoadRunningProcesses();
+        }
+
+        // 파라미터가 있는 생성자는 삭제하고, 내부에서 로드합니다.
+        private void LoadRunningProcesses()
+        {
+            var processes = Process.GetProcesses()
+                .Select(p => p.ProcessName)
+                .Distinct()
+                .OrderBy(n => n)
+                .Select(n => new InstalledProgram { ProcessName = n, DisplayName = n }) // InstalledProgram 클래스 활용
+                .ToList();
+
+            // XAML에 ListBox 이름이 'AppListBox'라고 가정합니다.
+            // 만약 XAML에 이름이 없다면 AppSelectionWindow.xaml도 확인해야 하지만, 
+            // 보통 이런 이름입니다. (오류 나면 알려주세요)
+            if (this.FindName("AppListBox") is ListBox listBox)
+            {
+                listBox.ItemsSource = processes;
+            }
         }
 
         private void OkButton_Click(object sender, RoutedEventArgs e)
         {
-            if (AppListView.SelectedItem is InstalledProgram selectedApp) // Corrected control name
+            if (this.FindName("AppListBox") is ListBox listBox && listBox.SelectedItem is InstalledProgram selected)
             {
-                SelectedAppKeyword = selectedApp.ProcessName;
-                this.DialogResult = true;
-                this.Close();
+                SelectedAppName = selected.ProcessName;
+                DialogResult = true;
+                Close();
             }
             else
             {
-                MessageBox.Show("목록에서 프로그램을 선택해주세요.", "알림");
+                MessageBox.Show("앱을 선택해주세요.");
             }
         }
 
-        // Added missing event handler
-        private void AppListView_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+        private void CancelButton_Click(object sender, RoutedEventArgs e)
         {
-            OkButton_Click(sender, e);
+            DialogResult = false;
+            Close();
         }
     }
 }
