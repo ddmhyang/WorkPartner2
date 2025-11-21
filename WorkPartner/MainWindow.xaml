@@ -46,9 +46,7 @@
         <Border Grid.Column="0" Background="{DynamicResource SecondaryBackgroundBrush}">
             <StackPanel Margin="0,50,0,0">
                 <Button Content="대시보드" Tag="Dashboard" Click="NavButton_Click" Style="{StaticResource NavButtonStyle}"/>
-                <Button Content="분석" Tag="Analysis" Click="NavButton_Click" Style="{StaticResource NavButtonStyle}"/>
                 <Button Content="설정" Tag="Settings" Click="NavButton_Click" Style="{StaticResource NavButtonStyle}"/>
-                <Button Content="아바타" Tag="Avatar" Click="NavButton_Click" Style="{StaticResource NavButtonStyle}"/>
             </StackPanel>
         </Border>
 

@@ -15,7 +15,6 @@ using System.Windows.Media;
 using System.Windows.Shapes;
 using System.Windows.Threading;
 using WorkPartner;
-using WorkPartner.AI;
 
 namespace WorkPartner
 {
@@ -93,7 +92,7 @@ namespace WorkPartner
             RenderOptions.SetBitmapScalingMode(this, BitmapScalingMode.LowQuality);
             RenderOptions.SetEdgeMode(this, EdgeMode.Aliased);
 
-            //_rowHeight = _blockHeight + (_verticalMargin * 2) + _borderBottomThickness;
+            _rowHeight = _blockHeight + (_verticalMargin * 2) + _borderBottomThickness;
             _cellWidth = _blockWidth + (_horizontalMargin * 2) + _borderLeftThickness;
         }
 
@@ -112,7 +111,7 @@ namespace WorkPartner
                     }
                 }
                 RenderTimeTable();
-                UpdateCharacterInfoPanel(); // 👈 [이 줄을 추가하세요]
+                UpdateCharacterInfoPanel();
             });
         }
 
@@ -569,33 +568,27 @@ namespace WorkPartner
 
         private void SaveTodos_Event(object sender, RoutedEventArgs e)
         {
+            // 🗑️ [삭제] 코인 보상 로직 전체 제거
+            /*
             if (sender is CheckBox { DataContext: TodoItem todoItem })
             {
                 if (todoItem.IsCompleted && !todoItem.HasBeenRewarded)
                 {
-                    _settings.Coins += 10;
-                    todoItem.HasBeenRewarded = true;
-                    UpdateCoinDisplay();
-                    SaveSettings();
-                    SoundPlayer.PlayCompleteSound();
+                    _settings.Coins += 10; ...
                 }
-                // ▼▼▼ [이 블록 전체 추가] ▼▼▼
                 else if (!todoItem.IsCompleted && todoItem.HasBeenRewarded)
                 {
-                    // 완료를 취소했고, 이전에 보상을 받았다면
-                    _settings.Coins -= 10; // 코인 회수 (마이너스 가능)
-                    todoItem.HasBeenRewarded = false; // 보상 상태 리셋
-                    UpdateCoinDisplay();
-                    SaveSettings();
+                    _settings.Coins -= 10; ...
                 }
-                // ▲▲▲ [여기까지 추가] ▲▲▲
             }
-            SaveTodos();
+            */
+            SaveTodos(); // 저장 기능만 남김
         }
 
         private void GoToClosetButton_Click(object sender, RoutedEventArgs e)
         {
-            _parentWindow?.NavigateToPage("Avatar");
+            // _parentWindow?.NavigateToPage("Avatar"); // 🗑️ [삭제] 이동 기능 막음
+            MessageBox.Show("추후 이미지 뷰어 기능으로 업데이트될 예정입니다.", "알림");
         }
 
         private void MemoButton_Click(object sender, RoutedEventArgs e)
@@ -998,26 +991,24 @@ namespace WorkPartner
         private void UpdateCharacterInfoPanel(string status = null)
         {
             if (_settings == null) return;
-            UsernameTextBlock.Text = _settings.Username; // [!] 수정됨
-            LevelTextBlock.Text = $"Lv.{_settings.Level}"; // 👈 [추가]
-            ExperienceBar.Value = _settings.Experience; // 👈 [추가]
-            UpdateCoinDisplay();
-            CharacterPreview.UpdateCharacter();
+
+            // 이름은 표시하되, 레벨/경험치/코인은 업데이트하지 않음 (화면엔 0이나 기본값으로 남음)
+            UsernameTextBlock.Text = _settings.Username;
+
+            // LevelTextBlock.Text = $"Lv.{_settings.Level}"; // 🗑️ [삭제]
+            // ExperienceBar.Value = _settings.Experience;   // 🗑️ [삭제]
+            // UpdateCoinDisplay();                          // 🗑️ [삭제]
+
+            // CharacterPreview.UpdateCharacter();           // 🗑️ [삭제] 아바타 로직 제거
         }
 
         private void UpdateCoinDisplay()
         {
-            if (_settings != null) CoinTextBlock.Text = _settings.Coins.ToString("N0"); // [!] 수정됨
         }
 
-        // [!] 아래 새 메서드를 클래스 내부에 추가하세요.
         private async void GoToAvatarButton_Click(object sender, RoutedEventArgs e)
         {
-            if (_parentWindow != null)
-            {
-                // "Avatar" 페이지로 이동
-                await _parentWindow.NavigateToPage("Avatar");
-            }
+            // await _parentWindow.NavigateToPage("Avatar"); // 🗑️ [삭제] 이동 기능 막음
         }
 
         private void UpdateDateAndUI()
@@ -1485,66 +1476,10 @@ namespace WorkPartner
         }
         #endregion
 
-        // 파일: DashboardPage.xaml.cs
-        // (약 1238줄 근처)
-private void EvaluateDayButton_Click(object sender, RoutedEventArgs e)
+        private void EvaluateDayButton_Click(object sender, RoutedEventArgs e)
         {
-            // ▼▼▼ [수정] VM을 먼저 가져옵니다. ▼▼▼
-            if (DataContext is not ViewModels.DashboardViewModel vm) return;
-            
-            DateTime targetDate = _currentDateForTimeline.Date;
-
-            // 1. 이 날짜의 현재 저장된 점수를 찾습니다.
-            // ▼▼▼ [핵심 수정] VM 리스트(vm.TimeLogEntries) 사용
-            var firstRatedLog = vm.TimeLogEntries.FirstOrDefault(log => // (오류 1245 수정)
-                log.StartTime.Date == targetDate && log.FocusScore > 0);
-            // ▲▲▲
-
-            int currentScore = firstRatedLog?.FocusScore ?? 0; // 없으면 0점
-
-            // 2. 팝업 창을 띄웁니다.
-            var ratingWindow = new DailyFocusRatingWindow(currentScore)
-            {
-                Owner = Window.GetWindow(this)
-            };
-
-            // 3. 팝업 창에서 "저장" 버튼을 누른 경우
-            if (ratingWindow.ShowDialog() == true)
-            {
-                int newScore = ratingWindow.SelectedScore;
-
-                // 5. 이 날짜의 모든 로그를 찾습니다.
-                // ▼▼▼ [핵심 수정] VM 리스트(vm.TimeLogEntries) 사용
-                var logsForDay = vm.TimeLogEntries.Where(log => log.StartTime.Date == targetDate).ToList(); // (오류 1264 수정)
-                // ▲▲▲
-
-                if (!logsForDay.Any())
-                {
-                    MessageBox.Show("이날에는 적용할 학습 기록이 없습니다.", "알림");
-                    return;
-                }
-
-                bool isChanged = false;
-
-                // 6. 모든 로그의 FocusScore를 새 점수로 덮어씁니다.
-                foreach (var log in logsForDay)
-                {
-                    if (log.FocusScore != newScore)
-                    {
-                        log.FocusScore = newScore;
-                        isChanged = true;
-                    }
-                }
-
-                // 7. 변경된 경우에만 파일에 "즉시" 저장합니다.
-                if (isChanged)
-                {
-                    // ▼▼▼ [핵심 수정] VM 리스트(vm.TimeLogEntries)를 저장
-                    DataManager.SaveTimeLogs(vm.TimeLogEntries); // 👈 'Immediately'를 뺐습니다.
-                    // ▲▲▲
-                    MessageBox.Show($"'{targetDate:yyyy-MM-dd}'의 모든 기록에 집중도 {newScore}점을 적용했습니다.", "저장 완료");
-                }
-            }
+            // 🗑️ [삭제] 점수 평가 창 띄우는 로직 전체 제거
+            MessageBox.Show("이 기능은 더 이상 사용되지 않습니다.", "알림");
         }
     }
 }

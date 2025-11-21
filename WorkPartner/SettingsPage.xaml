@@ -143,33 +143,10 @@
 
             <Border Canvas.Left="19" Canvas.Top="95" Width="247" Height="130" BorderBrush="{DynamicResource AccentColorBrush}" BorderThickness="2" CornerRadius="10">
                 <Grid>
-                    <local:CharacterDisplay x:Name="CharacterPreview" ForceHideBackground="True" Width="128" Height="128" HorizontalAlignment="Left" Margin="115,-2,0,-2"/>
-
                     <StackPanel Orientation="Vertical" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="15,15,0,0">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock x:Name="UsernameTextBlock" Text="사용자" FontSize="16" FontFamily="Pretendard" FontWeight="Bold" VerticalAlignment="Center" Foreground="{DynamicResource PrimaryTextBrush}"/>
-                            <Border Height="14" Background="{DynamicResource AccentColorBrush}" CornerRadius="4" Margin="8,0,0,0" Padding="8,1">
-                                <TextBlock x:Name="LevelTextBlock" Text="Lv.1" Foreground="White" FontSize="8" FontWeight="SemiBold"/>
-                            </Border>
-                        </StackPanel>
-                        <ProgressBar x:Name="ExperienceBar" Width="100" Height="5" Value="50" Maximum="100" Margin="0,5,0,0" HorizontalAlignment="Left" Style="{StaticResource AccentColorProgressBarStyle}"/>
-                        <TextBlock x:Name="CurrentTaskTextBlock" Text="현재 작업 : 없음" FontSize="10" Margin="0,5,0,0" Foreground="{DynamicResource PrimaryTextBrush}" FontWeight="Bold"/>
+                        <TextBlock x:Name="UsernameTextBlock" Text="사용자" FontSize="16" FontFamily="Pretendard" FontWeight="Bold" Foreground="{DynamicResource PrimaryTextBrush}"/>
+                        <TextBlock Text="Work Partner" FontSize="10" Margin="0,5,0,0" Foreground="{DynamicResource SecondaryTextBrush}"/>
                     </StackPanel>
-
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="10">
-                        <Image Source="/images/coin.png" Width="19" Height="19"/>
-                        <TextBlock x:Name="CoinTextBlock" Text="50" VerticalAlignment="Center" Margin="5,0,0,0" Foreground="{DynamicResource PrimaryTextBrush}"/>
-                    </StackPanel>
-                    <Button Content="아바타 꾸미기" 
-                            FontSize="8" 
-                            FontWeight="SemiBold"
-                            HorizontalAlignment="Left" 
-                            VerticalAlignment="Bottom" 
-                            Margin="13,0,0,38" 
-                            Padding="10,3"
-                            Click="GoToAvatarButton_Click"
-                            Style="{StaticResource RoundedCornerButtonStyle}" Cursor="Hand" Width="93" Height="17"/>
-
                 </Grid>
             </Border>
 

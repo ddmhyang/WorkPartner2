@@ -9,12 +9,13 @@ namespace WorkPartner
     public partial class MainWindow : Window
     {
         private readonly DashboardPage _dashboardPage;
-        private AvatarPage _avatarPage;
-        private AnalysisPage _analysisPage;
+        // private AvatarPage _avatarPage;      // 🗑️ [삭제] 아바타 페이지 변수
+        // private AnalysisPage _analysisPage;  // 🗑️ [삭제] 분석 페이지 변수
         private SettingsPage _settingsPage;
         private MiniTimerWindow _miniTimer;
 
-        private ViewModels.DashboardViewModel _mainViewModel; // ViewModel을 저장할 변수 선언
+        private ViewModels.DashboardViewModel _mainViewModel;
+
         public MainWindow()
         {
             InitializeComponent();
@@ -22,34 +23,21 @@ namespace WorkPartner
             _dashboardPage.SetParentWindow(this);
             MainFrame.Navigate(_dashboardPage);
 
-            Loaded += MainWindow_Loaded; // <--- 이 줄을 추가합니다.
+            Loaded += MainWindow_Loaded;
             this.Closing += MainWindow_Closing;
         }
 
         private void MainWindow_Closing(object sender, CancelEventArgs e)
         {
-            // 1. 미니 타이머가 열려있으면 닫습니다. (종료 문제의 원인)
             _miniTimer?.Close();
 
-            // 2. 뷰모델(두뇌)에게 종료를 알립니다. (데이터 최종 저장)
             if (_dashboardPage.DataContext is ViewModels.DashboardViewModel vm)
             {
                 vm.Shutdown();
             }
 
-            // 3. [중요] 어떤 방식으로 닫든(X버튼, Close 버튼), 앱 전체를 강제 종료합니다.
             Application.Current.Shutdown();
         }
-
-        //private void MainWindow_Closing(object sender, CancelEventArgs e)
-        //{
-        //    // 대시보드 페이지에 연결된 ViewModel(두뇌)을 가져옵니다.
-        //    if (_dashboardPage.DataContext is ViewModels.DashboardViewModel vm)
-        //    {
-        //        // ViewModel에게 "지금 종료하니 마지막 작업 저장해!"라고 알립니다.
-        //        vm.Shutdown();
-        //    }
-        //}
 
         private async void NavButton_Click(object sender, RoutedEventArgs e)
         {
@@ -58,9 +46,10 @@ namespace WorkPartner
                 await NavigateToPage(pageName);
             }
         }
+
         private void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
-            ToggleMiniTimer(); // 메인 창이 모두 로드된 후 미니 타이머를 켭니다.
+            ToggleMiniTimer();
         }
 
         public async Task NavigateToPage(string pageName)
@@ -71,26 +60,18 @@ namespace WorkPartner
                     MainFrame.Navigate(_dashboardPage);
                     await _dashboardPage.LoadAllDataAsync();
                     break;
-                case "Avatar":
-                    if (_avatarPage == null) _avatarPage = new AvatarPage();
-                    _avatarPage.LoadData();
-                    MainFrame.Navigate(_avatarPage);
-                    break;
-                case "Analysis":
-                    if (_analysisPage == null) _analysisPage = new AnalysisPage();
 
-                    // ▼▼▼ [추가] 분석 페이지에 메인 ViewModel 전달 ▼▼▼
-                    _analysisPage.SetViewModel(_mainViewModel);
-                    // ▲▲▲
+                // 🗑️ [삭제] Avatar 케이스 전체 삭제
+                // case "Avatar": ... break;
 
-                    await _analysisPage.LoadAndAnalyzeData(); // 비동기 로딩
-                    MainFrame.Navigate(_analysisPage);
-                    break;
+                // 🗑️ [삭제] Analysis 케이스 전체 삭제
+                // case "Analysis": ... break;
+
                 case "Settings":
                     if (_settingsPage == null)
                     {
                         _settingsPage = new SettingsPage();
-                        _settingsPage.SetParentWindow(this); // 부모 윈도우 참조 설정
+                        _settingsPage.SetParentWindow(this);
                     }
                     _settingsPage.LoadData();
                     MainFrame.Navigate(_settingsPage);
@@ -98,34 +79,21 @@ namespace WorkPartner
             }
         }
 
-        // 파일: WorkPartner/MainWindow.xaml.cs
-        // (약 120줄 근처의 ToggleMiniTimer 메서드)
-
-        // ▼▼▼ 이 메서드 전체를 아래 코드로 교체하세요 ▼▼▼
         public void ToggleMiniTimer(bool? isEnabled = null)
         {
-            // ✨ [수정] 
-            // isEnabled가 null이면(앱 시작 시) 디스크에서 로드하고,
-            // null이 아니면(설정 페이지에서 전달) 그 값을 사용합니다.
             bool enabled = isEnabled ?? DataManager.LoadSettings().IsMiniTimerEnabled;
 
             if (enabled)
             {
-                // --- ▼▼▼ [버그 2 수정] ---
-                // 설정이 변경되어 이미 열린 타이머를 새로고침해야 할 수 있으므로,
-                // 이미 열려있다면(null이 아니라면) 닫아서 재생성합니다.
                 if (_miniTimer != null)
                 {
                     _miniTimer.Close();
                     _miniTimer = null;
                 }
-                // --- ▲▲▲ [수정 완료] ---
 
-                // (기존 생성 로직)
                 _miniTimer = new MiniTimerWindow
                 {
-                    //Owner = this // 오류가 해결된 상태이므로 이 코드를 그대로 둡니다.
-                    Owner = null,        // 👈 [수정 1] 소유권 연결을 끊습니다.
+                    Owner = null,
                     Topmost = true
                 };
                 _miniTimer.Closed += (s, e) => _miniTimer = null;
@@ -145,17 +113,13 @@ namespace WorkPartner
                 this.DragMove();
         }
 
-        private void CloseButton_Click(object sender, RoutedEventArgs e) => this.Close(); // 👈 그냥 창을 닫으라고만 요청
+        private void CloseButton_Click(object sender, RoutedEventArgs e) => this.Close();
         private void MinimizeButton_Click(object sender, RoutedEventArgs e) => this.WindowState = WindowState.Minimized;
-
 
         public void SetDashboardViewModel(object viewModel)
         {
-            // ▼▼▼ [수정] ViewModel을 메인 윈도우에 저장 ▼▼▼
             _mainViewModel = viewModel as ViewModels.DashboardViewModel;
             _dashboardPage.DataContext = _mainViewModel;
-            // ▲▲▲
         }
     }
 }
-
