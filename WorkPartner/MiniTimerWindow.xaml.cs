@@ -2,6 +2,7 @@
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 
 namespace WorkPartner
 {
@@ -12,14 +13,8 @@ namespace WorkPartner
         public MiniTimerWindow()
         {
             InitializeComponent();
-
-            // 1. 초기 설정 로드
             LoadSettings();
-
-            // ▼▼▼ [추가] 설정이 변경되면 즉시 알림을 받도록 등록 ▼▼▼
             DataManager.SettingsUpdated += OnSettingsUpdated;
-
-            // 윈도우가 닫힐 때 이벤트 연결 해제를 위해 Closed 이벤트 추가
             this.Closed += MiniTimerWindow_Closed;
         }
 
@@ -56,36 +51,34 @@ namespace WorkPartner
         {
             if (settings == null) return;
 
-            // 1. 배경 설정
-            this.Background = settings.MiniTimerShowBackground
-                ? (Brush)FindResource("MainBackgroundBrush")
-                : Brushes.Transparent;
-
-            // 2. 정보 텍스트 On/Off
             if (CurrentTaskText != null)
-            {
                 CurrentTaskText.Visibility = settings.MiniTimerShowInfo ? Visibility.Visible : Visibility.Collapsed;
-            }
 
-            // 3. 캐릭터(이미지) On/Off 및 재생
-            if (CharacterBorder != null && MiniProfileImage != null)
+            if (KeyringArea != null && MiniProfileImage != null)
             {
                 if (settings.MiniTimerShowCharacter)
                 {
-                    CharacterBorder.Visibility = Visibility.Visible;
+                    KeyringArea.Visibility = Visibility.Visible;
 
-                    // 경로가 바뀌었을 때만 다시 재생
+                    // 이미지 로드
                     if (_lastLoadedImagePath != settings.UserImagePath)
                     {
                         _lastLoadedImagePath = settings.UserImagePath;
                         GifHelper.PlayGif(MiniProfileImage, _lastLoadedImagePath);
                     }
+
+                    // ▼▼▼ [수정] 여기서 자동 실행하던 sb.Begin() 코드를 삭제했습니다.
+                    // 이제 평소에는 가만히 있습니다.
                 }
                 else
                 {
-                    CharacterBorder.Visibility = Visibility.Collapsed;
+                    KeyringArea.Visibility = Visibility.Collapsed;
                     GifHelper.StopGif(MiniProfileImage);
                     _lastLoadedImagePath = null;
+
+                    // 혹시 실행 중이었다면 정지
+                    var sb = this.Resources["SwingAnimation"] as Storyboard;
+                    sb?.Stop();
                 }
             }
         }
@@ -98,6 +91,46 @@ namespace WorkPartner
         private void CloseButton_Click(object sender, RoutedEventArgs e)
         {
             this.Close();
+        }
+
+        private void Window_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (e.ButtonState == MouseButtonState.Pressed)
+            {
+                // 1. 이동 중 애니메이션 (격하게 흔들림) 시작
+                var swingSb = this.Resources["SwingAnimation"] as Storyboard;
+                var decaySb = this.Resources["DecayAnimation"] as Storyboard;
+
+                // 기존 감속 애니메이션이 있다면 멈춤
+                decaySb?.Stop();
+                swingSb?.Begin();
+
+                // 2. 창 이동 (마우스를 뗄 때까지 여기서 코드 실행이 멈춥니다)
+                this.DragMove();
+
+                // 3. 드래그가 끝남 (마우스 뗌)
+                if (swingSb != null && decaySb != null)
+                {
+                    // (1) 현재 흔들리고 있는 각도를 알아내기 위해 잠시 일시정지
+                    swingSb.Pause();
+
+                    // (2) 현재 각도 가져오기
+                    double currentAngle = KeyringTransform.Angle;
+
+                    // (3) 흔들림 애니메이션 완전 종료
+                    swingSb.Stop();
+
+                    // (4) 감속 애니메이션 설정: "현재 각도"에서부터 "0도"로
+                    // DecayDoubleAnim은 XAML에서 이름을 지어준 애니메이션 객체입니다.
+                    if (this.FindName("DecayDoubleAnim") is DoubleAnimation decayAnim)
+                    {
+                        decayAnim.From = currentAngle;
+                    }
+
+                    // (5) 감속 애니메이션 시작 (띠용~ 하며 멈춤)
+                    decaySb.Begin();
+                }
+            }
         }
     }
 }
