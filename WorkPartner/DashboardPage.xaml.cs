@@ -837,6 +837,8 @@ namespace WorkPartner
                         Margin = new Thickness(_horizontalMargin, 0, _horizontalMargin, 0) // 👈 _(언더스코어) 사용
                     };
 
+                    blockContainer.SetResourceReference(Grid.BackgroundProperty, "SecondaryBackgroundBrush");
+
                     var blockWithBorder = new Border
                     {
                         BorderThickness = new Thickness(1, 0, (minuteBlock + 1) % 6 == 0 ? 1 : 0, 1),

@@ -9,8 +9,7 @@ namespace WorkPartner
     public partial class MainWindow : Window
     {
         private readonly DashboardPage _dashboardPage;
-        // private AvatarPage _avatarPage;      // 🗑️ [삭제] 아바타 페이지 변수
-        // private AnalysisPage _analysisPage;  // 🗑️ [삭제] 분석 페이지 변수
+        private StatisticsPage _statisticsPage;
         private SettingsPage _settingsPage;
         private MiniTimerWindow _miniTimer;
 
@@ -61,11 +60,15 @@ namespace WorkPartner
                     await _dashboardPage.LoadAllDataAsync();
                     break;
 
-                // 🗑️ [삭제] Avatar 케이스 전체 삭제
-                // case "Avatar": ... break;
-
-                // 🗑️ [삭제] Analysis 케이스 전체 삭제
-                // case "Analysis": ... break;
+                case "Statistics":
+                    if (_statisticsPage == null)
+                    {
+                        _statisticsPage = new StatisticsPage();
+                    }
+                    // 페이지가 로드될 때마다 데이터를 새로 읽도록 트리거할 수도 있습니다.
+                    // (StatisticsPage.xaml.cs의 Loaded 이벤트가 알아서 처리함)
+                    MainFrame.Navigate(_statisticsPage);
+                    break;
 
                 case "Settings":
                     if (_settingsPage == null)
