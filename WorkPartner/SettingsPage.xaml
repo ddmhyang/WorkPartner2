@@ -158,11 +158,6 @@
             <Setter Property="CornerRadius" Value="12"/>
             <Setter Property="Padding" Value="0"/>
             <Setter Property="Margin" Value="5"/>
-            <Setter Property="Effect">
-                <Setter.Value>
-                    <DropShadowEffect BlurRadius="10" ShadowDepth="2" Opacity="0.05" Color="Black"/>
-                </Setter.Value>
-            </Setter>
         </Style>
 
         <Style x:Key="SectionTitleStyle" TargetType="TextBlock">
@@ -178,7 +173,6 @@
         <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
             <Grid Margin="20">
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
@@ -221,20 +215,27 @@
 
                     <Border Grid.Column="1" Style="{StaticResource CardBorderStyle}">
                         <StackPanel>
-                            <TextBlock Text="미니 타이머" Style="{StaticResource SectionTitleStyle}"/>
-
-                            <CheckBox x:Name="MiniTimerCheckBox" Content="사용함" Margin="10,5" Click="Setting_Changed" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="12"/>
-
-                            <CheckBox x:Name="MiniTimerShowCharacterCheckBox" Content="캐릭터 표시" Margin="10,5" Click="Setting_Changed" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="12"/>
-                            <CheckBox x:Name="MiniTimerShowInfoCheckBox" Content="정보 텍스트 표시" Margin="10,5" Click="Setting_Changed" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="12"/>
+                            <TextBlock Text="집중 모드" Style="{StaticResource SectionTitleStyle}"/>
+                            <CheckBox x:Name="IdleDetectionCheckBox" Content="자리 비움 &amp; 딴짓 감지" Click="Setting_Changed" Foreground="{DynamicResource PrimaryTextBrush}" Margin="10,5"/>
+                            <TextBlock Text="활성화 시 설정한 방해 앱이 실행되거나 자리를 비우면 경고를 보냅니다." FontSize="10" Foreground="{DynamicResource SecondaryTextBrush}" Margin="10,10,0,0" TextWrapping="Wrap"/>
                         </StackPanel>
                     </Border>
 
                     <Border Grid.Column="2" Style="{StaticResource CardBorderStyle}">
                         <StackPanel>
-                            <TextBlock Text="집중 모드" Style="{StaticResource SectionTitleStyle}"/>
-                            <CheckBox x:Name="IdleDetectionCheckBox" Content="자리 비움 &amp; 딴짓 감지" Click="Setting_Changed" Foreground="{DynamicResource PrimaryTextBrush}" Margin="10,5"/>
-                            <TextBlock Text="활성화 시 설정한 방해 앱이 실행되거나 자리를 비우면 경고를 보냅니다." FontSize="10" Foreground="{DynamicResource SecondaryTextBrush}" Margin="10,10,0,0" TextWrapping="Wrap"/>
+                            <TextBlock Text="데이터 관리" Style="{StaticResource SectionTitleStyle}"/>
+                            <TextBlock Text="데이터 초기화 및 백업" FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}" Margin="10,0,0,15"/>
+
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="10"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Button Grid.Column="0" Content="내보내기" Click="ExportDataButton_Click" Style="{StaticResource RoundedButtonStyle}" Width="80" HorizontalAlignment="Stretch" Margin="10,10,0,8"/>
+                                <Button Grid.Column="2" Content="불러오기" Click="ImportDataButton_Click" Style="{StaticResource RoundedButtonStyle}" Width="80" HorizontalAlignment="Stretch" Margin="-10,10,0,8"/>
+                            </Grid>
+                            <Button Content="초기화" Click="ResetDataButton_Click" Background="#FF5252" Style="{StaticResource RoundedButtonStyle}" Width="175" HorizontalAlignment="Stretch" Margin="0,-5,0,10"/>
                         </StackPanel>
                     </Border>
                 </Grid>
@@ -258,12 +259,12 @@
                                         Style="{StaticResource AddIconButtonStyle}" ToolTip="작업 앱 추가"/>
                             </DockPanel>
                             <ListBox x:Name="WorkProcessList" Grid.Row="1" 
-         ItemsSource="{Binding WorkProcessViewModels}" 
-         MinHeight="100" 
-         ScrollViewer.VerticalScrollBarVisibility="Disabled"
-         PreviewMouseWheel="ListBox_PreviewMouseWheel"
-         Background="Transparent" BorderThickness="0" 
-         ItemTemplate="{StaticResource ProcessItemTemplate}"/>
+                                     ItemsSource="{Binding WorkProcessViewModels}" 
+                                     MinHeight="100" 
+                                     ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                                     PreviewMouseWheel="ListBox_PreviewMouseWheel"
+                                     Background="Transparent" BorderThickness="0" 
+                                     ItemTemplate="{StaticResource ProcessItemTemplate}"/>
                         </Grid>
                     </Border>
 
@@ -279,12 +280,12 @@
                                         Style="{StaticResource AddIconButtonStyle}" ToolTip="수동 앱 추가"/>
                             </DockPanel>
                             <ListBox x:Name="PassiveProcessList" Grid.Row="1" 
-         ItemsSource="{Binding PassiveProcessViewModels}" 
-         MinHeight="100"
-         ScrollViewer.VerticalScrollBarVisibility="Disabled"
-         PreviewMouseWheel="ListBox_PreviewMouseWheel"
-         Background="Transparent" BorderThickness="0" 
-         ItemTemplate="{StaticResource ProcessItemTemplate}"/>
+                                     ItemsSource="{Binding PassiveProcessViewModels}" 
+                                     MinHeight="100"
+                                     ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                                     PreviewMouseWheel="ListBox_PreviewMouseWheel"
+                                     Background="Transparent" BorderThickness="0" 
+                                     ItemTemplate="{StaticResource ProcessItemTemplate}"/>
                         </Grid>
                     </Border>
 
@@ -300,12 +301,12 @@
                                         Style="{StaticResource AddIconButtonStyle}" ToolTip="방해 앱 추가"/>
                             </DockPanel>
                             <ListBox x:Name="DistractionProcessList" Grid.Row="1" 
-         ItemsSource="{Binding DistractionProcessViewModels}" 
-         MinHeight="100"
-         ScrollViewer.VerticalScrollBarVisibility="Disabled"
-         PreviewMouseWheel="ListBox_PreviewMouseWheel"
-         Background="Transparent" BorderThickness="0" 
-         ItemTemplate="{StaticResource ProcessItemTemplate}"/>
+                                     ItemsSource="{Binding DistractionProcessViewModels}" 
+                                     MinHeight="100"
+                                     ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                                     PreviewMouseWheel="ListBox_PreviewMouseWheel"
+                                     Background="Transparent" BorderThickness="0" 
+                                     ItemTemplate="{StaticResource ProcessItemTemplate}"/>
                         </Grid>
                     </Border>
                 </Grid>
@@ -353,13 +354,13 @@
                         </Grid>
 
                         <ListBox x:Name="TagRulesListBox" 
-         MinHeight="120" 
-         ScrollViewer.VerticalScrollBarVisibility="Disabled"
-         PreviewMouseWheel="ListBox_PreviewMouseWheel"
-         Background="{DynamicResource MainBackgroundBrush}" 
-         BorderThickness="0"
-         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-         HorizontalContentAlignment="Stretch">
+                                 MinHeight="120" 
+                                 ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                                 PreviewMouseWheel="ListBox_PreviewMouseWheel"
+                                 Background="{DynamicResource MainBackgroundBrush}" 
+                                 BorderThickness="0"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                 HorizontalContentAlignment="Stretch">
 
                             <ListBox.ItemContainerStyle>
                                 <Style TargetType="ListBoxItem">
@@ -379,11 +380,11 @@
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
                                     <Border Background="{DynamicResource MainBackgroundBrush}" 
-                    BorderBrush="{DynamicResource BorderBrush}" 
-                    BorderThickness="1" 
-                    CornerRadius="6" 
-                    Padding="15,8"
-                    Margin="5,2">
+                                            BorderBrush="{DynamicResource BorderBrush}" 
+                                            BorderThickness="1" 
+                                            CornerRadius="6" 
+                                            Padding="15,8"
+                                            Margin="5,2">
 
                                         <Grid VerticalAlignment="Center">
                                             <Grid.ColumnDefinitions>
@@ -393,43 +394,43 @@
                                             </Grid.ColumnDefinitions>
 
                                             <TextBlock Grid.Column="0" 
-                               Text="{Binding Keyword, Mode=OneWay}" 
-                               FontWeight="Bold" 
-                               Foreground="{DynamicResource PrimaryTextBrush}"
-                               HorizontalAlignment="Center" 
-                               VerticalAlignment="Center"
-                               TextTrimming="CharacterEllipsis" Margin="0,0,0,0"/>
+                                                       Text="{Binding Keyword, Mode=OneWay}" 
+                                                       FontWeight="Bold" 
+                                                       Foreground="{DynamicResource PrimaryTextBrush}"
+                                                       HorizontalAlignment="Center" 
+                                                       VerticalAlignment="Center"
+                                                       TextTrimming="CharacterEllipsis" Margin="0,0,0,0"/>
 
                                             <TextBlock Grid.Column="1" 
-                               Text="→" 
-                               Foreground="{DynamicResource SecondaryTextBrush}" 
-                               FontSize="14"
-                               HorizontalAlignment="Center" 
-                               VerticalAlignment="Center"
-                               Margin="10,0"/>
+                                                       Text="→" 
+                                                       Foreground="{DynamicResource SecondaryTextBrush}" 
+                                                       FontSize="14"
+                                                       HorizontalAlignment="Center" 
+                                                       VerticalAlignment="Center"
+                                                       Margin="10,0"/>
 
                                             <StackPanel Grid.Column="2" 
-                                Orientation="Horizontal" 
-                                HorizontalAlignment="Center"
-                                VerticalAlignment="Center" Margin="5,0,0,0">
+                                                        Orientation="Horizontal" 
+                                                        HorizontalAlignment="Center"
+                                                        VerticalAlignment="Center" Margin="5,0,0,0">
 
                                                 <TextBlock Text="{Binding Subject, Mode=OneWay}" 
-                                   FontWeight="SemiBold" 
-                                   Foreground="{DynamicResource AccentColorBrush}"
-                                   VerticalAlignment="Center"
-                                   TextTrimming="CharacterEllipsis"
-                                   MaxWidth="150"/>
+                                                           FontWeight="SemiBold" 
+                                                           Foreground="{DynamicResource AccentColorBrush}"
+                                                           VerticalAlignment="Center"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           MaxWidth="150"/>
                                                 <Button Content="X" 
-                                CommandParameter="{Binding Keyword, Mode=OneWay}" 
-                                Click="DeleteTagRule_Click"
-                                Foreground="#FF5E5E" 
-                                Background="Transparent" 
-                                BorderThickness="0" 
-                                Cursor="Hand" 
-                                FontSize="11" 
-                                FontWeight="Bold"
-                                VerticalAlignment="Center"
-                                Margin="10,0,0,0">
+                                                        CommandParameter="{Binding Keyword, Mode=OneWay}" 
+                                                        Click="DeleteTagRule_Click"
+                                                        Foreground="#FF5E5E" 
+                                                        Background="Transparent" 
+                                                        BorderThickness="0" 
+                                                        Cursor="Hand" 
+                                                        FontSize="11" 
+                                                        FontWeight="Bold"
+                                                        VerticalAlignment="Center"
+                                                        Margin="10,0,0,0">
                                                     <Button.Style>
                                                         <Style TargetType="Button">
                                                             <Setter Property="Template">
@@ -458,29 +459,11 @@
                     </StackPanel>
                 </Border>
 
-                <Border Grid.Row="4" Style="{StaticResource CardBorderStyle}" Padding="5" Margin="10,10,0,0">
-                    <DockPanel>
-                        <StackPanel>
-                            <TextBlock Text="데이터 관리" Style="{StaticResource SectionTitleStyle}" Margin="10,10,0,0"/>
-                            <TextBlock Text="백업 및 복원, 또는 초기화를 수행합니다." FontSize="12" Foreground="Transparent"/>
-                        </StackPanel>
-
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" DockPanel.Dock="Right">
-                            <Button Content="내보내기" Click="ExportDataButton_Click" Margin="10,10,10,0" Style="{StaticResource RoundedButtonStyle}" Width="80"/>
-                            <Button Content="불러오기" Click="ImportDataButton_Click" Margin="10,10,10,0" Style="{StaticResource RoundedButtonStyle}" Width="80"/>
-                            <Button Content="초기화" Click="ResetDataButton_Click" Margin="10,10,10,0" Background="#FF5252" Style="{StaticResource RoundedButtonStyle}" Width="80"/>
-                        </StackPanel>
-                    </DockPanel>
-                </Border>
-
             </Grid>
         </ScrollViewer>
 
         <Popup x:Name="AddProcessMethodPopup" StaysOpen="False" Placement="Bottom">
-            <Border Background="{DynamicResource SecondaryBackgroundBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="8" Padding="5">
-                <Border.Effect>
-                    <DropShadowEffect BlurRadius="10" ShadowDepth="2" Opacity="0.2"/>
-                </Border.Effect>
+            <Border Background="{DynamicResource SecondaryBackgroundBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="0" Padding="5">
                 <StackPanel>
                     <Button Content="실행 중인 앱에서 선택" Click="Popup_SelectAppButton_Click" 
                             Background="Transparent" BorderThickness="0" HorizontalContentAlignment="Left" Padding="15,8" Foreground="{DynamicResource PrimaryTextBrush}" Cursor="Hand"/>

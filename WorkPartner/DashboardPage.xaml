@@ -189,22 +189,42 @@ Canvas.Top="10" Content=" 집중도 평가 " Height="20" Width="68" FontSize="10
                 <Grid>
                     <Image x:Name="UserProfileImage"
                            Width="120" Height="120"
-                           HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                           HorizontalAlignment="Right" VerticalAlignment="Center"
                            Margin="0,0,10,5"
                            Stretch="Uniform"
                            RenderOptions.BitmapScalingMode="HighQuality"/>
 
-                    <StackPanel Orientation="Vertical" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="15,15,0,0">
+                    <StackPanel Orientation="Vertical" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="30,0,0,0">
                         <TextBlock x:Name="CurrentTaskTextBlock" Text="현재 작업 : 없음" FontSize="12" Margin="0,0,0,0" Foreground="{DynamicResource SecondaryTextBrush}" FontWeight="SemiBold"/>
                     </StackPanel>
 
                     <Button Content="이미지 변경" 
-                            FontSize="9" FontWeight="SemiBold"
-                            HorizontalAlignment="Left" VerticalAlignment="Bottom" 
-                            Margin="15,0,0,15" Padding="8,4"
-                            Style="{StaticResource RoundedButtonStyle}"
-                            Cursor="Hand"
-                            Click="ChangeImageButton_Click"/>
+        FontSize="9" FontWeight="SemiBold"
+        HorizontalAlignment="Left" VerticalAlignment="Bottom" 
+        Margin="35,0,0,15" Padding="8,4"
+        Cursor="Hand"
+        Click="ChangeImageButton_Click" 
+        BorderBrush="Black" 
+        Background="Transparent">
+
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Border Background="{TemplateBinding Background}" 
+                    BorderBrush="{TemplateBinding BorderBrush}" 
+                    BorderThickness="1" 
+                    CornerRadius="6" 
+                    Padding="{TemplateBinding Padding}">
+                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter Property="Opacity" Value="0.6"/>
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Button.Template>
+                    </Button>
                 </Grid>
             </Border>
 

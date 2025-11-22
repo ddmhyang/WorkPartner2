@@ -31,6 +31,12 @@ namespace WorkPartner
             DataManager.SettingsUpdated -= OnSettingsUpdated;
         }
 
+        // [수정] 외부에서 호출하여 설정을 즉시 반영할 수 있게 public 메서드 추가
+        public void ReloadSettings()
+        {
+            LoadSettings();
+        }
+
         private void LoadSettings()
         {
             var settings = DataManager.LoadSettings();
@@ -73,12 +79,11 @@ namespace WorkPartner
             }
         }
 
-        // ▼▼▼ [수정] 애니메이션 코드 싹 지우고 이동만 남김 ▼▼▼
         private void Window_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             if (e.ButtonState == MouseButtonState.Pressed)
             {
-                this.DragMove(); // 그냥 창 이동만 함
+                this.DragMove();
             }
         }
     }

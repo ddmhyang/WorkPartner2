@@ -55,21 +55,34 @@ namespace WorkPartner
             _isLoaded = true;
         }
 
-        private void LoadSettings()
+        public void LoadSettings()
         {
+            _isLoaded = false;
+
+            // 1. 설정 파일 불러오기
             Settings = DataManager.LoadSettings();
 
-            if (Settings.IsMiniTimerEnabled == false &&
-                Settings.MiniTimerShowInfo == false &&
-                Settings.MiniTimerShowCharacter == false)
-            {
-                Settings.MiniTimerShowInfo = true;
-                Settings.MiniTimerShowCharacter = true;
-                Settings.MiniTimerShowBackground = false;
-            }
+            // 2. 강제로 설정값 고정
+            Settings.IsMiniTimerEnabled = true;
+            Settings.MiniTimerShowInfo = true;
+            Settings.MiniTimerShowCharacter = true;
+            Settings.MiniTimerShowBackground = false;
 
+            // 3. 변경된 설정 저장
+            DataManager.SaveSettings(Settings);
+
+            // 4. 메인 윈도우에 타이머 켜기 요청
+            _mainWindow?.ToggleMiniTimer(true);
+
+            // 5. [중요] 화면과 코드를 연결 (이게 없으면 목록이 안 보입니다!)
             this.DataContext = this;
-            _ = PopulateProcessViewModelsAsync();
+
+            // 6. 데이터 목록 불러오기
+            UpdateUIFromSettings();
+            PopulateTagRules();
+            _ = PopulateProcessViewModelsAsync(); // 작업/수동/방해 앱 목록 로드
+
+            _isLoaded = true;
         }
 
         private void SaveSettings()
@@ -83,19 +96,22 @@ namespace WorkPartner
         }
 
         #region UI Update
-        private void UpdateUIFromSettings()
+        private void UpdateUIFromSettings() // [메서드명 확인됨]
         {
-            MiniTimerCheckBox.IsChecked = Settings.IsMiniTimerEnabled;
-            MiniTimerShowInfoCheckBox.IsChecked = Settings.MiniTimerShowInfo;
-            MiniTimerShowCharacterCheckBox.IsChecked = Settings.MiniTimerShowCharacter;
+            // [삭제됨] MiniTimerCheckBox.IsChecked = ... (변수가 XAML에서 사라졌으므로 삭제)
+            // [삭제됨] MiniTimerShowInfoCheckBox.IsChecked = ...
+            // [삭제됨] MiniTimerShowCharacterCheckBox.IsChecked = ...
 
+            // [유지됨] 집중 모드(IdleDetectionCheckBox)는 XAML에 남아있으므로 유지
             IdleDetectionCheckBox.IsChecked = Settings.IsIdleDetectionEnabled;
 
+            // [유지됨] 테마 설정 로직
             if (Settings.Theme == "Dark")
                 DarkModeRadioButton.IsChecked = true;
             else
                 LightModeRadioButton.IsChecked = true;
 
+            // [유지됨] 강조 색상 로직
             var colorButton = FindName($"Color{Settings.AccentColor.Replace("#", "")}") as RadioButton;
             if (colorButton != null)
             {
@@ -125,21 +141,26 @@ namespace WorkPartner
             }
         }
 
-        private void Setting_Changed(object sender, RoutedEventArgs e)
+        private void Setting_Changed(object sender, RoutedEventArgs e) // [이벤트 핸들러 확인됨]
         {
             if (!_isLoaded) return;
 
-            Settings.IsMiniTimerEnabled = MiniTimerCheckBox.IsChecked ?? false;
-            Settings.MiniTimerShowInfo = MiniTimerShowInfoCheckBox.IsChecked ?? false;
-            Settings.MiniTimerShowCharacter = MiniTimerShowCharacterCheckBox.IsChecked ?? false;
+            // [수정] 미니 타이머 관련 설정은 항상 true로 고정하여 저장
+            Settings.IsMiniTimerEnabled = true;
+            Settings.MiniTimerShowInfo = true;
+            Settings.MiniTimerShowCharacter = true;
             Settings.MiniTimerShowBackground = false;
 
+            // [유지됨] 집중 모드 설정값 읽기 (IdleDetectionCheckBox는 존재함)
             bool isFocusModeEnabled = IdleDetectionCheckBox.IsChecked ?? false;
             Settings.IsIdleDetectionEnabled = isFocusModeEnabled;
             Settings.IsFocusModeEnabled = isFocusModeEnabled;
 
+            // 설정 저장
             SaveSettings();
-            _mainWindow?.ToggleMiniTimer(Settings.IsMiniTimerEnabled);
+
+            // 메인 윈도우에 반영 (항상 true 전달)
+            _mainWindow?.ToggleMiniTimer(true);
         }
         #endregion
 

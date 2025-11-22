@@ -4,7 +4,8 @@
         xmlns:d="http://expression.blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
-        Title="WorkPartner Mini" Height="180" Width="220"
+        Title="WorkPartner Mini" 
+        SizeToContent="WidthAndHeight"
         WindowStyle="None" ResizeMode="NoResize" AllowsTransparency="True" Background="Transparent"
         Topmost="True" ShowInTaskbar="False" FontFamily="Freesentation 5 Medium"
         MouseLeftButtonDown="Window_MouseLeftButtonDown">
@@ -53,8 +54,7 @@
         <Grid x:Name="KeyringArea" Grid.Row="1" HorizontalAlignment="Center" Margin="0,-3,0,0">
             <StackPanel HorizontalAlignment="Center">
                 <Image x:Name="MiniProfileImage" 
-                       Width="100" Height="100" 
-                       Stretch="Uniform" 
+                       Stretch="None"
                        RenderOptions.BitmapScalingMode="HighQuality"
                        Margin="0,2,0,0"/>
             </StackPanel>

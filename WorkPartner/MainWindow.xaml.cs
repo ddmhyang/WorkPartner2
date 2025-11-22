@@ -8,7 +8,7 @@ namespace WorkPartner
 {
     public partial class MainWindow : Window
     {
-        private readonly DashboardPage _dashboardPage;
+        private DashboardPage _dashboardPage;
         private StatisticsPage _statisticsPage;
         private SettingsPage _settingsPage;
         private MiniTimerWindow _miniTimer;
@@ -65,8 +65,6 @@ namespace WorkPartner
                     {
                         _statisticsPage = new StatisticsPage();
                     }
-                    // 페이지가 로드될 때마다 데이터를 새로 읽도록 트리거할 수도 있습니다.
-                    // (StatisticsPage.xaml.cs의 Loaded 이벤트가 알아서 처리함)
                     MainFrame.Navigate(_statisticsPage);
                     break;
 
@@ -82,31 +80,40 @@ namespace WorkPartner
             }
         }
 
+        // [수정] 타이머가 이미 켜져있으면 닫지 않고 설정만 새로고침
         public void ToggleMiniTimer(bool? isEnabled = null)
         {
             bool enabled = isEnabled ?? DataManager.LoadSettings().IsMiniTimerEnabled;
 
             if (enabled)
             {
+                if (_miniTimer == null)
+                {
+                    // 타이머가 없을 때만 새로 생성
+                    _miniTimer = new MiniTimerWindow
+                    {
+                        Owner = null,
+                        Topmost = true
+                    };
+                    _miniTimer.Closed += (s, e) => _miniTimer = null;
+                    _dashboardPage.SetMiniTimerReference(_miniTimer);
+
+                    _miniTimer.Show();
+                }
+                else
+                {
+                    // 이미 켜져있다면 설정만 업데이트 (깜빡임 방지 및 즉시 반영)
+                    _miniTimer.ReloadSettings();
+                }
+            }
+            else
+            {
+                // 꺼야 하는 경우에만 닫기
                 if (_miniTimer != null)
                 {
                     _miniTimer.Close();
                     _miniTimer = null;
                 }
-
-                _miniTimer = new MiniTimerWindow
-                {
-                    Owner = null,
-                    Topmost = true
-                };
-                _miniTimer.Closed += (s, e) => _miniTimer = null;
-                _dashboardPage.SetMiniTimerReference(_miniTimer);
-
-                _miniTimer.Show();
-            }
-            else
-            {
-                _miniTimer?.Close();
             }
         }
 
