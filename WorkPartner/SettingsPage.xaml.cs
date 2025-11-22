@@ -439,6 +439,10 @@ namespace WorkPartner
             {
                 try
                 {
+                    // ✨ [핵심 수정] 백업하기 직전에 현재 설정을 강제로 한 번 저장합니다.
+                    // (방금 바꾼 설정이 파일에 아직 안 쓰여졌을 수도 있기 때문)
+                    DataManager.SaveSettings(Settings);
+
                     var filesToZip = new[]
                     {
                         DataManager.SettingsFilePath, DataManager.TimeLogFilePath,
@@ -513,12 +517,16 @@ namespace WorkPartner
             }
         }
 
-        private void ResetDataButton_Click(object sender, RoutedEventArgs e)
+private void ResetDataButton_Click(object sender, RoutedEventArgs e)
         {
-            if (MessageBox.Show("정말로 모든 데이터를 영구적으로 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.", "데이터 초기화 확인", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
+            if (MessageBox.Show("정말로 모든 데이터를 영구적으로 삭제하시겠습니까?\n타임테이블, 태그, 프로세스 설정 등 모든 내용이 사라집니다.", "데이터 초기화 확인", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
             {
                 try
                 {
+                    // ✨ [핵심 수정 1] 이제부터 그 어떤 데이터 저장도 하지 말라고 깃발을 듭니다.
+                    // (프로그램 종료 시 발생하는 자동 저장까지 모두 막아버립니다.)
+                    DataManager.IsResetting = true;
+
                     var filesToDelete = new string[]
                     {
                         DataManager.SettingsFilePath,
@@ -535,11 +543,16 @@ namespace WorkPartner
                             File.Delete(filePath);
                         }
                     }
-                    MessageBox.Show("모든 데이터가 성공적으로 초기화되었습니다.\n프로그램을 다시 시작해주세요.", "초기화 완료");
+                    
+                    MessageBox.Show("모든 데이터가 성공적으로 초기화되었습니다.\n프로그램이 종료됩니다.", "초기화 완료");
+                    
+                    // ✨ [핵심 수정 2] 즉시 종료
                     Application.Current.Shutdown();
                 }
                 catch (Exception ex)
                 {
+                    // 만약 오류가 나면 다시 저장이 가능하도록 복구해줘야 함
+                    DataManager.IsResetting = false; 
                     MessageBox.Show($"데이터 초기화 중 오류가 발생했습니다: {ex.Message}", "오류");
                 }
             }

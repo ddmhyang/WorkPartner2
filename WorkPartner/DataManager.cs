@@ -18,8 +18,8 @@ namespace WorkPartner
 
         public static readonly JsonSerializerOptions JsonOptions = new JsonSerializerOptions { WriteIndented = true };
 
-        // ▼▼▼ [수정] EventHandler -> Action으로 변경 (받는 쪽 파라미터 없음 오류 해결) ▼▼▼
         public static event Action SettingsUpdated;
+        public static bool IsResetting { get; set; } = false;
 
         static DataManager()
         {
@@ -39,21 +39,21 @@ namespace WorkPartner
 
         public static void SaveSettings(AppSettings settings)
         {
+            if (IsResetting) return;
+
             try
             {
                 string json = JsonConvert.SerializeObject(settings, Formatting.Indented);
                 File.WriteAllText(SettingsFilePath, json);
-
-                // ▼▼▼ [수정] Invoke(null, EventArgs.Empty) -> Invoke() 로 변경
                 SettingsUpdated?.Invoke();
             }
             catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Error saving settings: {ex.Message}"); }
         }
 
-        // --- 나머지 저장 메서드들 (그대로 유지) ---
 
         public static void SaveTasks(ObservableCollection<TaskItem> tasks)
         {
+            if (IsResetting) return;
             try
             {
                 string json = JsonConvert.SerializeObject(tasks, Formatting.Indented);
@@ -64,6 +64,7 @@ namespace WorkPartner
 
         public static void SaveTodos(ObservableCollection<TodoItem> todos)
         {
+            if (IsResetting) return;
             try
             {
                 string json = JsonConvert.SerializeObject(todos, Formatting.Indented);
@@ -74,6 +75,7 @@ namespace WorkPartner
 
         public static void SaveTimeLogs(ObservableCollection<TimeLogEntry> logs)
         {
+            if (IsResetting) return;
             try
             {
                 string json = JsonConvert.SerializeObject(logs, Formatting.Indented);
@@ -89,6 +91,7 @@ namespace WorkPartner
 
         public static void SaveMemos(ObservableCollection<MemoItem> memos)
         {
+            if (IsResetting) return;
             try
             {
                 string json = JsonConvert.SerializeObject(memos, Formatting.Indented);

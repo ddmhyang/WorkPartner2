@@ -8,17 +8,14 @@ namespace WorkPartner
     {
         public string SelectedAppKeyword { get; private set; }
 
-        // 기본 생성자 (디자이너 오류 방지용)
         public AppSelectionWindow()
         {
             InitializeComponent();
         }
 
-        // ▼▼▼ [복구] Tree/9 버전: 목록을 받아서 AppListView에 넣음 ▼▼▼
         public AppSelectionWindow(List<InstalledProgram> apps)
         {
             InitializeComponent();
-            // XAML의 x:Name="AppListView"와 연결
             AppListView.ItemsSource = apps;
         }
 
@@ -34,7 +31,6 @@ namespace WorkPartner
 
         private void ConfirmSelection()
         {
-            // 사용자가 선택한 항목 가져오기
             if (AppListView.SelectedItem is InstalledProgram selectedApp)
             {
                 SelectedAppKeyword = selectedApp.ProcessName;

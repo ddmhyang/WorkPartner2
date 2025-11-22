@@ -32,7 +32,7 @@ namespace WorkPartner
             {
                 this.Title = "수동 기록 추가";
                 DeleteButton.Visibility = Visibility.Collapsed;
-                NewLogEntry = new TimeLogEntry(); // 새 로그 엔트리 생성
+                NewLogEntry = new TimeLogEntry();
                 if (tasks.Count > 0) { TaskComboBox.SelectedIndex = 0; }
                 LogDatePicker.SelectedDate = DateTime.Today;
             }
@@ -49,7 +49,6 @@ namespace WorkPartner
             }
             if (startTime >= endTime) { MessageBox.Show("종료 시간은 시작 시간보다 나중이어야 합니다."); return; }
 
-            // 기존 NewLogEntry 객체를 업데이트하거나 새로 생성
             NewLogEntry.TaskText = (TaskComboBox.SelectedItem as TaskItem).Text;
             NewLogEntry.StartTime = startTime;
             NewLogEntry.EndTime = endTime;

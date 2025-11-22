@@ -191,33 +191,52 @@
                            Stretch="Uniform"
                            RenderOptions.BitmapScalingMode="HighQuality"/>
 
-                    <Button Content="이미지 변경" 
-        FontSize="9" FontWeight="SemiBold"
-        HorizontalAlignment="Center" VerticalAlignment="Bottom" 
-        Margin="0,0,0,15" Padding="8,4"
-        Cursor="Hand"
-        Click="ChangeImageButton_Click" 
-        BorderBrush="{DynamicResource AccentColorB}" BorderThickness="2"
-        Background="Transparent">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,15">
 
-                        <Button.Template>
-                            <ControlTemplate TargetType="Button">
-                                <Border Background="{TemplateBinding Background}" 
-                    BorderBrush="{TemplateBinding BorderBrush}" 
-                    BorderThickness="1" 
-                    CornerRadius="6" 
-                    Padding="{TemplateBinding Padding}">
-                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                </Border>
+                        <Button Content="변경" 
+            FontSize="9" FontWeight="SemiBold"
+            Cursor="Hand"
+            Click="ChangeImageButton_Click" 
+            BorderBrush="{DynamicResource AccentColorBrush}" BorderThickness="3"
+            Background="white"
+            Padding="8,4"
+            Margin="0,0,10,0">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="{TemplateBinding Padding}">
+                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter Property="Opacity" Value="0.6"/>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
 
-                                <ControlTemplate.Triggers>
-                                    <Trigger Property="IsMouseOver" Value="True">
-                                        <Setter Property="Opacity" Value="0.6"/>
-                                    </Trigger>
-                                </ControlTemplate.Triggers>
-                            </ControlTemplate>
-                        </Button.Template>
-                    </Button>
+                        <Button Content="삭제" 
+            FontSize="9" FontWeight="SemiBold"
+            Cursor="Hand"
+            Click="RemoveImageButton_Click" 
+            BorderBrush="#FF676767" BorderThickness="3"
+            Background="white"
+            Padding="8,4"
+            Foreground="#FF676767">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="{TemplateBinding Padding}">
+                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter Property="Opacity" Value="0.6"/>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
+                    </StackPanel>
                 </Grid>
             </Border>
 

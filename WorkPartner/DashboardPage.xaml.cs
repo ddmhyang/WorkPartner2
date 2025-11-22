@@ -1,5 +1,4 @@
-﻿// 파일: DashboardPage.xaml.cs
-using Microsoft.Win32;
+﻿using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -103,13 +102,11 @@ namespace WorkPartner
             _taskBrushCache.Clear();
             Dispatcher.Invoke(() =>
             {
-                // 1. 페이지의 로컬 리스트 색상 업데이트 (과거 날짜용)
                 foreach (var taskItem in TaskItems)
                 {
                     taskItem.ColorBrush = GetColorForTask(taskItem.Text);
                 }
 
-                // 2. [추가된 코드] 뷰모델의 리스트 색상 업데이트 (오늘 날짜용)
                 if (DataContext is ViewModels.DashboardViewModel vm)
                 {
                     foreach (var vmTask in vm.TaskItems)
@@ -125,7 +122,6 @@ namespace WorkPartner
 
         private void InitializeData()
         {
-            // [수정] TaskItems가 null이 되지 않도록 미리 생성합니다.
             TaskItems = new ObservableCollection<TaskItem>();
 
             TodoItems = new ObservableCollection<TodoItem>();
@@ -157,22 +153,14 @@ namespace WorkPartner
 
         private void LoadSettings()
         {
-            // 1. 설정 파일이 없으면 불러오기
             if (_settings == null) _settings = DataManager.LoadSettings();
 
-            // 2. 이미지 로드
             LoadUserImage();
 
-            //// 3. 현재 작업 텍스트 갱신
-            //if (CurrentTaskTextBlock != null)
-            //    CurrentTaskTextBlock.Text = $"현재 작업 : {_settings.CurrentTask}";
-
-            // 4. [핵심 수정] 색상 강제 업데이트 (여기가 비어있어서 초기화 때 색이 안 나왔던 것!)
-            _taskBrushCache.Clear(); // 기존 색상 캐시 비우기 (혹시 모를 오류 방지)
+            _taskBrushCache.Clear();
 
             Dispatcher.Invoke(() =>
             {
-                // (A) 과거 날짜용 리스트 색칠
                 if (TaskItems != null)
                 {
                     foreach (var taskItem in TaskItems)
@@ -181,17 +169,14 @@ namespace WorkPartner
                     }
                 }
 
-                // (B) [추가됨] 오늘 날짜용(뷰모델) 리스트 색칠
                 if (DataContext is ViewModels.DashboardViewModel vm && vm.TaskItems != null)
                 {
                     foreach (var vmTask in vm.TaskItems)
                     {
-                        // 색상이 없거나(null), 이미 있더라도 최신 설정으로 다시 칠하기
                         vmTask.ColorBrush = GetColorForTask(vmTask.Text);
                     }
                 }
 
-                // 타임라인과 캐릭터 정보도 갱신
                 RenderTimeTable();
                 UpdateCharacterInfoPanel();
             });
@@ -212,14 +197,11 @@ namespace WorkPartner
                     TaskItems.Clear();
                     _taskBrushCache.Clear();
 
-                    // ▼▼▼ [수정] 안전장치 추가: _settings가 없으면 로드하고, TaskColors가 없으면 새로 만듦
                     if (_settings == null) _settings = DataManager.LoadSettings();
                     if (_settings.TaskColors == null) _settings.TaskColors = new Dictionary<string, string>();
-                    // ▲▲▲
 
                     foreach (var task in loadedTasks)
                     {
-                        // ▼▼▼ [수정] 안전하게 접근 (? 사용)
                         if (_settings.TaskColors != null && _settings.TaskColors.TryGetValue(task.Text, out var colorHex))
                         {
                             task.ColorBrush = (SolidColorBrush)new BrushConverter().ConvertFromString(colorHex);
@@ -261,7 +243,7 @@ namespace WorkPartner
             if (!File.Exists(_memosFilePath)) return;
             try
             {
-                await using var stream = new FileStream(_memosFilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite); // ✨ [수정]
+                await using var stream = new FileStream(_memosFilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
                 var loadedMemos = await JsonSerializer.DeserializeAsync<ObservableCollection<MemoItem>>(stream);
                 if (loadedMemos == null) return;
                 AllMemos.Clear();
@@ -555,12 +537,11 @@ namespace WorkPartner
 
         private void SaveTodos_Event(object sender, RoutedEventArgs e)
         {
-            SaveTodos(); // 저장 기능만 남김
+            SaveTodos();
         }
 
         private void GoToClosetButton_Click(object sender, RoutedEventArgs e)
         {
-            // _parentWindow?.NavigateToPage("Avatar"); // 🗑️ [삭제] 이동 기능 막음
             MessageBox.Show("추후 이미지 뷰어 기능으로 업데이트될 예정입니다.", "알림");
         }
 
@@ -656,7 +637,7 @@ namespace WorkPartner
 
         #region 화면 렌더링 및 UI 업데이트
 
-        private void UpdateMainTimeDisplay() // 👈 파라미터 삭제
+        private void UpdateMainTimeDisplay() 
         {
             if (DataContext is not ViewModels.DashboardViewModel vm) return;
             var todayLogs = vm.TimeLogEntries
@@ -670,18 +651,14 @@ namespace WorkPartner
             RecalculateAllTotals(TaskListBox.SelectedItem as TaskItem);
         }
 
-        // [수정됨]
-        private void RecalculateAllTotals(TaskItem selectedTask = null) // 파라미터 기본값 추가
+        private void RecalculateAllTotals(TaskItem selectedTask = null) 
         {
             if (DataContext is not ViewModels.DashboardViewModel vm) return;
 
             var todayLogs = vm.TimeLogEntries
                 .Where(log => log.StartTime.Date == _currentDateForTimeline.Date).ToList();
 
-            // [수정] 현재 리스트박스가 보여주고 있는 아이템들을 가져와서 계산
             var targetList = TaskListBox.ItemsSource as IEnumerable<TaskItem>;
-
-            // 만약 리스트박스가 비어있거나 연결이 안 되어있다면 로컬 리스트 사용
             if (targetList == null) targetList = this.TaskItems;
 
             foreach (var task in targetList)
@@ -694,14 +671,12 @@ namespace WorkPartner
 
         private void TaskListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            // 1. 이벤트(e)에서 '진짜' 새로 선택된 항목을 가져옵니다.
             TaskItem newSelectedItem = null;
             if (e.AddedItems.Count > 0)
             {
                 newSelectedItem = e.AddedItems[0] as TaskItem;
             }
 
-            // 2. '진짜' 항목을 RecalculateAllTotals에 전달합니다.
             RecalculateAllTotals(newSelectedItem);
 
             RenderTimeTable();
@@ -709,19 +684,16 @@ namespace WorkPartner
 
         private SolidColorBrush GetColorForTask(string taskName)
         {
-            // [핵심 수정] 설정이 아직 로드되지 않았다면 즉시 로드합니다!
             if (_settings == null)
             {
                 _settings = DataManager.LoadSettings();
             }
 
-            // 캐시된 브러시가 있으면 반환
             if (_taskBrushCache.TryGetValue(taskName, out var cachedBrush))
             {
                 return cachedBrush;
             }
 
-            // 설정 파일에서 색상 찾기
             if (_settings != null && _settings.TaskColors != null && _settings.TaskColors.TryGetValue(taskName, out string colorHex))
             {
                 try
@@ -731,17 +703,16 @@ namespace WorkPartner
                     _taskBrushCache[taskName] = newBrush;
                     return newBrush;
                 }
-                catch { /* 색상 코드가 잘못된 경우 무시 */ }
+                catch { }
             }
 
-            return DefaultGrayBrush; // 색상이 없으면 기본 회색
+            return DefaultGrayBrush;
         }
 
         private void RenderTimeTable()
         {
             if (DataContext is not ViewModels.DashboardViewModel vm) return;
 
-            // 1. 현재 화면 배율(DPI) 확인
             double dpiScale = 1.0;
             var source = PresentationSource.FromVisual(this);
             if (source != null && source.CompositionTarget != null)
@@ -752,24 +723,18 @@ namespace WorkPartner
             double basePixelsPerMin = _blockWidth / 10.0;
             double baseCellWidth = _blockWidth + (_horizontalMargin * 2) + _borderLeftThickness;
 
-            // [수정] 클래스 변수(_rowHeight)를 건드리지 않고, 메서드 안에서만 쓸 변수(drawingRowHeight)를 만듭니다.
-            // 기본값은 생성자에서 설정한 표준값을 가져옵니다.
             double drawingRowHeight = _rowHeight;
 
-            // [핵심] 150% 배율일 때만 높이 간격(2.65) 적용
             if (Math.Abs(dpiScale - 1.5) < 0.01)
             {
-                // 여기서 로컬 변수를 수정하므로 'readonly' 에러가 나지 않습니다!
                 drawingRowHeight = _blockHeight + (_verticalMargin * 2.65) + _borderBottomThickness;
             }
 
-            // 4. 이전 블록 삭제 (청소)
             var bordersToRemove = SelectionCanvas.Children.OfType<Border>()
                                             .Where(b => b.Tag is TimeLogEntry)
                                             .ToList();
             foreach (var border in bordersToRemove) SelectionCanvas.Children.Remove(border);
 
-            // 5. 로그 블록 그리기
             var logsForSelectedDate = vm.TimeLogEntries
                 .Where(log => log.StartTime.Date == _currentDateForTimeline.Date)
                 .OrderBy(l => l.StartTime)
@@ -800,19 +765,15 @@ namespace WorkPartner
                         TimeSpan blockDuration = blockEnd - blockStart;
                         if (blockDuration.TotalSeconds <= 0) break;
 
-                        // --- 좌표 계산 ---
                         int cellIndex = (int)Math.Floor(blockStart.Minute / 10.0);
 
-                        // X 좌표
                         double startX = _hourLabelWidth + _horizontalMargin + _borderLeftThickness;
                         double minuteOffset = (blockStart.TimeOfDay.TotalMinutes % 10.0) * basePixelsPerMin;
                         double leftOffset = startX + (cellIndex * baseCellWidth) + minuteOffset;
 
-                        // [수정] Y 좌표: _rowHeight 대신 보정된 drawingRowHeight 사용
                         double topOffset = (blockStart.Hour * drawingRowHeight) + _verticalMargin;
 
                         double barWidth = blockDuration.TotalMinutes * basePixelsPerMin;
-                        // ----------------
 
                         if (barWidth > 0)
                         {
@@ -839,18 +800,12 @@ namespace WorkPartner
                 }
             }
 
-            // 캔버스 높이 설정 (여기도 보정된 값 사용)
             SelectionCanvas.Height = 24 * drawingRowHeight;
             if (_selectionBox != null) Panel.SetZIndex(_selectionBox, 100);
         }
 
-        // 👈 [ 2단계 오류 수정: 이 메서드 전체를 교체 ]
-        /// <summary>
-        /// 앱 시작 시 '최초 1회'만 호출되어 타임라인의 배경 눈금을 그립니다.
-        /// </summary>
         private void InitializeTimeTableBackground()
         {
-            // 배경 그리기
             TimeTableContainer.Children.Clear();
 
             for (int hour = 0; hour < 24; hour++)
@@ -858,20 +813,17 @@ namespace WorkPartner
                 var hourRowPanel = new StackPanel
                 {
                     Orientation = Orientation.Horizontal,
-                    Margin = new Thickness(0, _verticalMargin, 0, _verticalMargin) // 👈 _(언더스코어) 사용
+                    Margin = new Thickness(0, _verticalMargin, 0, _verticalMargin)
                 };
 
-                // ▼▼▼ [DPI 수정] 측정할 수 있도록 0시와 1시 행에 Name을 부여합니다. ▼▼▼
                 if (hour == 0) hourRowPanel.Name = "HourRow_0";
                 if (hour == 1) hourRowPanel.Name = "HourRow_1";
-                // ▲▲▲ [DPI 수정 완료] ▲▲▲
 
                 var hourLabel = new TextBlock
                 {
-                    // ...
                     Text = $"{hour:00}",
-                    Width = _hourLabelWidth,   // 👈 _(언더스코어) 사용
-                    Height = _blockHeight,     // 👈 _(언더스코어) 사용
+                    Width = _hourLabelWidth,
+                    Height = _blockHeight, 
                     VerticalAlignment = VerticalAlignment.Center,
                     TextAlignment = TextAlignment.Center,
                     Foreground = Brushes.Gray,
@@ -883,10 +835,10 @@ namespace WorkPartner
                 {
                     var blockContainer = new Grid
                     {
-                        Width = _blockWidth,   // 👈 _(언더스코어) 사용
-                        Height = _blockHeight, // 👈 _(언더스코어) 사용
+                        Width = _blockWidth, 
+                        Height = _blockHeight,
                         Background = (Brush)FindResource("SecondaryBackgroundBrush"),
-                        Margin = new Thickness(_horizontalMargin, 0, _horizontalMargin, 0) // 👈 _(언더스코어) 사용
+                        Margin = new Thickness(_horizontalMargin, 0, _horizontalMargin, 0) 
                     };
 
                     blockContainer.SetResourceReference(Grid.BackgroundProperty, "SecondaryBackgroundBrush");
@@ -903,7 +855,6 @@ namespace WorkPartner
                 TimeTableContainer.Children.Add(hourRowPanel);
             }
 
-            // (디버그) 한셀 계산값 출력
             Debug.WriteLine($"InitializeTimeTableBackground: blockWidth={_blockWidth}, cellWidth={_cellWidth}, rowHeight={_rowHeight}, hourLabelWidth={_hourLabelWidth}");
         }
 
@@ -913,13 +864,9 @@ namespace WorkPartner
             if (_settings == null) return;
         }
 
-        private void UpdateCoinDisplay()
-        {
-        }
 
         private async void GoToAvatarButton_Click(object sender, RoutedEventArgs e)
         {
-            // await _parentWindow.NavigateToPage("Avatar"); // 🗑️ [삭제] 이동 기능 막음
         }
 
         private void UpdateDateAndUI()
@@ -927,7 +874,6 @@ namespace WorkPartner
             CurrentDateDisplay.Text = _currentDateForTimeline.ToString("yyyy-MM-dd");
             CurrentDayDisplay.Text = _currentDateForTimeline.ToString("ddd");
 
-            // [추가됨] 날짜에 맞춰 리스트박스의 연결 대상을 변경
             UpdateTaskListBoxSource();
 
             RenderTimeTable();
@@ -935,14 +881,12 @@ namespace WorkPartner
             FilterTodos();
         }
 
-        // [새로 추가됨]
         private void UpdateTaskListBoxSource()
         {
             if (DataContext is not ViewModels.DashboardViewModel vm) return;
 
             if (_currentDateForTimeline.Date == DateTime.Today)
             {
-                // 오늘 날짜를 볼 때는: 뷰모델의 '실시간 리스트'를 보여줌
                 if (TaskListBox.ItemsSource != vm.TaskItems)
                 {
                     TaskListBox.ItemsSource = vm.TaskItems;
@@ -950,8 +894,6 @@ namespace WorkPartner
             }
             else
             {
-                // 과거 날짜를 볼 때는: 페이지의 '로컬 리스트(변하지 않음)'를 보여줌
-                // 이렇게 하면 뷰모델이 실시간으로 시간을 업데이트해도 과거 내역에는 영향이 없음
                 if (TaskListBox.ItemsSource != this.TaskItems)
                 {
                     TaskListBox.ItemsSource = this.TaskItems;
@@ -1027,12 +969,9 @@ namespace WorkPartner
             _selectionBox.Height = h;
         }
 
-        // (약 924줄 근처)
-        // ▼▼▼ 이 메서드 전체를 아래 코드로 교체하세요 ▼▼▼
 
         private void SelectionCanvas_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
-            // ▼▼▼ [수정] VM을 먼저 가져옵니다. ▼▼▼
             if (DataContext is not ViewModels.DashboardViewModel vm) return;
 
             if (!_isDragging) return;
@@ -1049,9 +988,7 @@ namespace WorkPartner
             {
                 if (child.Tag is TimeLogEntry logEntry)
                 {
-                    // ▼▼▼ [수정] Margin 대신 Canvas.GetLeft/Top 사용 ▼▼▼
                     var logRect = new Rect(Canvas.GetLeft(child), Canvas.GetTop(child), child.ActualWidth, child.ActualHeight);
-                    // ▲▲▲
                     if (selectionRect.IntersectsWith(logRect))
                     {
                         selectedLogs.Add(logEntry);
@@ -1063,22 +1000,15 @@ namespace WorkPartner
 
             var distinctLogs = selectedLogs.Distinct().OrderBy(l => l.StartTime).ToList();
 
-            // --- ▼▼▼ [수정된 부분 시작] ▼▼▼ ---
-            // [롤백] '하나씩' 수정하는 팝업 대신,
-            // [롤백] '한 번에' 수정하는 'BulkEditLogsWindow' 팝업을 띄웁니다.
-            // (이 로직은 원본 DashboardPage.xaml.cs 파일에 있던 로직입니다.)
-
             var bulkEditWindow = new BulkEditLogsWindow(distinctLogs, TaskItems) { Owner = Window.GetWindow(this) };
 
             if (bulkEditWindow.ShowDialog() != true) return;
 
-            // ▼▼▼ [핵심 수정] VM의 메서드를 호출하도록 변경 ▼▼▼
             if (bulkEditWindow.Result == BulkEditResult.ChangeTask)
             {
                 string newText = bulkEditWindow.SelectedTask.Text;
                 foreach (var log in distinctLogs)
                 {
-                    // 수정된 새 객체 생성 (기존 객체 복사)
                     var updatedLog = new TimeLogEntry
                     {
                         StartTime = log.StartTime,
@@ -1087,20 +1017,16 @@ namespace WorkPartner
                         FocusScore = log.FocusScore,
                         BreakActivities = log.BreakActivities
                     };
-                    vm.UpdateLog(log, updatedLog); // VM에 수정 요청 (오류 983 수정)
+                    vm.UpdateLog(log, updatedLog);
                 }
             }
             else if (bulkEditWindow.Result == BulkEditResult.Delete)
             {
                 foreach (var log in distinctLogs)
                 {
-                    vm.DeleteLog(log); // VM에 삭제 요청 (오류 983 수정)
+                    vm.DeleteLog(log); 
                 }
             }
-            // --- ▲▲▲ [수정된 부분 끝] ▲▲▲ ---
-
-            // [삭제] VM이 직접 저장하므로 이 줄 삭제
-            // SaveTimeLogs(); 
 
             RecalculateAllTotals();
             RenderTimeTable();
@@ -1161,7 +1087,6 @@ namespace WorkPartner
             }
         }
 
-        // 🎯 WorkPartner/DashboardPage.xaml.cs 파일의 맨 끝 (클래스 닫는 괄호 '}' 바로 전)에 추가하세요.
 
         private (double H, double S, double L) WpfColorToHsl(Color wpfColor)
         {
@@ -1176,7 +1101,7 @@ namespace WorkPartner
 
             if (max == min)
             {
-                h = s = 0; // 회색조
+                h = s = 0; 
             }
             else
             {
@@ -1191,31 +1116,25 @@ namespace WorkPartner
                 {
                     h = (b - r) / delta + 2.0;
                 }
-                else // max == b
+                else 
                 {
                     h = (r - g) / delta + 4.0;
                 }
 
-                h /= 6.0; // 0-1 범위로 정규화
+                h /= 6.0; 
             }
 
-            return (h * 360.0, s, l); // H(0-360), S(0-1), L(0-1)
+            return (h * 360.0, s, l);
         }
 
-        // 파일: ddmhyang/workpartner2/WorkPartner2-6/WorkPartner/DashboardPage.xaml.cs
-
-        // [수정 후 ✅]
         private void ChangeTaskColor_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             if (sender is not Border { Tag: TaskItem selectedTask }) return;
 
             TaskListBox.SelectedItem = selectedTask;
 
-            // --- ▼▼▼ [수정된 부분 시작] ▼▼▼ ---
-
             var palette = new HslColorPicker();
 
-            // (기존 색상 로드 로직...)
             if (_settings.TaskColors.TryGetValue(selectedTask.Text, out var hex))
             {
                 try
@@ -1233,28 +1152,23 @@ namespace WorkPartner
                 Margin = new Thickness(0, 10, 0, 0)
             };
 
-            // 1. StackPanel 대신 DockPanel 사용
             var panel = new DockPanel
             {
                 Margin = new Thickness(10),
                 LastChildFill = true // 👈 (중요)
             };
 
-            // 2. '확인' 버튼을 '아래(Bottom)'에 고정
             DockPanel.SetDock(confirmButton, Dock.Bottom);
             panel.Children.Add(confirmButton);
 
-            // 3. 'palette'를 마지막에 추가
             panel.Children.Add(palette);
-            // --- ▲▲▲ [수정된 부분 끝] ▲▲▲ ---
 
             var window = new Window
             {
                 Title = "과목 색상 변경",
                 Content = panel,
-                Width = 280,  // 👈 (수정) 사용자가 지정한 너비
-                Height = 380, // 👈 (수정) 사용자가 지정한 높이
-                              // SizeToContent = SizeToContent.WidthAndHeight, // 👈 (삭제)
+                Width = 280, 
+                Height = 380, 
                 WindowStyle = WindowStyle.ToolWindow,
                 ResizeMode = ResizeMode.NoResize,
                 WindowStartupLocation = WindowStartupLocation.CenterOwner,
@@ -1267,26 +1181,22 @@ namespace WorkPartner
                 window.Close();
             };
 
-            // 5. 'ShowDialog()'를 호출하고, 그 결과가 true일 때만 (확인 버튼 클릭 시) 저장
             if (window.ShowDialog() == true)
             {
                 var newColor = palette.SelectedColor;
                 _settings.TaskColors[selectedTask.Text] = newColor.ToString();
                 selectedTask.ColorBrush = new SolidColorBrush(newColor);
-                DataManager.SaveSettings(_settings); // (DataManager.cs가 static이므로)
+                DataManager.SaveSettings(_settings);
 
                 RenderTimeTable();
             }
-            // --- ▲▲▲ [수정된 부분 끝] ---
 
             e.Handled = true;
         }
 
-        // [수정됨]
         private void DashboardPage_DataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
         {
             LoadSettings();
-            // 1. 이전 뷰모델 연결 해제
             if (e.OldValue is ViewModels.DashboardViewModel oldVm)
             {
                 oldVm.TimeUpdated -= OnViewModelTimeUpdated;
@@ -1294,12 +1204,10 @@ namespace WorkPartner
                 oldVm.CurrentTaskChanged -= OnViewModelTaskChanged;
                 oldVm.PropertyChanged -= OnViewModelPropertyChanged;
 
-                // [중요] 감시자 제거 (메모리 누수 방지)
                 if (oldVm.TaskItems != null)
                     oldVm.TaskItems.CollectionChanged -= TaskItems_CollectionChanged;
             }
 
-            // 2. 새 뷰모델 연결 설정
             if (e.NewValue is ViewModels.DashboardViewModel newVm)
             {
                 newVm.TimeUpdated += OnViewModelTimeUpdated;
@@ -1307,33 +1215,26 @@ namespace WorkPartner
                 newVm.CurrentTaskChanged += OnViewModelTaskChanged;
                 newVm.PropertyChanged += OnViewModelPropertyChanged;
 
-                // [문제 해결 1] 이미 들어있는 데이터가 있다면 즉시 색상 입히기
                 foreach (var task in newVm.TaskItems)
                 {
                     if (task.ColorBrush == null)
                         task.ColorBrush = GetColorForTask(task.Text);
                 }
 
-                // [문제 해결 2] 앞으로 데이터가 추가될 때(로딩 중) 바로바로 색상 입히도록 감시자 붙이기
                 newVm.TaskItems.CollectionChanged += TaskItems_CollectionChanged;
 
                 CurrentTaskDisplay.Text = newVm.CurrentTaskDisplayText;
-                //if (CurrentTaskTextBlock != null)
-                //    CurrentTaskTextBlock.Text = $"현재 작업 : {newVm.CurrentTaskDisplayText}";
 
                 UpdateTaskListBoxSource();
             }
         }
 
-        // [새로 추가됨] 뷰모델의 리스트에 새 항목이 들어오면 즉시 색을 칠해주는 메서드
         private void TaskItems_CollectionChanged(object sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
         {
-            // 새로운 항목이 추가되었을 때
             if (e.NewItems != null)
             {
                 foreach (TaskItem newTask in e.NewItems)
                 {
-                    // 색상이 없으면 바로 입혀줍니다.
                     if (newTask.ColorBrush == null)
                     {
                         newTask.ColorBrush = GetColorForTask(newTask.Text);
@@ -1345,47 +1246,34 @@ namespace WorkPartner
 
         private void OnViewModelTimerStopped(object sender, EventArgs e)
         {
-            // ViewModel이 방금 새 로그를 저장했으므로 (VM.List가 변경됨)
-            // Page는 VM의 총계를 다시 계산하고 타임라인을 다시 그리기만 하면 됨.
-
-            // [중요] LoadTimeLogsAsync()를 호출하면 안 됨! (객체 참조가 꼬임)
 
             Dispatcher.Invoke(() =>
             {
-                // await LoadTimeLogsAsync();    // 1. ◀◀ [이 줄 삭제 또는 주석 처리]
-                RecalculateAllTotals(); // 2. 총 시간 다시 계산 (VM 리스트 사용)
-                RenderTimeTable();      // 3. 타임라인 다시 그리기 (VM 리스트 사용)
+                RecalculateAllTotals();
+                RenderTimeTable(); 
             });
         }
 
-        // 파일: DashboardPage.xaml.cs (약 1157줄)
-        //
-        // ▼▼▼ OnViewModelTimeUpdated 메서드 전체를 아래 코드로 교체하세요 ▼▼▼
-
         private void OnViewModelTimeUpdated(string newTime)
         {
-            // 1. 미니 타이머 업데이트
             if (_miniTimer != null && _miniTimer.IsVisible)
             {
                 LoadSettings();
                 _miniTimer.UpdateData(_settings, CurrentTaskDisplay.Text, newTime);
             }
 
-            // 오늘 날짜가 아니면 중단
             if (_currentDateForTimeline.Date != DateTime.Today.Date) return;
-            if (this.TaskItems == null) return; // 안전장치
+            if (this.TaskItems == null) return; 
 
             if (DataContext is ViewModels.DashboardViewModel vm)
             {
                 foreach (var vmTask in vm.TaskItems)
                 {
-                    // [추가된 코드] 뷰모델의 과목에 색상이 없으면(null이면) 설정을 보고 입혀줍니다.
                     if (vmTask.ColorBrush == null)
                     {
                         vmTask.ColorBrush = GetColorForTask(vmTask.Text);
                     }
 
-                    // 기존 시간 동기화 로직
                     var pageTask = this.TaskItems.FirstOrDefault(t => t.Text == vmTask.Text);
                     if (pageTask != null && pageTask.TotalTime != vmTask.TotalTime)
                     {
@@ -1397,10 +1285,8 @@ namespace WorkPartner
 
         private void OnViewModelPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
-            // 오늘 날짜가 아니면 VM 업데이트 무시
             if (_currentDateForTimeline.Date != DateTime.Today.Date) return;
 
-            // TotalTimeTodayDisplayText 속성이 변경될 때만 하단 텍스트 업데이트
             if (e.PropertyName == nameof(ViewModels.DashboardViewModel.TotalTimeTodayDisplayText))
             {
                 if (sender is ViewModels.DashboardViewModel vm)
@@ -1415,26 +1301,18 @@ namespace WorkPartner
 
         private void OnViewModelTaskChanged(string newTaskName)
         {
-            // 1. 메인 과목 텍스트(CurrentTaskDisplay)는 "항상" ViewModel의 값을 따릅니다.
-            //    (이 값은 OnViewModelTimeUpdated가 참조하여 미니 타이머로 전달됩니다)
             Dispatcher.Invoke(() =>
             {
                 CurrentTaskDisplay.Text = newTaskName;
             });
 
-            // 2. 메인 대시보드 UI(TaskListBox)는 "오늘 날짜를 볼 때만" 동기화합니다.
             if (_currentDateForTimeline.Date != DateTime.Today.Date) return;
 
             Dispatcher.Invoke(() =>
             {
-                // ✨ [추가] 
-                // AI가 과목을 변경했을 때, TaskListBox의 UI 선택도 강제로 변경합니다.
                 var foundTask = TaskItems.FirstOrDefault(t => t.Text == newTaskName);
                 if (foundTask != null && TaskListBox.SelectedItem != foundTask)
                 {
-                    // 이 구문은 SelectionChanged 이벤트를 발생시키지만,
-                    // 1단계에서 UpdateMainTimeDisplay의 충돌 코드를 제거했으므로
-                    // 더 이상 문제를 일으키지 않습니다.
                     TaskListBox.SelectedItem = foundTask;
                 }
             });
@@ -1443,7 +1321,6 @@ namespace WorkPartner
 
         private void EvaluateDayButton_Click(object sender, RoutedEventArgs e)
         {
-            // 🗑️ [삭제] 점수 평가 창 띄우는 로직 전체 제거
             MessageBox.Show("이 기능은 더 이상 사용되지 않습니다.", "알림");
         }
 
@@ -1451,10 +1328,16 @@ namespace WorkPartner
         {
             if (UserProfileImage == null) return;
 
-            // 설정에서 경로 가져오기
+            GifHelper.StopGif(UserProfileImage);
+
             string imagePath = _settings.UserImagePath;
 
-            // GifHelper에게 "이 이미지 컨트롤에, 이 파일을 재생해줘"라고 명령
+            if (string.IsNullOrEmpty(imagePath) || !System.IO.File.Exists(imagePath))
+            {
+                UserProfileImage.Source = null;
+                return;
+            }
+
             GifHelper.PlayGif(UserProfileImage, imagePath);
         }
 
@@ -1469,13 +1352,28 @@ namespace WorkPartner
 
             if (openFileDialog.ShowDialog() == true)
             {
-                // 경로 저장
                 _settings.UserImagePath = openFileDialog.FileName;
 
-                // 파일에 즉시 쓰기 (가장 중요!)
                 DataManager.SaveSettings(_settings);
 
-                // 화면 갱신
+                LoadUserImage();
+            }
+        }
+
+        private void RemoveImageButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (string.IsNullOrEmpty(_settings.UserImagePath))
+            {
+                MessageBox.Show("삭제할 이미지가 없습니다.", "알림", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            if (MessageBox.Show("현재 설정된 이미지를 삭제하시겠습니까?", "삭제 확인", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
+            {
+                _settings.UserImagePath = null;
+
+                DataManager.SaveSettings(_settings);
+
                 LoadUserImage();
             }
         }

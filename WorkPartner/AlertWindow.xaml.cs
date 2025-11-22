@@ -3,9 +3,6 @@ using System.Windows.Input;
 
 namespace WorkPartner
 {
-    /// <summary>
-    /// Interaction logic for AlertWindow.xaml
-    /// </summary>
     public partial class AlertWindow : Window
     {
         public AlertWindow(string message, string title)

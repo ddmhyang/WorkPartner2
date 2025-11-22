@@ -1,5 +1,4 @@
-﻿// 파일: WorkPartner/BackgroundSoundPlayer.cs
-using System;
+﻿using System;
 using System.IO;
 using System.Windows.Media;
 
@@ -9,7 +8,6 @@ namespace WorkPartner
     {
         private readonly MediaPlayer _mediaPlayer;
 
-        // ▼▼▼ 오류 수정: IsPlaying 속성 추가 ▼▼▼
         public bool IsPlaying { get; private set; }
 
         public BackgroundSoundPlayer(string soundFilePath)
@@ -31,13 +29,13 @@ namespace WorkPartner
         public void Play()
         {
             _mediaPlayer.Play();
-            IsPlaying = true; // 상태 업데이트
+            IsPlaying = true;
         }
 
         public void Stop()
         {
             _mediaPlayer.Stop();
-            IsPlaying = false; // 상태 업데이트
+            IsPlaying = false;
         }
 
         public double Volume
