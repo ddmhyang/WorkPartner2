@@ -28,7 +28,7 @@ namespace WorkPartner
                 timeLogService
                 );
             // --- 3. MainWindow를 생성하고 ViewModel을 연결합니다. ---
-            var mainWindow = new MainWindow();
+            MainWindow mainWindow = new MainWindow();
             mainWindow.SetDashboardViewModel(dashboardViewModel);
             mainWindow.Show();
             mainWindow.Activate();

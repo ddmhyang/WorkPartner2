@@ -171,9 +171,16 @@ namespace WorkPartner
                 {
                     TaskItems.Clear();
                     _taskBrushCache.Clear();
+
+                    // ▼▼▼ [수정] 안전장치 추가: _settings가 없으면 로드하고, TaskColors가 없으면 새로 만듦
+                    if (_settings == null) _settings = DataManager.LoadSettings();
+                    if (_settings.TaskColors == null) _settings.TaskColors = new Dictionary<string, string>();
+                    // ▲▲▲
+
                     foreach (var task in loadedTasks)
                     {
-                        if (_settings.TaskColors.TryGetValue(task.Text, out var colorHex))
+                        // ▼▼▼ [수정] 안전하게 접근 (? 사용)
+                        if (_settings.TaskColors != null && _settings.TaskColors.TryGetValue(task.Text, out var colorHex))
                         {
                             task.ColorBrush = (SolidColorBrush)new BrushConverter().ConvertFromString(colorHex);
                         }

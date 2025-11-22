@@ -4,13 +4,13 @@ using System.Diagnostics;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Input; // MouseButtonEventArgs를 위해 필요
+using System.Windows.Input;
 
 namespace WorkPartner
 {
     public partial class AppSelectionWindow : Window
     {
-        public string SelectedAppName { get; private set; }
+        public string SelectedAppKeyword { get; private set; }
 
         public AppSelectionWindow()
         {
@@ -18,8 +18,10 @@ namespace WorkPartner
             LoadRunningProcesses();
         }
 
+        // ▼▼▼ [복구] 잘 작동하던 Branch 9 버전의 로직 ▼▼▼
         private void LoadRunningProcesses()
         {
+            // 복잡한 필터링 없이, 현재 실행 중인 모든 프로세스의 이름을 가져와서 중복 제거
             var processes = Process.GetProcesses()
                 .Select(p => p.ProcessName)
                 .Distinct()
@@ -38,7 +40,6 @@ namespace WorkPartner
             ConfirmSelection();
         }
 
-        // ▼ [추가] XAML에서 찾는 더블클릭 이벤트 핸들러
         private void AppListView_MouseDoubleClick(object sender, MouseButtonEventArgs e)
         {
             ConfirmSelection();
@@ -48,7 +49,7 @@ namespace WorkPartner
         {
             if (this.FindName("AppListBox") is ListBox listBox && listBox.SelectedItem is InstalledProgram selected)
             {
-                SelectedAppName = selected.ProcessName;
+                SelectedAppKeyword = selected.ProcessName;
                 DialogResult = true;
                 Close();
             }
