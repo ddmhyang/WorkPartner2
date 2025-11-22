@@ -290,14 +290,36 @@ namespace WorkPartner
             string newTaskText = TaskInput.Text.Trim();
             if (string.IsNullOrWhiteSpace(newTaskText)) return;
 
+            // 중복 확인
             if (TaskItems.Any(t => t.Text.Equals(newTaskText, StringComparison.OrdinalIgnoreCase)))
             {
                 MessageBox.Show("이미 존재하는 과목입니다.", "중복 오류", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
+
+            // 1. Page 리스트(다른 날짜용)에 추가
             var newTask = new TaskItem { Text = newTaskText };
             TaskItems.Add(newTask);
 
+            // ✨ [수정 핵심] 'vm' 변수를 여기서 한 번만 만듭니다. (이름 충돌 방지)
+            var vm = DataContext as ViewModels.DashboardViewModel;
+
+            // 2. ViewModel 리스트(오늘용)에도 동기화
+            if (vm != null)
+            {
+                // VM에 없는 경우에만 추가
+                if (!vm.TaskItems.Any(t => t.Text.Equals(newTaskText, StringComparison.OrdinalIgnoreCase)))
+                {
+                    var vmTask = new TaskItem
+                    {
+                        Text = newTaskText,
+                        ColorBrush = newTask.ColorBrush
+                    };
+                    vm.TaskItems.Add(vmTask);
+                }
+            }
+
+            // --- (색상 선택 로직) ---
             var palette = new HslColorPicker();
             var confirmButton = new Button
             {
@@ -313,7 +335,6 @@ namespace WorkPartner
 
             DockPanel.SetDock(confirmButton, Dock.Bottom);
             panel.Children.Add(confirmButton);
-
             panel.Children.Add(palette);
 
             var window = new Window
@@ -337,22 +358,31 @@ namespace WorkPartner
             if (window.ShowDialog() == true)
             {
                 var newColor = palette.SelectedColor;
-
                 newTask.ColorBrush = new SolidColorBrush(newColor);
 
+                // 설정 저장
                 _settings.TaskColors[newTask.Text] = newColor.ToString();
                 SaveSettings();
+
+                // ✨ [수정 핵심] 아까 만들어둔 'vm'을 재사용합니다.
+                if (vm != null)
+                {
+                    var vmTask = vm.TaskItems.FirstOrDefault(t => t.Text == newTaskText);
+                    if (vmTask != null)
+                    {
+                        vmTask.ColorBrush = newTask.ColorBrush;
+                    }
+                }
             }
 
             TaskInput.Clear();
-            SaveTasks();
+            SaveTasks(); // 파일 저장
             RenderTimeTable();
         }
 
         private void EditTaskButton_Click(object sender, RoutedEventArgs e)
         {
-            if (DataContext is not ViewModels.DashboardViewModel vm) return;
-
+            // 선택된 태스크 가져오기 (화면에서 클릭한 객체)
             TaskItem selectedTask = null;
 
             if (sender is FrameworkElement button && button.DataContext is TaskItem taskFromButton)
@@ -370,23 +400,40 @@ namespace WorkPartner
                 return;
             }
 
-
             var inputWindow = new InputWindow("과목 이름 수정", selectedTask.Text) { Owner = Window.GetWindow(this) };
             if (inputWindow.ShowDialog() != true) return;
 
             string newName = inputWindow.ResponseText.Trim();
             string oldName = selectedTask.Text;
+
             if (string.IsNullOrWhiteSpace(newName) || newName == oldName) return;
-            if (TaskItems.Any(t => t.Text.Equals(newName, StringComparison.OrdinalIgnoreCase) && t != selectedTask))
+
+            // 중복 체크
+            if (TaskItems.Any(t => t.Text.Equals(newName, StringComparison.OrdinalIgnoreCase) && t.Text != oldName))
             {
                 MessageBox.Show("이미 존재하는 과목 이름입니다.", "오류", MessageBoxButton.OK, MessageBoxImage.Error);
                 return;
             }
 
-            foreach (var log in vm.TimeLogEntries.Where(l => l.TaskText == oldName))
+            // ✨ [수정] 1. Page 리스트 업데이트
+            var pageTask = TaskItems.FirstOrDefault(t => t.Text == oldName);
+            if (pageTask != null) pageTask.Text = newName;
+
+            // ✨ [수정] 2. ViewModel 리스트 업데이트
+            if (DataContext is ViewModels.DashboardViewModel vm)
             {
-                log.TaskText = newName;
+                var vmTask = vm.TaskItems.FirstOrDefault(t => t.Text == oldName);
+                if (vmTask != null) vmTask.Text = newName;
+
+                // 로그 업데이트 (이전 코드 유지)
+                foreach (var log in vm.TimeLogEntries.Where(l => l.TaskText == oldName))
+                {
+                    log.TaskText = newName;
+                }
+                DataManager.SaveTimeLogs(vm.TimeLogEntries);
             }
+
+            // 설정(색상) 키 변경
             if (_settings.TaskColors.ContainsKey(oldName))
             {
                 var color = _settings.TaskColors[oldName];
@@ -395,10 +442,7 @@ namespace WorkPartner
                 _taskBrushCache.Remove(oldName);
             }
 
-            selectedTask.Text = newName;
-
             SaveTasks();
-            DataManager.SaveTimeLogs(vm.TimeLogEntries);
             SaveSettings();
 
             TaskListBox.Items.Refresh();
@@ -407,8 +451,6 @@ namespace WorkPartner
 
         private void DeleteTaskButton_Click(object sender, RoutedEventArgs e)
         {
-            if (DataContext is not ViewModels.DashboardViewModel vm) return;
-
             TaskItem selectedTask = null;
 
             if (sender is FrameworkElement button && button.DataContext is TaskItem taskFromButton)
@@ -425,12 +467,32 @@ namespace WorkPartner
                 MessageBox.Show("삭제할 과목을 목록에서 선택해주세요.", "알림", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
+
             if (MessageBox.Show($"'{selectedTask.Text}' 과목을 삭제하시겠습니까?\n관련된 모든 학습 기록도 삭제됩니다.", "삭제 확인", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
                 return;
 
             string taskNameToDelete = selectedTask.Text;
-            TaskItems.Remove(selectedTask);
 
+            // ✨ [수정] 1. Page 리스트에서 삭제
+            var pageTask = TaskItems.FirstOrDefault(t => t.Text == taskNameToDelete);
+            if (pageTask != null) TaskItems.Remove(pageTask);
+
+            // ✨ [수정] 2. ViewModel 리스트에서 삭제
+            if (DataContext is ViewModels.DashboardViewModel vm)
+            {
+                var vmTask = vm.TaskItems.FirstOrDefault(t => t.Text == taskNameToDelete);
+                if (vmTask != null) vm.TaskItems.Remove(vmTask);
+
+                // 로그 삭제
+                var logsToRemove = vm.TimeLogEntries.Where(l => l.TaskText == taskNameToDelete).ToList();
+                foreach (var log in logsToRemove)
+                {
+                    vm.TimeLogEntries.Remove(log);
+                }
+                DataManager.SaveTimeLogs(vm.TimeLogEntries);
+            }
+
+            // 색상 설정 삭제
             if (_settings.TaskColors.ContainsKey(taskNameToDelete))
             {
                 _settings.TaskColors.Remove(taskNameToDelete);
@@ -438,14 +500,7 @@ namespace WorkPartner
                 SaveSettings();
             }
 
-            var logsToRemove = vm.TimeLogEntries.Where(l => l.TaskText == taskNameToDelete).ToList();
-            foreach (var log in logsToRemove)
-            {
-                vm.TimeLogEntries.Remove(log);
-            }
-
             SaveTasks();
-            DataManager.SaveTimeLogs(vm.TimeLogEntries);
             RenderTimeTable();
         }
 

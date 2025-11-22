@@ -46,8 +46,8 @@
                 Padding="15,8"
                 HorizontalAlignment="Center">
             <StackPanel VerticalAlignment="Center">
-                <TextBlock x:Name="CurrentTaskText" Text="현재: 코딩" FontSize="12" Foreground="{DynamicResource PrimaryTextBrush}" HorizontalAlignment="Center"/>
-                <TextBlock x:Name="TimeText" Text="00:00:00" FontSize="24" FontWeight="Bold" Foreground="{DynamicResource PrimaryTextBrush}" FontFamily="Freesentation 9 Black" HorizontalAlignment="Center"/>
+                <TextBlock x:Name="CurrentTaskText" Text="현재: 코딩" FontSize="12" Foreground="Black" HorizontalAlignment="Center"/>
+                <TextBlock x:Name="TimeText" Text="00:00:00" FontSize="24" FontWeight="Bold" Foreground="Black" FontFamily="Freesentation 9 Black" HorizontalAlignment="Center"/>
             </StackPanel>
         </Border>
 
