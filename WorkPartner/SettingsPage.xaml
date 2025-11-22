@@ -7,9 +7,7 @@
              d:DesignHeight="900" d:DesignWidth="1000"
              Background="{DynamicResource MainBackgroundBrush}"
              UseLayoutRounding="True"
-             SnapsToDevicePixels="True"
-             TextOptions.TextFormattingMode="Display"
-             TextOptions.TextRenderingMode="ClearType">
+             FontFamily="Pretendard">
 
     <UserControl.Resources>
         <Style x:Key="RoundedButtonStyle" TargetType="Button">
@@ -29,10 +27,6 @@
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                         <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#CCFFFFFF"/>
-                                <Setter TargetName="border" Property="Opacity" Value="0.9"/>
-                            </Trigger>
                             <Trigger Property="IsPressed" Value="True">
                                 <Setter TargetName="border" Property="Effect">
                                     <Setter.Value>
@@ -170,7 +164,7 @@
     </UserControl.Resources>
 
     <Grid>
-        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <ScrollViewer VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled">
             <Grid Margin="20">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
@@ -226,16 +220,17 @@
                             <TextBlock Text="데이터 관리" Style="{StaticResource SectionTitleStyle}"/>
                             <TextBlock Text="데이터 초기화 및 백업" FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}" Margin="10,0,0,15"/>
 
-                            <Grid Margin="0,0,0,8">
+                            <Grid Margin="10,0,10,8">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="10"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
-                                <Button Grid.Column="0" Content="내보내기" Click="ExportDataButton_Click" Style="{StaticResource RoundedButtonStyle}" Width="80" HorizontalAlignment="Stretch" Margin="10,10,0,8"/>
-                                <Button Grid.Column="2" Content="불러오기" Click="ImportDataButton_Click" Style="{StaticResource RoundedButtonStyle}" Width="80" HorizontalAlignment="Stretch" Margin="-10,10,0,8"/>
+                                <Button Grid.Column="0" Content="내보내기" Click="ExportDataButton_Click" Style="{StaticResource RoundedButtonStyle}" HorizontalAlignment="Stretch"/>
+                                <Button Grid.Column="2" Content="불러오기" Click="ImportDataButton_Click" Style="{StaticResource RoundedButtonStyle}" HorizontalAlignment="Stretch"/>
                             </Grid>
-                            <Button Content="초기화" Click="ResetDataButton_Click" Background="#FF5252" Style="{StaticResource RoundedButtonStyle}" Width="175" HorizontalAlignment="Stretch" Margin="0,-5,0,10"/>
+
+                            <Button Content="초기화" Click="ResetDataButton_Click" Background="#FF5252" Style="{StaticResource RoundedButtonStyle}" HorizontalAlignment="Stretch" Margin="10,0,10,10"/>
                         </StackPanel>
                     </Border>
                 </Grid>
@@ -253,11 +248,12 @@
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="*"/>
                             </Grid.RowDefinitions>
-                            <DockPanel Grid.Row="0" Margin="10,0,0,10">
-                                <TextBlock Text="작업 앱" Style="{StaticResource SectionTitleStyle}" Margin="0,10,90,0"/>
+                            <DockPanel Grid.Row="0" Margin="10,10,10,10" LastChildFill="True">
                                 <Button Tag="Work" Click="AddProcessButton_Click" DockPanel.Dock="Right" 
                                         Style="{StaticResource AddIconButtonStyle}" ToolTip="작업 앱 추가"/>
+                                <TextBlock Text="작업 앱" Style="{StaticResource SectionTitleStyle}" Margin="0" VerticalAlignment="Center"/>
                             </DockPanel>
+
                             <ListBox x:Name="WorkProcessList" Grid.Row="1" 
                                      ItemsSource="{Binding WorkProcessViewModels}" 
                                      MinHeight="100" 
@@ -274,10 +270,10 @@
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="*"/>
                             </Grid.RowDefinitions>
-                            <DockPanel Grid.Row="0" Margin="10,0,0,10">
-                                <TextBlock Text="수동 앱" Style="{StaticResource SectionTitleStyle}"  Margin="0,10,90,0"/>
+                            <DockPanel Grid.Row="0" Margin="10,10,10,10" LastChildFill="True">
                                 <Button Tag="Passive" Click="AddProcessButton_Click" DockPanel.Dock="Right" 
                                         Style="{StaticResource AddIconButtonStyle}" ToolTip="수동 앱 추가"/>
+                                <TextBlock Text="수동 앱" Style="{StaticResource SectionTitleStyle}" Margin="0" VerticalAlignment="Center"/>
                             </DockPanel>
                             <ListBox x:Name="PassiveProcessList" Grid.Row="1" 
                                      ItemsSource="{Binding PassiveProcessViewModels}" 
@@ -295,10 +291,10 @@
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="*"/>
                             </Grid.RowDefinitions>
-                            <DockPanel Grid.Row="0" Margin="10,0,0,10">
-                                <TextBlock Text="방해 앱" Style="{StaticResource SectionTitleStyle}" Margin="0,10,90,0"/>
+                            <DockPanel Grid.Row="0" Margin="10,10,10,10" LastChildFill="True">
                                 <Button Tag="Distraction" Click="AddProcessButton_Click" DockPanel.Dock="Right" 
                                         Style="{StaticResource AddIconButtonStyle}" ToolTip="방해 앱 추가"/>
+                                <TextBlock Text="방해 앱" Style="{StaticResource SectionTitleStyle}" Margin="0" VerticalAlignment="Center"/>
                             </DockPanel>
                             <ListBox x:Name="DistractionProcessList" Grid.Row="1" 
                                      ItemsSource="{Binding DistractionProcessViewModels}" 
@@ -316,39 +312,44 @@
                         <TextBlock Text="자동 태그 규칙" Style="{StaticResource SectionTitleStyle}"/>
                         <TextBlock Text="창 이름이나 브라우저 주소에 특정 단어가 포함되면 과목을 자동으로 변경합니다." FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}" Margin="10,0,0,15"/>
 
-                        <Grid Margin="10,0,0,15">
+                        <Grid Margin="10,0,10,15">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
-                            <TextBox x:Name="TagRuleKeywordTextBox" Grid.Column="0" Margin="0,0,10,0" Padding="8" Background="{DynamicResource MainBackgroundBrush}" BorderThickness="0" Foreground="{DynamicResource PrimaryTextBrush}"/>
-                            <TextBlock Text="키워드 (예: youtube)" Grid.Column="0" IsHitTestVisible="False" Foreground="#999" VerticalAlignment="Center" Margin="10,0,0,0">
-                                <TextBlock.Style>
-                                    <Style TargetType="TextBlock">
-                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding Text, ElementName=TagRuleKeywordTextBox}" Value="">
-                                                <Setter Property="Visibility" Value="Visible"/>
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </TextBlock.Style>
-                            </TextBlock>
 
-                            <TextBox x:Name="TagRuleTaskTextBox" Grid.Column="1" Margin="0,0,10,0" Padding="8" Background="{DynamicResource MainBackgroundBrush}" BorderThickness="0" Foreground="{DynamicResource PrimaryTextBrush}"/>
-                            <TextBlock Text="과목명 (예: 휴식)" Grid.Column="1" IsHitTestVisible="False" Foreground="#999" VerticalAlignment="Center" Margin="10,0,0,0">
-                                <TextBlock.Style>
-                                    <Style TargetType="TextBlock">
-                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding Text, ElementName=TagRuleTaskTextBox}" Value="">
-                                                <Setter Property="Visibility" Value="Visible"/>
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </TextBlock.Style>
-                            </TextBlock>
+                            <Grid Grid.Column="0" Margin="0,0,10,0">
+                                <TextBox x:Name="TagRuleKeywordTextBox" Padding="8" Background="{DynamicResource MainBackgroundBrush}" BorderThickness="0" Foreground="{DynamicResource PrimaryTextBrush}"/>
+                                <TextBlock Text="키워드 (예: youtube)" IsHitTestVisible="False" Foreground="#999" VerticalAlignment="Center" Margin="10,0,0,0">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Text, ElementName=TagRuleKeywordTextBox}" Value="">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </Grid>
+
+                            <Grid Grid.Column="1" Margin="0,0,10,0">
+                                <TextBox x:Name="TagRuleTaskTextBox" Padding="8" Background="{DynamicResource MainBackgroundBrush}" BorderThickness="0" Foreground="{DynamicResource PrimaryTextBrush}"/>
+                                <TextBlock Text="과목명 (예: 휴식)" IsHitTestVisible="False" Foreground="#999" VerticalAlignment="Center" Margin="10,0,0,0">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Text, ElementName=TagRuleTaskTextBox}" Value="">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </Grid>
 
                             <Button Grid.Column="2" Content="규칙 추가" Click="AddTagRule_Click" Style="{StaticResource RoundedButtonStyle}" Width="80"/>
                         </Grid>
@@ -464,6 +465,9 @@
 
         <Popup x:Name="AddProcessMethodPopup" StaysOpen="False" Placement="Bottom">
             <Border Background="{DynamicResource SecondaryBackgroundBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="0" Padding="5">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="10" ShadowDepth="2" Opacity="0.2"/>
+                </Border.Effect>
                 <StackPanel>
                     <Button Content="실행 중인 앱에서 선택" Click="Popup_SelectAppButton_Click" 
                             Background="Transparent" BorderThickness="0" HorizontalContentAlignment="Left" Padding="15,8" Foreground="{DynamicResource PrimaryTextBrush}" Cursor="Hand"/>

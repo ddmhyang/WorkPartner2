@@ -163,9 +163,9 @@ namespace WorkPartner
             // 2. 이미지 로드
             LoadUserImage();
 
-            // 3. 현재 작업 텍스트 갱신
-            if (CurrentTaskTextBlock != null)
-                CurrentTaskTextBlock.Text = $"현재 작업 : {_settings.CurrentTask}";
+            //// 3. 현재 작업 텍스트 갱신
+            //if (CurrentTaskTextBlock != null)
+            //    CurrentTaskTextBlock.Text = $"현재 작업 : {_settings.CurrentTask}";
 
             // 4. [핵심 수정] 색상 강제 업데이트 (여기가 비어있어서 초기화 때 색이 안 나왔던 것!)
             _taskBrushCache.Clear(); // 기존 색상 캐시 비우기 (혹시 모를 오류 방지)
@@ -737,22 +737,39 @@ namespace WorkPartner
             return DefaultGrayBrush; // 색상이 없으면 기본 회색
         }
 
-        // 621번째 줄의 RenderTimeTable 메서드 전체를 아래 코드로 대체해주세요.
-
-        // 👈 [ 2단계 오류 수정: 이 메서드 전체를 교체 ]
         private void RenderTimeTable()
         {
             if (DataContext is not ViewModels.DashboardViewModel vm) return;
 
-            // 이전 블록 삭제
+            // 1. 현재 화면 배율(DPI) 확인
+            double dpiScale = 1.0;
+            var source = PresentationSource.FromVisual(this);
+            if (source != null && source.CompositionTarget != null)
+            {
+                dpiScale = source.CompositionTarget.TransformToDevice.M11;
+            }
+
+            double basePixelsPerMin = _blockWidth / 10.0;
+            double baseCellWidth = _blockWidth + (_horizontalMargin * 2) + _borderLeftThickness;
+
+            // [수정] 클래스 변수(_rowHeight)를 건드리지 않고, 메서드 안에서만 쓸 변수(drawingRowHeight)를 만듭니다.
+            // 기본값은 생성자에서 설정한 표준값을 가져옵니다.
+            double drawingRowHeight = _rowHeight;
+
+            // [핵심] 150% 배율일 때만 높이 간격(2.65) 적용
+            if (Math.Abs(dpiScale - 1.5) < 0.01)
+            {
+                // 여기서 로컬 변수를 수정하므로 'readonly' 에러가 나지 않습니다!
+                drawingRowHeight = _blockHeight + (_verticalMargin * 2.65) + _borderBottomThickness;
+            }
+
+            // 4. 이전 블록 삭제 (청소)
             var bordersToRemove = SelectionCanvas.Children.OfType<Border>()
-                                         .Where(b => b.Tag is TimeLogEntry)
-                                         .ToList();
+                                            .Where(b => b.Tag is TimeLogEntry)
+                                            .ToList();
             foreach (var border in bordersToRemove) SelectionCanvas.Children.Remove(border);
 
-            // [!!!] 배경 그리기가 삭제된 상태 (정상)
-
-            // 로그 블록 그리기
+            // 5. 로그 블록 그리기
             var logsForSelectedDate = vm.TimeLogEntries
                 .Where(log => log.StartTime.Date == _currentDateForTimeline.Date)
                 .OrderBy(l => l.StartTime)
@@ -783,75 +800,48 @@ namespace WorkPartner
                         TimeSpan blockDuration = blockEnd - blockStart;
                         if (blockDuration.TotalSeconds <= 0) break;
 
-                        // --- [수정된 좌표 계산 로직] ---
-                        // ❗️ [수정] 모든 변수가 클래스 필드(_(언더스코어))를 사용하도록 변경
-
-                        // 1. 10분당 픽셀 수 (실제 그리기 영역 '_blockWidth' 기준)
-                        double pixelsPerMinuteInBlock = _blockWidth / 10.0; // 👈 _(언더스코어) 사용
-
-                        // 2. 현재 블록이 속한 10분 단위 셀 인덱스 (0~5)
+                        // --- 좌표 계산 ---
                         int cellIndex = (int)Math.Floor(blockStart.Minute / 10.0);
 
-                        // 3. 해당 셀 안에서의 분 (0.0 ~ 9.99...)
-                        double minuteInCell = blockStart.TimeOfDay.TotalMinutes % 10.0;
+                        // X 좌표
+                        double startX = _hourLabelWidth + _horizontalMargin + _borderLeftThickness;
+                        double minuteOffset = (blockStart.TimeOfDay.TotalMinutes % 10.0) * basePixelsPerMin;
+                        double leftOffset = startX + (cellIndex * baseCellWidth) + minuteOffset;
 
-                        // 4. 해당 셀의 '그리기 영역(blockContainer)'이 시작되는 X좌표
-                        double cellDrawableAreaStart = _hourLabelWidth                // 👈 _(언더스코어) 사용
-                                                     + (cellIndex * _cellWidth)     // 👈 _(언더스코어) 사용
-                                                     + _borderLeftThickness         // 👈 _(언더스코어) 사용
-                                                     + _horizontalMargin;           // 👈 _(언더스코어) 사용
+                        // [수정] Y 좌표: _rowHeight 대신 보정된 drawingRowHeight 사용
+                        double topOffset = (blockStart.Hour * drawingRowHeight) + _verticalMargin;
 
-                        // 5. 셀 내부 '그리기 영역' 안에서의 픽셀 오프셋
-                        double offsetInCell = minuteInCell * pixelsPerMinuteInBlock;
+                        double barWidth = blockDuration.TotalMinutes * basePixelsPerMin;
+                        // ----------------
 
-                        // 6. 최종 Left 좌표
-                        double leftOffset = cellDrawableAreaStart + offsetInCell;
-
-                        // 7. 최종 Width (지속 시간(분) * 분당 픽셀)
-                        double barWidth = blockDuration.TotalMinutes * pixelsPerMinuteInBlock;
-
-                        // 8. Top 좌표 (기존 로직 유지)
-                        double topOffset = Math.Floor(blockStart.TimeOfDay.TotalHours) * _rowHeight + _verticalMargin; // 👈 _(언더스코어) 사용
-                        // --- [계산 로직 종료] ---
-
-
-                        if (barWidth <= 0 || double.IsNaN(topOffset) || double.IsNaN(leftOffset))
+                        if (barWidth > 0)
                         {
-                            Debug.WriteLine($"Skipping invalid chunk: {logEntry.TaskText} at {blockStart}");
-                            blockIterator = blockEnd;
-                            continue;
+                            var coloredBar = new Border
+                            {
+                                Width = barWidth,
+                                Height = _blockHeight,
+                                Background = GetColorForTask(logEntry.TaskText),
+                                CornerRadius = new CornerRadius(2),
+                                Tag = logEntry,
+                                Cursor = Cursors.Hand,
+                                ToolTip = new ToolTip { Content = $"{logEntry.TaskText}\n{logEntry.StartTime:HH:mm} ~ {logEntry.EndTime:HH:mm}" }
+                            };
+                            coloredBar.MouseLeftButtonDown += TimeLogRect_MouseLeftButtonDown;
+
+                            Canvas.SetLeft(coloredBar, leftOffset);
+                            Canvas.SetTop(coloredBar, topOffset);
+                            Panel.SetZIndex(coloredBar, 1);
+                            SelectionCanvas.Children.Add(coloredBar);
                         }
-
-                        var coloredBar = new Border
-                        {
-                            Width = barWidth,
-                            Height = _blockHeight, // 👈 _(언더스코어) 사용
-                            Background = GetColorForTask(logEntry.TaskText),
-                            CornerRadius = new CornerRadius(2),
-                            Tag = logEntry,
-                            Cursor = Cursors.Hand,
-                            ToolTip = new ToolTip { Content = $"{logEntry.TaskText}\n{logEntry.StartTime:HH:mm} ~ {logEntry.EndTime:HH:mm}" }
-                        };
-                        coloredBar.MouseLeftButtonDown += TimeLogRect_MouseLeftButtonDown;
-
-                        Canvas.SetLeft(coloredBar, leftOffset);
-                        Canvas.SetTop(coloredBar, topOffset);
-                        Panel.SetZIndex(coloredBar, 1);
-                        SelectionCanvas.Children.Add(coloredBar);
-
                         blockIterator = blockEnd;
                     }
-
                     currentChunkStartTime = currentChunkEndTime;
                 }
             }
 
-            // Canvas 높이 보정
-            SelectionCanvas.Height = (24 * _rowHeight);
-
+            // 캔버스 높이 설정 (여기도 보정된 값 사용)
+            SelectionCanvas.Height = 24 * drawingRowHeight;
             if (_selectionBox != null) Panel.SetZIndex(_selectionBox, 100);
-
-            Debug.WriteLine($"RenderTimeTable: Done. SelectionCanvas.Children={SelectionCanvas.Children.Count}, Height={SelectionCanvas.Height}");
         }
 
         // 👈 [ 2단계 오류 수정: 이 메서드 전체를 교체 ]
@@ -1328,8 +1318,8 @@ namespace WorkPartner
                 newVm.TaskItems.CollectionChanged += TaskItems_CollectionChanged;
 
                 CurrentTaskDisplay.Text = newVm.CurrentTaskDisplayText;
-                if (CurrentTaskTextBlock != null)
-                    CurrentTaskTextBlock.Text = $"현재 작업 : {newVm.CurrentTaskDisplayText}";
+                //if (CurrentTaskTextBlock != null)
+                //    CurrentTaskTextBlock.Text = $"현재 작업 : {newVm.CurrentTaskDisplayText}";
 
                 UpdateTaskListBoxSource();
             }

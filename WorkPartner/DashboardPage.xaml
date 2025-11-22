@@ -121,8 +121,6 @@
             <Border Canvas.Left="19" Canvas.Top="173" Width="388" Height="331" BorderBrush="#f0f0f0" BorderThickness="2" CornerRadius="10">
                 <Canvas Margin="0,0,0,-3">
 
-                    <Button x:Name="EvaluateDayButton" Click="EvaluateDayButton_Click" Canvas.Left="30" 
-Canvas.Top="10" Content=" 집중도 평가 " Height="20" Width="68" FontSize="10" Foreground="White" Style="{StaticResource RoundedButtonStyle}" Background="{DynamicResource AccentColorBrush}" HorizontalAlignment="Left" VerticalAlignment="Center"/>
                     <Grid Canvas.Left="135" Canvas.Top="11" Width="120" Height="20">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>
@@ -187,24 +185,19 @@ Canvas.Top="10" Content=" 집중도 평가 " Height="20" Width="68" FontSize="10
             <Border Canvas.Left="417" Canvas.Top="40" Width="247" Height="130" 
                     BorderBrush="{DynamicResource AccentColorBrush}" BorderThickness="2" CornerRadius="10">
                 <Grid>
-                    <Image x:Name="UserProfileImage"
-                           Width="120" Height="120"
-                           HorizontalAlignment="Right" VerticalAlignment="Center"
-                           Margin="0,0,10,5"
+                    <Image x:Name="UserProfileImage" Height="120"
+                           HorizontalAlignment="Center" VerticalAlignment="top"
+                           Margin="0,0,0,0"
                            Stretch="Uniform"
                            RenderOptions.BitmapScalingMode="HighQuality"/>
 
-                    <StackPanel Orientation="Vertical" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="30,0,0,0">
-                        <TextBlock x:Name="CurrentTaskTextBlock" Text="현재 작업 : 없음" FontSize="12" Margin="0,0,0,0" Foreground="{DynamicResource SecondaryTextBrush}" FontWeight="SemiBold"/>
-                    </StackPanel>
-
                     <Button Content="이미지 변경" 
         FontSize="9" FontWeight="SemiBold"
-        HorizontalAlignment="Left" VerticalAlignment="Bottom" 
-        Margin="35,0,0,15" Padding="8,4"
+        HorizontalAlignment="Center" VerticalAlignment="Bottom" 
+        Margin="0,0,0,15" Padding="8,4"
         Cursor="Hand"
         Click="ChangeImageButton_Click" 
-        BorderBrush="Black" 
+        BorderBrush="{DynamicResource AccentColorB}" BorderThickness="2"
         Background="Transparent">
 
                         <Button.Template>
