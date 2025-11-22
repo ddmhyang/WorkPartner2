@@ -314,6 +314,19 @@ namespace WorkPartner
             }
         }
 
+        private void ListBox_PreviewMouseWheel(object sender, System.Windows.Input.MouseWheelEventArgs e)
+        {
+            if (!e.Handled)
+            {
+                e.Handled = true;
+                var eventArg = new MouseWheelEventArgs(e.MouseDevice, e.Timestamp, e.Delta);
+                eventArg.RoutedEvent = UIElement.MouseWheelEvent;
+                eventArg.Source = sender;
+                var parent = ((Control)sender).Parent as UIElement;
+                parent.RaiseEvent(eventArg);
+            }
+        }
+
         private async void Popup_AddActiveTabButton_Click(object sender, RoutedEventArgs e)
         {
             AddProcessMethodPopup.IsOpen = false;

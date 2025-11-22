@@ -5,37 +5,150 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              mc:Ignorable="d" 
              d:DesignHeight="900" d:DesignWidth="1000"
-             Background="{DynamicResource MainBackgroundBrush}">
+             Background="{DynamicResource MainBackgroundBrush}"
+             UseLayoutRounding="True"
+             SnapsToDevicePixels="True"
+             TextOptions.TextFormattingMode="Display"
+             TextOptions.TextRenderingMode="ClearType">
 
     <UserControl.Resources>
         <Style x:Key="RoundedButtonStyle" TargetType="Button">
             <Setter Property="Background" Value="{DynamicResource AccentColorBrush}"/>
             <Setter Property="Foreground" Value="White"/>
-            <Setter Property="FontWeight" Value="Bold"/>
-            <Setter Property="Padding" Value="10,5"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Padding" Value="15,8"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border Background="{TemplateBinding Background}" CornerRadius="8" Padding="{TemplateBinding Padding}">
+                        <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="8" Padding="{TemplateBinding Padding}">
+                            <Border.Effect>
+                                <DropShadowEffect BlurRadius="5" ShadowDepth="1" Opacity="0.2" Color="Black"/>
+                            </Border.Effect>
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#CCFFFFFF"/>
+                                <Setter TargetName="border" Property="Opacity" Value="0.9"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="border" Property="Effect">
+                                    <Setter.Value>
+                                        <DropShadowEffect BlurRadius="2" ShadowDepth="0" Opacity="0.1"/>
+                                    </Setter.Value>
+                                </Setter>
+                                <Setter TargetName="border" Property="RenderTransform">
+                                    <Setter.Value>
+                                        <ScaleTransform ScaleX="0.98" ScaleY="0.98" CenterX="0.5" CenterY="0.5"/>
+                                    </Setter.Value>
+                                </Setter>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
-            <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Opacity" Value="0.9"/>
-                </Trigger>
-            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="AddIconButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{DynamicResource AccentColorBrush}"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Width" Value="32"/>
+            <Setter Property="Height" Value="32"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="16" BorderThickness="1" BorderBrush="Transparent">
+                            <Path Data="M 19,13 H 13 V 19 H 11 V 13 H 5 V 11 H 11 V 5 H 13 V 11 H 19 V 13 Z" 
+                                  Fill="{TemplateBinding Foreground}" 
+                                  Stretch="Uniform" 
+                                  Width="14" Height="14"
+                                  HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#1A888888"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter Property="Background" Value="#33888888"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="BigCheckBoxStyle" TargetType="CheckBox">
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="CheckBox">
+                        <Grid Background="Transparent">
+                            <Border x:Name="Border" 
+                                    Width="20" Height="20" 
+                                    CornerRadius="4" 
+                                    BorderThickness="1.5" 
+                                    BorderBrush="{DynamicResource SecondaryTextBrush}" 
+                                    Background="Transparent">
+                            </Border>
+
+                            <Path x:Name="CheckMark" 
+                                  Data="M 4,10 L 8,14 L 16,6" 
+                                  Stroke="White" 
+                                  StrokeThickness="2.5" 
+                                  StrokeEndLineCap="Round"
+                                  StrokeStartLineCap="Round"
+                                  Visibility="Collapsed" 
+                                  HorizontalAlignment="Center" 
+                                  VerticalAlignment="Center"/>
+                        </Grid>
+
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Border" Property="Background" Value="{DynamicResource AccentColorBrush}"/>
+                                <Setter TargetName="Border" Property="BorderBrush" Value="{DynamicResource AccentColorBrush}"/>
+                                <Setter TargetName="CheckMark" Property="Visibility" Value="Visible"/>
+                            </Trigger>
+
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Border" Property="BorderBrush" Value="{DynamicResource PrimaryTextBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="ColorRadioButtonStyle" TargetType="RadioButton">
+            <Setter Property="Width" Value="30"/>
+            <Setter Property="Height" Value="30"/>
+            <Setter Property="Margin" Value="0,0,0,0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Grid>
+                            <Ellipse x:Name="OuterRing" Stroke="{TemplateBinding Background}" StrokeThickness="2" Width="30" Height="30" Opacity="0"/>
+                            <Ellipse x:Name="ColorCircle" Fill="{TemplateBinding Background}" Width="15" Height="15"/>
+                            <Path x:Name="CheckMark" Data="M 6,12 L 10,16 L 18,8" Stroke="White" StrokeThickness="2.5" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="OuterRing" Property="Opacity" Value="1"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
 
         <DataTemplate x:Key="ProcessItemTemplate">
-            <DockPanel LastChildFill="True" Margin="0,2">
+            <DockPanel LastChildFill="True" Margin="5,2">
                 <Image Source="{Binding Icon}" Width="16" Height="16" Margin="0,0,10,0" RenderOptions.BitmapScalingMode="HighQuality"/>
                 <Button Content="-" Click="DeleteProcessButton_Click" DockPanel.Dock="Right" Width="20" Height="20" 
-                        Background="Transparent" BorderThickness="0" Foreground="Red" Cursor="Hand" FontWeight="Bold"/>
+                        Background="Transparent" BorderThickness="0" Foreground="#FF5E5E" Cursor="Hand" FontWeight="Bold"/>
                 <TextBlock Text="{Binding DisplayName}" Foreground="{DynamicResource PrimaryTextBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
             </DockPanel>
         </DataTemplate>
@@ -43,38 +156,21 @@
         <Style x:Key="CardBorderStyle" TargetType="Border">
             <Setter Property="Background" Value="{DynamicResource SecondaryBackgroundBrush}"/>
             <Setter Property="CornerRadius" Value="12"/>
-            <Setter Property="Padding" Value="15"/>
+            <Setter Property="Padding" Value="0"/>
             <Setter Property="Margin" Value="5"/>
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect BlurRadius="10" ShadowDepth="2" Opacity="0.05" Color="Black"/>
+                </Setter.Value>
+            </Setter>
         </Style>
 
         <Style x:Key="SectionTitleStyle" TargetType="TextBlock">
             <Setter Property="FontSize" Value="16"/>
             <Setter Property="FontWeight" Value="Bold"/>
             <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
-            <Setter Property="Margin" Value="0,0,0,10"/>
-        </Style>
-
-        <Style x:Key="ColorRadioButtonStyle" TargetType="RadioButton">
-            <Setter Property="Width" Value="16"/>
-            <Setter Property="Height" Value="16"/>
-            <Setter Property="Margin" Value="0,0,5,5"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="RadioButton">
-                        <Grid>
-                            <Ellipse Fill="{TemplateBinding Background}" StrokeThickness="2" Stroke="Transparent" x:Name="ColorCircle"/>
-                            <Path x:Name="CheckMark" Data="M 6,12 L 10,16 L 18,8" Stroke="White" StrokeThickness="2" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Grid>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsChecked" Value="True">
-                                <Setter TargetName="ColorCircle" Property="Stroke" Value="{DynamicResource PrimaryTextBrush}"/>
-                                <Setter TargetName="CheckMark" Property="Visibility" Value="Visible"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
+            <Setter Property="Margin" Value="10,10,0,5"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
         </Style>
     </UserControl.Resources>
 
@@ -89,7 +185,7 @@
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
-                <TextBlock Text="설정" FontSize="28" FontWeight="Bold" Foreground="{DynamicResource PrimaryTextBrush}" Margin="5,0,0,20"/>
+                <TextBlock Text="설정" FontSize="24" FontWeight="Bold" Foreground="{DynamicResource PrimaryTextBrush}" Margin="5,0,0,20"/>
 
                 <Grid Grid.Row="1">
                     <Grid.ColumnDefinitions>
@@ -102,13 +198,13 @@
                         <StackPanel>
                             <TextBlock Text="테마 및 디자인" Style="{StaticResource SectionTitleStyle}"/>
 
-                            <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
+                            <StackPanel Orientation="Horizontal" Margin="10,0,0,15">
                                 <RadioButton x:Name="LightModeRadioButton" Content="라이트" GroupName="Theme" Margin="0,0,15,0" Checked="Theme_Changed" Foreground="{DynamicResource PrimaryTextBrush}"/>
                                 <RadioButton x:Name="DarkModeRadioButton" Content="다크" GroupName="Theme" Checked="Theme_Changed" Foreground="{DynamicResource PrimaryTextBrush}"/>
                             </StackPanel>
 
-                            <TextBlock Text="강조 색상" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,0,0,8"/>
-                            <WrapPanel>
+                            <TextBlock Text="강조 색상" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource SecondaryTextBrush}" Margin="10,0,0,8"/>
+                            <WrapPanel Margin="7,0,0,0">
                                 <RadioButton x:Name="Color2195F2" Tag="#2195F2" Background="#2195F2" Style="{StaticResource ColorRadioButtonStyle}" Checked="AccentColor_Changed"/>
                                 <RadioButton x:Name="ColorFF5722" Tag="#FF5722" Background="#FF5722" Style="{StaticResource ColorRadioButtonStyle}" Checked="AccentColor_Changed"/>
                                 <RadioButton x:Name="Color4CAF50" Tag="#4CAF50" Background="#4CAF50" Style="{StaticResource ColorRadioButtonStyle}" Checked="AccentColor_Changed"/>
@@ -126,22 +222,19 @@
                     <Border Grid.Column="1" Style="{StaticResource CardBorderStyle}">
                         <StackPanel>
                             <TextBlock Text="미니 타이머" Style="{StaticResource SectionTitleStyle}"/>
-                            <DockPanel Margin="0,0,0,10">
-                                <TextBlock Text="사용함" VerticalAlignment="Center" Foreground="{DynamicResource PrimaryTextBrush}"/>
-                                <CheckBox x:Name="MiniTimerCheckBox" HorizontalAlignment="Right" Click="Setting_Changed" Style="{StaticResource {x:Static ToolBar.CheckBoxStyleKey}}"/>
-                            </DockPanel>
-                            <StackPanel IsEnabled="{Binding IsChecked, ElementName=MiniTimerCheckBox}">
-                                <CheckBox x:Name="MiniTimerShowCharacterCheckBox" Content="캐릭터 표시" Margin="0,5" Click="Setting_Changed" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="12"/>
-                                <CheckBox x:Name="MiniTimerShowInfoCheckBox" Content="정보 텍스트 표시" Margin="0,5" Click="Setting_Changed" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="12"/>
-                            </StackPanel>
+
+                            <CheckBox x:Name="MiniTimerCheckBox" Content="사용함" Margin="10,5" Click="Setting_Changed" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="12"/>
+
+                            <CheckBox x:Name="MiniTimerShowCharacterCheckBox" Content="캐릭터 표시" Margin="10,5" Click="Setting_Changed" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="12"/>
+                            <CheckBox x:Name="MiniTimerShowInfoCheckBox" Content="정보 텍스트 표시" Margin="10,5" Click="Setting_Changed" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="12"/>
                         </StackPanel>
                     </Border>
 
                     <Border Grid.Column="2" Style="{StaticResource CardBorderStyle}">
                         <StackPanel>
                             <TextBlock Text="집중 모드" Style="{StaticResource SectionTitleStyle}"/>
-                            <CheckBox x:Name="IdleDetectionCheckBox" Content="자리 비움 &amp; 딴짓 감지" Click="Setting_Changed" Foreground="{DynamicResource PrimaryTextBrush}" Margin="0,5"/>
-                            <TextBlock Text="활성화 시 설정한 방해 앱이 실행되거나 자리를 비우면 경고를 보냅니다." FontSize="10" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,10,0,0" TextWrapping="Wrap"/>
+                            <CheckBox x:Name="IdleDetectionCheckBox" Content="자리 비움 &amp; 딴짓 감지" Click="Setting_Changed" Foreground="{DynamicResource PrimaryTextBrush}" Margin="10,5"/>
+                            <TextBlock Text="활성화 시 설정한 방해 앱이 실행되거나 자리를 비우면 경고를 보냅니다." FontSize="10" Foreground="{DynamicResource SecondaryTextBrush}" Margin="10,10,0,0" TextWrapping="Wrap"/>
                         </StackPanel>
                     </Border>
                 </Grid>
@@ -159,12 +252,18 @@
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="*"/>
                             </Grid.RowDefinitions>
-                            <DockPanel Grid.Row="0" Margin="0,0,0,10">
-                                <TextBlock Text="작업 앱" Style="{StaticResource SectionTitleStyle}" Margin="0"/>
-                                <Button Content="+" Tag="Work" Click="AddProcessButton_Click" DockPanel.Dock="Right" Width="24" Height="24" Style="{StaticResource RoundedButtonStyle}"/>
+                            <DockPanel Grid.Row="0" Margin="10,0,0,10">
+                                <TextBlock Text="작업 앱" Style="{StaticResource SectionTitleStyle}" Margin="0,10,90,0"/>
+                                <Button Tag="Work" Click="AddProcessButton_Click" DockPanel.Dock="Right" 
+                                        Style="{StaticResource AddIconButtonStyle}" ToolTip="작업 앱 추가"/>
                             </DockPanel>
-                            <ListBox x:Name="WorkProcessList" Grid.Row="1" ItemsSource="{Binding WorkProcessViewModels}" MinHeight="150" MaxHeight="300" 
-                                     Background="{DynamicResource MainBackgroundBrush}" BorderThickness="0" ItemTemplate="{StaticResource ProcessItemTemplate}"/>
+                            <ListBox x:Name="WorkProcessList" Grid.Row="1" 
+         ItemsSource="{Binding WorkProcessViewModels}" 
+         MinHeight="100" 
+         ScrollViewer.VerticalScrollBarVisibility="Disabled"
+         PreviewMouseWheel="ListBox_PreviewMouseWheel"
+         Background="Transparent" BorderThickness="0" 
+         ItemTemplate="{StaticResource ProcessItemTemplate}"/>
                         </Grid>
                     </Border>
 
@@ -174,12 +273,18 @@
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="*"/>
                             </Grid.RowDefinitions>
-                            <DockPanel Grid.Row="0" Margin="0,0,0,10">
-                                <TextBlock Text="수동 앱" Style="{StaticResource SectionTitleStyle}" Margin="0"/>
-                                <Button Content="+" Tag="Passive" Click="AddProcessButton_Click" DockPanel.Dock="Right" Width="24" Height="24" Style="{StaticResource RoundedButtonStyle}"/>
+                            <DockPanel Grid.Row="0" Margin="10,0,0,10">
+                                <TextBlock Text="수동 앱" Style="{StaticResource SectionTitleStyle}"  Margin="0,10,90,0"/>
+                                <Button Tag="Passive" Click="AddProcessButton_Click" DockPanel.Dock="Right" 
+                                        Style="{StaticResource AddIconButtonStyle}" ToolTip="수동 앱 추가"/>
                             </DockPanel>
-                            <ListBox x:Name="PassiveProcessList" Grid.Row="1" ItemsSource="{Binding PassiveProcessViewModels}" MinHeight="150" MaxHeight="300" 
-                                     Background="{DynamicResource MainBackgroundBrush}" BorderThickness="0" ItemTemplate="{StaticResource ProcessItemTemplate}"/>
+                            <ListBox x:Name="PassiveProcessList" Grid.Row="1" 
+         ItemsSource="{Binding PassiveProcessViewModels}" 
+         MinHeight="100"
+         ScrollViewer.VerticalScrollBarVisibility="Disabled"
+         PreviewMouseWheel="ListBox_PreviewMouseWheel"
+         Background="Transparent" BorderThickness="0" 
+         ItemTemplate="{StaticResource ProcessItemTemplate}"/>
                         </Grid>
                     </Border>
 
@@ -189,22 +294,28 @@
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="*"/>
                             </Grid.RowDefinitions>
-                            <DockPanel Grid.Row="0" Margin="0,0,0,10">
-                                <TextBlock Text="방해 앱" Style="{StaticResource SectionTitleStyle}" Margin="0"/>
-                                <Button Content="+" Tag="Distraction" Click="AddProcessButton_Click" DockPanel.Dock="Right" Width="24" Height="24" Style="{StaticResource RoundedButtonStyle}"/>
+                            <DockPanel Grid.Row="0" Margin="10,0,0,10">
+                                <TextBlock Text="방해 앱" Style="{StaticResource SectionTitleStyle}" Margin="0,10,90,0"/>
+                                <Button Tag="Distraction" Click="AddProcessButton_Click" DockPanel.Dock="Right" 
+                                        Style="{StaticResource AddIconButtonStyle}" ToolTip="방해 앱 추가"/>
                             </DockPanel>
-                            <ListBox x:Name="DistractionProcessList" Grid.Row="1" ItemsSource="{Binding DistractionProcessViewModels}" MinHeight="150" MaxHeight="300" 
-                                     Background="{DynamicResource MainBackgroundBrush}" BorderThickness="0" ItemTemplate="{StaticResource ProcessItemTemplate}"/>
+                            <ListBox x:Name="DistractionProcessList" Grid.Row="1" 
+         ItemsSource="{Binding DistractionProcessViewModels}" 
+         MinHeight="100"
+         ScrollViewer.VerticalScrollBarVisibility="Disabled"
+         PreviewMouseWheel="ListBox_PreviewMouseWheel"
+         Background="Transparent" BorderThickness="0" 
+         ItemTemplate="{StaticResource ProcessItemTemplate}"/>
                         </Grid>
                     </Border>
                 </Grid>
 
                 <Border Grid.Row="3" Style="{StaticResource CardBorderStyle}">
                     <StackPanel>
-                        <TextBlock Text="AI 자동 태그 규칙" Style="{StaticResource SectionTitleStyle}"/>
-                        <TextBlock Text="창 이름이나 브라우저 주소에 특정 단어가 포함되면 과목을 자동으로 변경합니다." FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,0,0,15"/>
+                        <TextBlock Text="자동 태그 규칙" Style="{StaticResource SectionTitleStyle}"/>
+                        <TextBlock Text="창 이름이나 브라우저 주소에 특정 단어가 포함되면 과목을 자동으로 변경합니다." FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}" Margin="10,0,0,15"/>
 
-                        <Grid Margin="0,0,0,15">
+                        <Grid Margin="10,0,0,15">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="*"/>
@@ -241,20 +352,105 @@
                             <Button Grid.Column="2" Content="규칙 추가" Click="AddTagRule_Click" Style="{StaticResource RoundedButtonStyle}" Width="80"/>
                         </Grid>
 
-                        <ListBox x:Name="TagRulesListBox" Height="120" Background="{DynamicResource MainBackgroundBrush}" BorderThickness="0">
+                        <ListBox x:Name="TagRulesListBox" 
+         MinHeight="120" 
+         ScrollViewer.VerticalScrollBarVisibility="Disabled"
+         PreviewMouseWheel="ListBox_PreviewMouseWheel"
+         Background="{DynamicResource MainBackgroundBrush}" 
+         BorderThickness="0"
+         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+         HorizontalContentAlignment="Stretch">
+
+                            <ListBox.ItemContainerStyle>
+                                <Style TargetType="ListBoxItem">
+                                    <Setter Property="Padding" Value="0"/>
+                                    <Setter Property="Margin" Value="0,0,0,5"/>
+                                    <Setter Property="Background" Value="Transparent"/>
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="ListBoxItem">
+                                                <ContentPresenter />
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Style>
+                            </ListBox.ItemContainerStyle>
+
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
-                                    <Border Padding="10,5" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
-                                        <DockPanel LastChildFill="True">
-                                            <Button Content="삭제" CommandParameter="{Binding Key, Mode=OneWay}" Click="DeleteTagRule_Click" DockPanel.Dock="Right" 
-                                                    Foreground="Red" Background="Transparent" BorderThickness="0" Cursor="Hand" FontSize="11"/>
-                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                                <TextBlock Text="키워드: " Foreground="{DynamicResource SecondaryTextBrush}" FontSize="12"/>
-                                                <TextBlock Text="{Binding Key, Mode=OneWay}" FontWeight="Bold" Foreground="{DynamicResource PrimaryTextBrush}" Margin="0,0,15,0"/>
-                                                <TextBlock Text="→  과목: " Foreground="{DynamicResource SecondaryTextBrush}" FontSize="12"/>
-                                                <TextBlock Text="{Binding Value, Mode=OneWay}" FontWeight="Bold" Foreground="{DynamicResource AccentColorBrush}"/>
+                                    <Border Background="{DynamicResource MainBackgroundBrush}" 
+                    BorderBrush="{DynamicResource BorderBrush}" 
+                    BorderThickness="1" 
+                    CornerRadius="6" 
+                    Padding="15,8"
+                    Margin="5,2">
+
+                                        <Grid VerticalAlignment="Center">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+
+                                            <TextBlock Grid.Column="0" 
+                               Text="{Binding Keyword, Mode=OneWay}" 
+                               FontWeight="Bold" 
+                               Foreground="{DynamicResource PrimaryTextBrush}"
+                               HorizontalAlignment="Center" 
+                               VerticalAlignment="Center"
+                               TextTrimming="CharacterEllipsis" Margin="0,0,0,0"/>
+
+                                            <TextBlock Grid.Column="1" 
+                               Text="→" 
+                               Foreground="{DynamicResource SecondaryTextBrush}" 
+                               FontSize="14"
+                               HorizontalAlignment="Center" 
+                               VerticalAlignment="Center"
+                               Margin="10,0"/>
+
+                                            <StackPanel Grid.Column="2" 
+                                Orientation="Horizontal" 
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center" Margin="5,0,0,0">
+
+                                                <TextBlock Text="{Binding Subject, Mode=OneWay}" 
+                                   FontWeight="SemiBold" 
+                                   Foreground="{DynamicResource AccentColorBrush}"
+                                   VerticalAlignment="Center"
+                                   TextTrimming="CharacterEllipsis"
+                                   MaxWidth="150"/>
+                                                <Button Content="X" 
+                                CommandParameter="{Binding Keyword, Mode=OneWay}" 
+                                Click="DeleteTagRule_Click"
+                                Foreground="#FF5E5E" 
+                                Background="Transparent" 
+                                BorderThickness="0" 
+                                Cursor="Hand" 
+                                FontSize="11" 
+                                FontWeight="Bold"
+                                VerticalAlignment="Center"
+                                Margin="10,0,0,0">
+                                                    <Button.Style>
+                                                        <Style TargetType="Button">
+                                                            <Setter Property="Template">
+                                                                <Setter.Value>
+                                                                    <ControlTemplate TargetType="Button">
+                                                                        <Border Background="Transparent">
+                                                                            <ContentPresenter/>
+                                                                        </Border>
+                                                                    </ControlTemplate>
+                                                                </Setter.Value>
+                                                            </Setter>
+                                                            <Style.Triggers>
+                                                                <Trigger Property="IsMouseOver" Value="True">
+                                                                    <Setter Property="Opacity" Value="0.7"/>
+                                                                </Trigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Button.Style>
+                                                </Button>
                                             </StackPanel>
-                                        </DockPanel>
+                                        </Grid>
                                     </Border>
                                 </DataTemplate>
                             </ListBox.ItemTemplate>
@@ -262,17 +458,17 @@
                     </StackPanel>
                 </Border>
 
-                <Border Grid.Row="4" Style="{StaticResource CardBorderStyle}">
+                <Border Grid.Row="4" Style="{StaticResource CardBorderStyle}" Padding="5" Margin="10,10,0,0">
                     <DockPanel>
                         <StackPanel>
-                            <TextBlock Text="데이터 관리" Style="{StaticResource SectionTitleStyle}" Margin="0"/>
-                            <TextBlock Text="백업 및 복원, 또는 초기화를 수행합니다." FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}"/>
+                            <TextBlock Text="데이터 관리" Style="{StaticResource SectionTitleStyle}" Margin="10,10,0,0"/>
+                            <TextBlock Text="백업 및 복원, 또는 초기화를 수행합니다." FontSize="12" Foreground="Transparent"/>
                         </StackPanel>
 
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" DockPanel.Dock="Right">
-                            <Button Content="내보내기" Click="ExportDataButton_Click" Margin="0,0,10,0" Style="{StaticResource RoundedButtonStyle}" Width="80"/>
-                            <Button Content="불러오기" Click="ImportDataButton_Click" Margin="0,0,10,0" Style="{StaticResource RoundedButtonStyle}" Width="80"/>
-                            <Button Content="초기화" Click="ResetDataButton_Click" Background="#FF5252" Style="{StaticResource RoundedButtonStyle}" Width="80"/>
+                            <Button Content="내보내기" Click="ExportDataButton_Click" Margin="10,10,10,0" Style="{StaticResource RoundedButtonStyle}" Width="80"/>
+                            <Button Content="불러오기" Click="ImportDataButton_Click" Margin="10,10,10,0" Style="{StaticResource RoundedButtonStyle}" Width="80"/>
+                            <Button Content="초기화" Click="ResetDataButton_Click" Margin="10,10,10,0" Background="#FF5252" Style="{StaticResource RoundedButtonStyle}" Width="80"/>
                         </StackPanel>
                     </DockPanel>
                 </Border>
@@ -293,5 +489,6 @@
                 </StackPanel>
             </Border>
         </Popup>
+
     </Grid>
 </UserControl>

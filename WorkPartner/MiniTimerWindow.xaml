@@ -10,27 +10,6 @@
         MouseLeftButtonDown="Window_MouseLeftButtonDown">
 
     <Window.Resources>
-        <Storyboard x:Key="SwingAnimation" RepeatBehavior="Forever" AutoReverse="True">
-            <DoubleAnimation Storyboard.TargetName="KeyringTransform"
-                             Storyboard.TargetProperty="Angle"
-                             From="-15" To="15" Duration="0:0:0.5">
-                <DoubleAnimation.EasingFunction>
-                    <SineEase EasingMode="EaseInOut"/>
-                </DoubleAnimation.EasingFunction>
-            </DoubleAnimation>
-        </Storyboard>
-
-        <Storyboard x:Key="DecayAnimation">
-            <DoubleAnimation x:Name="DecayDoubleAnim"
-                             Storyboard.TargetName="KeyringTransform"
-                             Storyboard.TargetProperty="Angle"
-                             To="0" Duration="0:0:1.5">
-                <DoubleAnimation.EasingFunction>
-                    <ElasticEase EasingMode="EaseOut" Oscillations="3" Springiness="6"/>
-                </DoubleAnimation.EasingFunction>
-            </DoubleAnimation>
-        </Storyboard>
-
         <Style x:Key="MiniButtonStyle" TargetType="Button">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0"/>
@@ -72,15 +51,9 @@
         </Border>
 
         <Grid x:Name="KeyringArea" Grid.Row="1" HorizontalAlignment="Center" Margin="0,-3,0,0">
-            <Grid.RenderTransform>
-                <RotateTransform x:Name="KeyringTransform" CenterX="35" CenterY="0"/>
-            </Grid.RenderTransform>
-
             <StackPanel HorizontalAlignment="Center">
-                <Rectangle Width="2" Height="15" Fill="{DynamicResource BorderBrush}" HorizontalAlignment="Center"/>
-                <Ellipse Width="6" Height="6" Fill="{DynamicResource BorderBrush}" HorizontalAlignment="Center" Margin="0,-2,0,0"/>
                 <Image x:Name="MiniProfileImage" 
-                       Width="70" Height="70" 
+                       Width="100" Height="100" 
                        Stretch="Uniform" 
                        RenderOptions.BitmapScalingMode="HighQuality"
                        Margin="0,2,0,0"/>
