@@ -1,9 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
+﻿using System.Collections.Generic;
 using System.Windows;
-using System.Windows.Controls;
 using System.Windows.Input;
 
 namespace WorkPartner
@@ -12,27 +8,18 @@ namespace WorkPartner
     {
         public string SelectedAppKeyword { get; private set; }
 
+        // 기본 생성자 (디자이너 오류 방지용)
         public AppSelectionWindow()
         {
             InitializeComponent();
-            LoadRunningProcesses();
         }
 
-        // ▼▼▼ [복구] 잘 작동하던 Branch 9 버전의 로직 ▼▼▼
-        private void LoadRunningProcesses()
+        // ▼▼▼ [복구] Tree/9 버전: 목록을 받아서 AppListView에 넣음 ▼▼▼
+        public AppSelectionWindow(List<InstalledProgram> apps)
         {
-            // 복잡한 필터링 없이, 현재 실행 중인 모든 프로세스의 이름을 가져와서 중복 제거
-            var processes = Process.GetProcesses()
-                .Select(p => p.ProcessName)
-                .Distinct()
-                .OrderBy(n => n)
-                .Select(n => new InstalledProgram { ProcessName = n, DisplayName = n })
-                .ToList();
-
-            if (this.FindName("AppListBox") is ListBox listBox)
-            {
-                listBox.ItemsSource = processes;
-            }
+            InitializeComponent();
+            // XAML의 x:Name="AppListView"와 연결
+            AppListView.ItemsSource = apps;
         }
 
         private void OkButton_Click(object sender, RoutedEventArgs e)
@@ -47,22 +34,23 @@ namespace WorkPartner
 
         private void ConfirmSelection()
         {
-            if (this.FindName("AppListBox") is ListBox listBox && listBox.SelectedItem is InstalledProgram selected)
+            // 사용자가 선택한 항목 가져오기
+            if (AppListView.SelectedItem is InstalledProgram selectedApp)
             {
-                SelectedAppKeyword = selected.ProcessName;
-                DialogResult = true;
-                Close();
+                SelectedAppKeyword = selectedApp.ProcessName;
+                this.DialogResult = true;
+                this.Close();
             }
             else
             {
-                MessageBox.Show("앱을 선택해주세요.");
+                MessageBox.Show("목록에서 프로그램을 선택해주세요.", "알림");
             }
         }
 
         private void CancelButton_Click(object sender, RoutedEventArgs e)
         {
-            DialogResult = false;
-            Close();
+            this.DialogResult = false;
+            this.Close();
         }
     }
 }

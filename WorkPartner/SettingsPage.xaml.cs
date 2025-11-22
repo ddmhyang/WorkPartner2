@@ -244,20 +244,72 @@ namespace WorkPartner
             }
         }
 
-        // ▼▼▼ [수정] 복잡한 로직 다 지우고, Branch 9처럼 단순하게 창만 띄움 ▼▼▼
+        // SettingsPage.xaml.cs 내부의 Popup_SelectAppButton_Click 메서드를 교체하세요
+
         private async void Popup_SelectAppButton_Click(object sender, RoutedEventArgs e)
         {
-            AddProcessMethodPopup.IsOpen = false;
+            AddProcessMethodPopup.IsOpen = false; // 팝업 닫기
 
-            // 생성자에 목록을 넘기지 않음 -> 창이 알아서 로드함 (Branch 9 방식)
-            var selectionWindow = new AppSelectionWindow()
+            // 1. 실행 중인 프로세스 목록 만들기
+            var appList = new List<InstalledProgram>();
+            var addedProcesses = new HashSet<string>(); // 중복 방지용
+
+            // 비동기로 처리하여 UI 멈춤 방지
+            await Task.Run(() =>
+            {
+                var processes = Process.GetProcesses();
+                foreach (var proc in processes)
+                {
+                    try
+                    {
+                        // 창 타이틀이 있는(눈에 보이는) 앱만 가져오기
+                        if (proc.MainWindowHandle == IntPtr.Zero || string.IsNullOrWhiteSpace(proc.MainWindowTitle))
+                            continue;
+
+                        string processName = proc.ProcessName.ToLower();
+                        if (addedProcesses.Contains(processName)) continue;
+
+                        // 아이콘 가져오기 (권한 에러 시 아이콘 없이 진행)
+                        ImageSource iconSrc = null;
+                        try
+                        {
+                            if (proc.MainModule != null)
+                            {
+                                using (var icon = System.Drawing.Icon.ExtractAssociatedIcon(proc.MainModule.FileName))
+                                {
+                                    if (icon != null)
+                                    {
+                                        // 아이콘을 UI 스레드에서 쓸 수 있게 Freeze
+                                        iconSrc = icon.ToBitmapSource();
+                                        iconSrc.Freeze();
+                                    }
+                                }
+                            }
+                        }
+                        catch { /* 아이콘 로드 실패는 무시 */ }
+
+                        appList.Add(new InstalledProgram
+                        {
+                            DisplayName = proc.MainWindowTitle,
+                            ProcessName = processName,
+                            Icon = iconSrc
+                        });
+                        addedProcesses.Add(processName);
+                    }
+                    catch { /* 프로세스 접근 권한 없음 등은 무시 */ }
+                }
+            });
+
+            // 2. 목록을 정렬하여 창에 전달 (Tree/9 방식)
+            var sortedList = appList.OrderBy(a => a.DisplayName).ToList();
+            var selectionWindow = new AppSelectionWindow(sortedList) // [중요] 생성자로 목록 전달
             {
                 Owner = Window.GetWindow(this)
             };
 
+            // 3. 결과 받기
             if (selectionWindow.ShowDialog() == true && !string.IsNullOrEmpty(selectionWindow.SelectedAppKeyword))
             {
-                // 선택된 앱 이름을 받아서 추가
                 await AddProcessInternalAsync(_currentProcessType, selectionWindow.SelectedAppKeyword);
             }
         }

@@ -175,10 +175,10 @@
                                 <RowDefinition Height="*"/>
                             </Grid.RowDefinitions>
                             <DockPanel Grid.Row="0" Margin="0,0,0,10">
-                                <TextBlock Text="방해 앱" Style="{StaticResource SectionTitleStyle}" Margin="0"/>
-                                <Button Content="+" Tag="Distraction" Click="AddProcessButton_Click" DockPanel.Dock="Right" Width="24" Height="24" Style="{StaticResource RoundedButtonStyle}"/>
+                                <TextBlock Text="수동 앱" Style="{StaticResource SectionTitleStyle}" Margin="0"/>
+                                <Button Content="+" Tag="Passive" Click="AddProcessButton_Click" DockPanel.Dock="Right" Width="24" Height="24" Style="{StaticResource RoundedButtonStyle}"/>
                             </DockPanel>
-                            <ListBox x:Name="DistractionProcessList" Grid.Row="1" ItemsSource="{Binding DistractionProcessViewModels}" MinHeight="150" MaxHeight="300" 
+                            <ListBox x:Name="PassiveProcessList" Grid.Row="1" ItemsSource="{Binding PassiveProcessViewModels}" MinHeight="150" MaxHeight="300" 
                                      Background="{DynamicResource MainBackgroundBrush}" BorderThickness="0" ItemTemplate="{StaticResource ProcessItemTemplate}"/>
                         </Grid>
                     </Border>
@@ -190,10 +190,10 @@
                                 <RowDefinition Height="*"/>
                             </Grid.RowDefinitions>
                             <DockPanel Grid.Row="0" Margin="0,0,0,10">
-                                <TextBlock Text="수동 앱" Style="{StaticResource SectionTitleStyle}" Margin="0"/>
-                                <Button Content="+" Tag="Passive" Click="AddProcessButton_Click" DockPanel.Dock="Right" Width="24" Height="24" Style="{StaticResource RoundedButtonStyle}"/>
+                                <TextBlock Text="방해 앱" Style="{StaticResource SectionTitleStyle}" Margin="0"/>
+                                <Button Content="+" Tag="Distraction" Click="AddProcessButton_Click" DockPanel.Dock="Right" Width="24" Height="24" Style="{StaticResource RoundedButtonStyle}"/>
                             </DockPanel>
-                            <ListBox x:Name="PassiveProcessList" Grid.Row="1" ItemsSource="{Binding PassiveProcessViewModels}" MinHeight="150" MaxHeight="300" 
+                            <ListBox x:Name="DistractionProcessList" Grid.Row="1" ItemsSource="{Binding DistractionProcessViewModels}" MinHeight="150" MaxHeight="300" 
                                      Background="{DynamicResource MainBackgroundBrush}" BorderThickness="0" ItemTemplate="{StaticResource ProcessItemTemplate}"/>
                         </Grid>
                     </Border>
