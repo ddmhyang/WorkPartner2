@@ -103,13 +103,21 @@ namespace WorkPartner
             _taskBrushCache.Clear();
             Dispatcher.Invoke(() =>
             {
+                // 1. 페이지의 로컬 리스트 색상 업데이트 (과거 날짜용)
                 foreach (var taskItem in TaskItems)
                 {
-                    if (_settings.TaskColors.TryGetValue(taskItem.Text, out string colorHex))
+                    taskItem.ColorBrush = GetColorForTask(taskItem.Text);
+                }
+
+                // 2. [추가된 코드] 뷰모델의 리스트 색상 업데이트 (오늘 날짜용)
+                if (DataContext is ViewModels.DashboardViewModel vm)
+                {
+                    foreach (var vmTask in vm.TaskItems)
                     {
-                        taskItem.ColorBrush = (SolidColorBrush)new BrushConverter().ConvertFromString(colorHex);
+                        vmTask.ColorBrush = GetColorForTask(vmTask.Text);
                     }
                 }
+
                 RenderTimeTable();
                 UpdateCharacterInfoPanel();
             });
@@ -117,6 +125,9 @@ namespace WorkPartner
 
         private void InitializeData()
         {
+            // [수정] TaskItems가 null이 되지 않도록 미리 생성합니다.
+            TaskItems = new ObservableCollection<TaskItem>();
+
             TodoItems = new ObservableCollection<TodoItem>();
             FilteredTodoItems = new ObservableCollection<TodoItem>();
             TodoTreeView.ItemsSource = FilteredTodoItems;
@@ -146,15 +157,44 @@ namespace WorkPartner
 
         private void LoadSettings()
         {
-            // (혹시 모르니 여기서도 한 번 더 로드)
+            // 1. 설정 파일이 없으면 불러오기
             if (_settings == null) _settings = DataManager.LoadSettings();
 
-            // 2. 이미지 로드 (여기가 중요!)
+            // 2. 이미지 로드
             LoadUserImage();
 
-            // 3. 현재 작업
+            // 3. 현재 작업 텍스트 갱신
             if (CurrentTaskTextBlock != null)
                 CurrentTaskTextBlock.Text = $"현재 작업 : {_settings.CurrentTask}";
+
+            // 4. [핵심 수정] 색상 강제 업데이트 (여기가 비어있어서 초기화 때 색이 안 나왔던 것!)
+            _taskBrushCache.Clear(); // 기존 색상 캐시 비우기 (혹시 모를 오류 방지)
+
+            Dispatcher.Invoke(() =>
+            {
+                // (A) 과거 날짜용 리스트 색칠
+                if (TaskItems != null)
+                {
+                    foreach (var taskItem in TaskItems)
+                    {
+                        taskItem.ColorBrush = GetColorForTask(taskItem.Text);
+                    }
+                }
+
+                // (B) [추가됨] 오늘 날짜용(뷰모델) 리스트 색칠
+                if (DataContext is ViewModels.DashboardViewModel vm && vm.TaskItems != null)
+                {
+                    foreach (var vmTask in vm.TaskItems)
+                    {
+                        // 색상이 없거나(null), 이미 있더라도 최신 설정으로 다시 칠하기
+                        vmTask.ColorBrush = GetColorForTask(vmTask.Text);
+                    }
+                }
+
+                // 타임라인과 캐릭터 정보도 갱신
+                RenderTimeTable();
+                UpdateCharacterInfoPanel();
+            });
         }
         private void SaveSettings() { DataManager.SaveSettings(_settings); }
 
@@ -630,14 +670,21 @@ namespace WorkPartner
             RecalculateAllTotals(TaskListBox.SelectedItem as TaskItem);
         }
 
-        private void RecalculateAllTotals(TaskItem selectedTask)
+        // [수정됨]
+        private void RecalculateAllTotals(TaskItem selectedTask = null) // 파라미터 기본값 추가
         {
             if (DataContext is not ViewModels.DashboardViewModel vm) return;
 
             var todayLogs = vm.TimeLogEntries
                 .Where(log => log.StartTime.Date == _currentDateForTimeline.Date).ToList();
 
-            foreach (var task in TaskItems)
+            // [수정] 현재 리스트박스가 보여주고 있는 아이템들을 가져와서 계산
+            var targetList = TaskListBox.ItemsSource as IEnumerable<TaskItem>;
+
+            // 만약 리스트박스가 비어있거나 연결이 안 되어있다면 로컬 리스트 사용
+            if (targetList == null) targetList = this.TaskItems;
+
+            foreach (var task in targetList)
             {
                 var taskLogs = todayLogs.Where(log => log.TaskText == task.Text);
                 task.TotalTime = new TimeSpan(taskLogs.Sum(log => log.Duration.Ticks));
@@ -662,12 +709,20 @@ namespace WorkPartner
 
         private SolidColorBrush GetColorForTask(string taskName)
         {
+            // [핵심 수정] 설정이 아직 로드되지 않았다면 즉시 로드합니다!
+            if (_settings == null)
+            {
+                _settings = DataManager.LoadSettings();
+            }
+
+            // 캐시된 브러시가 있으면 반환
             if (_taskBrushCache.TryGetValue(taskName, out var cachedBrush))
             {
                 return cachedBrush;
             }
 
-            if (_settings != null && _settings.TaskColors.TryGetValue(taskName, out string colorHex))
+            // 설정 파일에서 색상 찾기
+            if (_settings != null && _settings.TaskColors != null && _settings.TaskColors.TryGetValue(taskName, out string colorHex))
             {
                 try
                 {
@@ -676,10 +731,10 @@ namespace WorkPartner
                     _taskBrushCache[taskName] = newBrush;
                     return newBrush;
                 }
-                catch { /* ignore */ }
+                catch { /* 색상 코드가 잘못된 경우 무시 */ }
             }
 
-            return DefaultGrayBrush;
+            return DefaultGrayBrush; // 색상이 없으면 기본 회색
         }
 
         // 621번째 줄의 RenderTimeTable 메서드 전체를 아래 코드로 대체해주세요.
@@ -880,12 +935,38 @@ namespace WorkPartner
         private void UpdateDateAndUI()
         {
             CurrentDateDisplay.Text = _currentDateForTimeline.ToString("yyyy-MM-dd");
-
             CurrentDayDisplay.Text = _currentDateForTimeline.ToString("ddd");
+
+            // [추가됨] 날짜에 맞춰 리스트박스의 연결 대상을 변경
+            UpdateTaskListBoxSource();
 
             RenderTimeTable();
             RecalculateAllTotals();
             FilterTodos();
+        }
+
+        // [새로 추가됨]
+        private void UpdateTaskListBoxSource()
+        {
+            if (DataContext is not ViewModels.DashboardViewModel vm) return;
+
+            if (_currentDateForTimeline.Date == DateTime.Today)
+            {
+                // 오늘 날짜를 볼 때는: 뷰모델의 '실시간 리스트'를 보여줌
+                if (TaskListBox.ItemsSource != vm.TaskItems)
+                {
+                    TaskListBox.ItemsSource = vm.TaskItems;
+                }
+            }
+            else
+            {
+                // 과거 날짜를 볼 때는: 페이지의 '로컬 리스트(변하지 않음)'를 보여줌
+                // 이렇게 하면 뷰모델이 실시간으로 시간을 업데이트해도 과거 내역에는 영향이 없음
+                if (TaskListBox.ItemsSource != this.TaskItems)
+                {
+                    TaskListBox.ItemsSource = this.TaskItems;
+                }
+            }
         }
 
         private void PrevDayButton_Click(object sender, RoutedEventArgs e)
@@ -1211,31 +1292,67 @@ namespace WorkPartner
             e.Handled = true;
         }
 
-        // (약 1137줄 근처)
+        // [수정됨]
         private void DashboardPage_DataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
         {
+            LoadSettings();
+            // 1. 이전 뷰모델 연결 해제
             if (e.OldValue is ViewModels.DashboardViewModel oldVm)
             {
                 oldVm.TimeUpdated -= OnViewModelTimeUpdated;
                 oldVm.TimerStoppedAndSaved -= OnViewModelTimerStopped;
                 oldVm.CurrentTaskChanged -= OnViewModelTaskChanged;
-                oldVm.PropertyChanged -= OnViewModelPropertyChanged; // ◀◀ [이 줄 추가]
+                oldVm.PropertyChanged -= OnViewModelPropertyChanged;
+
+                // [중요] 감시자 제거 (메모리 누수 방지)
+                if (oldVm.TaskItems != null)
+                    oldVm.TaskItems.CollectionChanged -= TaskItems_CollectionChanged;
             }
+
+            // 2. 새 뷰모델 연결 설정
             if (e.NewValue is ViewModels.DashboardViewModel newVm)
             {
                 newVm.TimeUpdated += OnViewModelTimeUpdated;
                 newVm.TimerStoppedAndSaved += OnViewModelTimerStopped;
                 newVm.CurrentTaskChanged += OnViewModelTaskChanged;
-                newVm.PropertyChanged += OnViewModelPropertyChanged; // ◀◀ [이 줄 추가]
+                newVm.PropertyChanged += OnViewModelPropertyChanged;
 
-            // ▼▼▼ [이 두 줄을 여기에 추가!] ▼▼▼
-            // 1. '화면'의 리스트가 '두뇌'의 리스트를 가리키게 합니다.
-            this.TaskItems = newVm.TaskItems;
-            // 2. 'TaskListBox'가 '두뇌'의 리스트를 직접 바라보게 합니다.
-            TaskListBox.ItemsSource = this.TaskItems;
-            // ▲▲▲ [여기까지 추가] ▲▲▲
+                // [문제 해결 1] 이미 들어있는 데이터가 있다면 즉시 색상 입히기
+                foreach (var task in newVm.TaskItems)
+                {
+                    if (task.ColorBrush == null)
+                        task.ColorBrush = GetColorForTask(task.Text);
+                }
+
+                // [문제 해결 2] 앞으로 데이터가 추가될 때(로딩 중) 바로바로 색상 입히도록 감시자 붙이기
+                newVm.TaskItems.CollectionChanged += TaskItems_CollectionChanged;
+
+                CurrentTaskDisplay.Text = newVm.CurrentTaskDisplayText;
+                if (CurrentTaskTextBlock != null)
+                    CurrentTaskTextBlock.Text = $"현재 작업 : {newVm.CurrentTaskDisplayText}";
+
+                UpdateTaskListBoxSource();
             }
         }
+
+        // [새로 추가됨] 뷰모델의 리스트에 새 항목이 들어오면 즉시 색을 칠해주는 메서드
+        private void TaskItems_CollectionChanged(object sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+        {
+            // 새로운 항목이 추가되었을 때
+            if (e.NewItems != null)
+            {
+                foreach (TaskItem newTask in e.NewItems)
+                {
+                    // 색상이 없으면 바로 입혀줍니다.
+                    if (newTask.ColorBrush == null)
+                    {
+                        newTask.ColorBrush = GetColorForTask(newTask.Text);
+                    }
+                }
+            }
+        }
+
+
         private void OnViewModelTimerStopped(object sender, EventArgs e)
         {
             // ViewModel이 방금 새 로그를 저장했으므로 (VM.List가 변경됨)
@@ -1257,43 +1374,35 @@ namespace WorkPartner
 
         private void OnViewModelTimeUpdated(string newTime)
         {
-            // 1. 미니 타이머는 "항상" 오늘의 실시간 데이터로 업데이트합니다.
+            // 1. 미니 타이머 업데이트
             if (_miniTimer != null && _miniTimer.IsVisible)
             {
                 LoadSettings();
                 _miniTimer.UpdateData(_settings, CurrentTaskDisplay.Text, newTime);
             }
 
-            // ▼▼▼ [!!! 여기가 핵심 수정입니다 !!!] ▼▼▼
+            // 오늘 날짜가 아니면 중단
+            if (_currentDateForTimeline.Date != DateTime.Today.Date) return;
+            if (this.TaskItems == null) return; // 안전장치
 
-            // 3. '두뇌'(VM)의 실시간 데이터를 '화면'(Page)의 TotalTime 속성에 동기화합니다.
-            // [수정] 이 작업은 '오늘 날짜'를 보고 있을 때만 수행해야 합니다.
-            // (다른 날짜를 볼 때는 RecalculateAllTotals가 TotalTime을 책임져야 함)
-            if (_currentDateForTimeline.Date != DateTime.Today.Date)
-            {
-                return; // 👈 오늘 날짜가 아니면, 아래 실시간 동기화 로직(데이터 오염)을 실행하지 않음
-            }
-
-            // 3-1. (오늘 날짜일 때만 실행됨)
-            // (중요) '두뇌'(ViewModel)의 리스트와 '화면'(Page)의 리스트를 동기화합니다.
             if (DataContext is ViewModels.DashboardViewModel vm)
             {
-                // '두뇌'의 실시간 업데이트된 과목 리스트를 순회합니다.
                 foreach (var vmTask in vm.TaskItems)
                 {
-                    // '화면'의 리스트(TaskItems)에서 일치하는 과목을 찾습니다.
-                    var pageTask = this.TaskItems.FirstOrDefault(t => t.Text == vmTask.Text);
+                    // [추가된 코드] 뷰모델의 과목에 색상이 없으면(null이면) 설정을 보고 입혀줍니다.
+                    if (vmTask.ColorBrush == null)
+                    {
+                        vmTask.ColorBrush = GetColorForTask(vmTask.Text);
+                    }
 
-                    // '화면'에 과목이 존재하고, '두뇌'의 시간과 다르다면
+                    // 기존 시간 동기화 로직
+                    var pageTask = this.TaskItems.FirstOrDefault(t => t.Text == vmTask.Text);
                     if (pageTask != null && pageTask.TotalTime != vmTask.TotalTime)
                     {
-                        // '화면'의 시간을 '두뇌'의 시간으로 덮어씁니다.
-                        // (TaskItem.cs가 이 변경을 감지하고 UI를 갱신합니다)
                         pageTask.TotalTime = vmTask.TotalTime;
                     }
                 }
             }
-            // ▲▲▲ [!!! 여기까지 수정 !!!] ▲▲▲
         }
 
         private void OnViewModelPropertyChanged(object sender, PropertyChangedEventArgs e)

@@ -39,14 +39,14 @@
         </Grid.RowDefinitions>
 
         <Border x:Name="MainBodyBorder" Grid.Row="0" 
-                Background="{DynamicResource MainBackgroundBrush}" 
+                Background="#8FFFFFFF" 
                 CornerRadius="20" 
                 BorderBrush="{DynamicResource BorderBrush}" 
                 BorderThickness="1"
                 Padding="15,8"
                 HorizontalAlignment="Center">
             <StackPanel VerticalAlignment="Center">
-                <TextBlock x:Name="CurrentTaskText" Text="현재: 코딩" FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}" HorizontalAlignment="Center"/>
+                <TextBlock x:Name="CurrentTaskText" Text="현재: 코딩" FontSize="12" Foreground="{DynamicResource PrimaryTextBrush}" HorizontalAlignment="Center"/>
                 <TextBlock x:Name="TimeText" Text="00:00:00" FontSize="24" FontWeight="Bold" Foreground="{DynamicResource PrimaryTextBrush}" FontFamily="Freesentation 9 Black" HorizontalAlignment="Center"/>
             </StackPanel>
         </Border>
